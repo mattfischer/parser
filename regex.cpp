@@ -3,9 +3,18 @@
 #include <memory>
 #include <vector>
 #include <exception>
+#include <sstream>
 
 namespace Parser {
     class ParseException : public std::exception {
+    public:
+        ParseException(const std::string &m, int p) {
+            message = m;
+            pos = p;
+        }
+
+        std::string message;
+        int pos;
     };
 
     typedef int Symbol;
@@ -53,6 +62,16 @@ namespace Parser {
 
     std::unique_ptr<Node> parseSymbol(const std::string &regex, int &pos)
     {
+        if(pos >= regex.size()) {
+            throw ParseException("Expected symbol", pos);
+        }
+
+        if(regex[pos] == ')' || regex[pos] == '|' || regex[pos] == '*' || regex[pos] == '+') {
+            std::stringstream ss;
+            ss << "Unexpected character '" << regex[pos] << "'";
+            throw ParseException(ss.str(), pos);
+        }
+
         Symbol symbol = regex[pos];
         pos++;
 
@@ -67,24 +86,22 @@ namespace Parser {
             std::vector<std::unique_ptr<Node>> nodes;
             pos++;
             while(true) {
-                if(pos >= regex.size()) {
-                    throw ParseException();
-                }
                 nodes.push_back(parseSequence(regex, pos));
                 
-                if(pos >= regex.size()) {
-                    throw ParseException();
+                if(pos < regex.size()) { 
+                    if(regex[pos] == ')') {
+                        pos++;
+                        break;
+                    }
+                    if(regex[pos] == '|') {
+                        pos++;
+                        continue;
+                    }
                 }
-                if(regex[pos] == ')') {
-                    pos++;
-                    break;
-                }
-                if(regex[pos] == '|') {
-                    pos++;
-                    continue;
-                }
-                throw ParseException();
+                
+                throw ParseException("Expected | or )", pos);
             }
+
             if(nodes.size() == 1) {
                 return std::move(nodes[0]);
             } else {
@@ -130,7 +147,14 @@ namespace Parser {
     std::unique_ptr<Node> parse(const std::string &regex)
     {
         int pos = 0;
-        return parseSequence(regex, pos);
+        std::unique_ptr<Node> node = parseSequence(regex, pos);
+        if(pos != regex.size()) {
+            std::stringstream ss;
+            ss << "Unexpected character '" << regex[pos] << "'";
+            throw ParseException(ss.str(), pos);
+        }
+
+        return node;
     }
 
     void printNode(Node &node, int depth = 0)
@@ -171,9 +195,14 @@ namespace Parser {
 
 int main(int argc, char *argv[])
 {
-    std::string input = "a(b|c(de)*)f+";
-    std::unique_ptr<Parser::Node> node = Parser::parse(input);
-    Parser::printNode(*node);
-
+    std::string input = ")";
+    std::unique_ptr<Parser::Node> node;
+    
+    try {
+        node = Parser::parse(input);
+        Parser::printNode(*node);
+    } catch(Parser::ParseException e) {
+        std::cout << "Error, position " << e.pos << ": " << e.message << std::endl;
+    }
     return 0;
 }
