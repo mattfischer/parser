@@ -1,3 +1,8 @@
 project(regex)
 
-add_executable(regex regex.cpp)
+set(SOURCES
+    Main.cpp
+    Parser.cpp
+    NFA.cpp
+)
+add_executable(regex ${SOURCES})
