@@ -21,6 +21,8 @@ public:
     int acceptState() const;
     const std::vector<State> &states() const;
 
+    void print() const;
+
 private:
     int addState();
     void addTransition(int fromState, Symbol symbol, int toState);

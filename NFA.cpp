@@ -1,11 +1,14 @@
 #include "NFA.hpp"
 
+#include <iostream>
+
 NFA::NFA(const Parser::Node &node)
 {
     mStartState = addState();
     mAcceptState = addState();
     populate(node, mStartState, mAcceptState);
 }
+
 int NFA::startState() const
 {
     return mStartState;
@@ -103,5 +106,23 @@ void NFA::populate(const Parser::Node &node, int startState, int acceptState)
             }
             break;
         }
+    }
+}
+
+void NFA::print() const
+{
+    std::cout << "Start: " << mStartState << std::endl;
+    std::cout << "Accept: " << mAcceptState << std::endl;
+    std::cout << std::endl;
+    for(int i=0; i<mStates.size(); i++) {
+        const State &state = mStates[i];
+        std::cout << "State " << i << ":" << std::endl;
+        for(int s : state.epsilonTransitions) {
+            std::cout << "  -> " << s << std::endl;
+        }
+        for(const auto &t : state.transitions) {
+            std::cout << "  " << std::get<0>(t) << " -> " << std::get<1>(t) << std::endl;
+        }
+        std::cout << std::endl;
     }
 }

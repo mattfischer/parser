@@ -98,36 +98,36 @@ std::unique_ptr<Parser::Node> Parser::parse(const std::string &regex)
     return node;
 }
 
-void Parser::printNode(Node &node, int depth)
+void Parser::Node::print(int depth) const
 {
     for(int i=0; i<depth; i++) std::cout << "  ";
 
-    switch(node.type) {
+    switch(type) {
         case Node::Type::Symbol:
-            std::cout << "Symbol: " << char(static_cast<SymbolNode&>(node).symbol) << std::endl;
+            std::cout << "Symbol: " << static_cast<const SymbolNode*>(this)->symbol << std::endl;
             break;
         
         case Node::Type::Sequence:
             std::cout << "Sequence:" << std::endl;
-            for(const auto &n : static_cast<SequenceNode&>(node).nodes) {
-                printNode(*n, depth + 1);
+            for(const auto &n : static_cast<const SequenceNode*>(this)->nodes) {
+                n->print(depth + 1);
             }
             break;
         
         case Node::Type::ZeroOrMore:
             std::cout << "ZeroOrMore:" << std::endl;
-            printNode(*static_cast<ZeroOrMoreNode&>(node).node, depth + 1);
+            static_cast<const ZeroOrMoreNode*>(this)->node->print(depth + 1);
             break;
 
         case Node::Type::OneOrMore:
             std::cout << "OneOrMore:" << std::endl;
-            printNode(*static_cast<OneOrMoreNode&>(node).node, depth + 1);
+            static_cast<const OneOrMoreNode*>(this)->node->print(depth + 1);
             break;
 
         case Node::Type::OneOf:
             std::cout << "OneOf:" << std::endl;
-            for(const auto &n : static_cast<OneOfNode&>(node).nodes) {
-                printNode(*n, depth + 1);
+            for(const auto &n : static_cast<const OneOfNode*>(this)->nodes) {
+                n->print(depth + 1);
             }
             break;
     }

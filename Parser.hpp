@@ -27,6 +27,8 @@ public:
             OneOf
         };
         Type type;
+
+        void print(int depth = 0) const;
     };
 
     struct SymbolNode : public Node {
@@ -60,9 +62,7 @@ public:
     };
 
     static std::unique_ptr<Node> parse(const std::string &regex);
-
-    static void printNode(Node &node, int depth = 0);
-    
+   
 private:
     static std::unique_ptr<Node> parseSymbol(const std::string &regex, int &pos);
     static std::unique_ptr<Node> parseSequence(const std::string &regex, int &pos);
