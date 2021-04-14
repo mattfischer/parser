@@ -15,8 +15,10 @@ public:
     };
 
     DFA(const NFA &nfa);
-
+   
     void print() const;
+
+    void minimize();
 
 private:  
     struct StateSet {
@@ -27,7 +29,7 @@ private:
     int findOrAddState(std::vector<StateSet> &stateSets, const NFA &nfa, const std::set<int> &nfaStates);
 
     int mStartState;
-    std::vector<int> mAcceptStates;
+    std::set<int> mAcceptStates;
     std::vector<State> mStates;
 };
 

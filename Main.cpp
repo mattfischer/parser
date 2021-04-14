@@ -30,5 +30,10 @@ int main(int argc, char *argv[])
     dfa.print();
     std::cout << std::endl;
 
+    dfa.minimize();
+    std::cout << "**** Minimized DFA:" << std::endl;
+    dfa.print();
+    std::cout << std::endl;
+
     return 0;
 }

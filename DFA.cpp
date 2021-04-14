@@ -1,6 +1,7 @@
 #include "DFA.hpp"
 
 #include <iostream>
+#include <algorithm>
 
 DFA::DFA(const NFA &nfa)
 {
@@ -19,7 +20,7 @@ DFA::DFA(const NFA &nfa)
         }
 
         if(stateSet.nfaStates.find(nfa.acceptState()) != stateSet.nfaStates.end()) {
-            mAcceptStates.push_back(i);
+            mAcceptStates.insert(i);
         }
 
         mStates.push_back(std::move(state));
@@ -80,4 +81,105 @@ void DFA::print() const
         }
         std::cout << std::endl;
     }
+}
+
+void DFA::minimize()
+{
+    std::set<int> alphabet;
+
+    for(const auto &state : mStates) {
+        for(const auto &transition : state.transitions) {
+            alphabet.insert(transition.first);
+        }
+    }
+
+    std::vector<std::set<int>> partition;
+
+    partition.push_back(mAcceptStates);
+    std::set<int> others;
+    for(int i=0; i<mStates.size(); i++) {
+        if(mAcceptStates.count(i) == 0) {
+            others.insert(i);
+        }
+    }
+    partition.push_back(std::move(others));
+
+    std::vector<int> queue;
+    queue.push_back(0);
+
+    while(queue.size() > 0) {
+        std::set<int> distinguisher = partition[queue.front()];
+        queue.erase(queue.begin());
+
+        for(int c : alphabet) {
+            std::set<int> inbound;
+            for(int i=0; i<mStates.size(); i++) {
+                const auto &state = mStates[i];
+                const auto it = state.transitions.find(c);
+                if(it != state.transitions.end() && distinguisher.count(it->second)) {
+                    inbound.insert(i);
+                }
+            }
+
+            if(inbound.size() == 0) {
+                continue;
+            }
+
+            for(int i=0; i<partition.size(); i++) {
+                std::set<int> in;
+                std::set<int> out;
+
+                for(int s : partition[i]) {
+                    if(inbound.count(s)) {
+                        in.insert(s);
+                    } else {
+                        out.insert(s);
+                    }
+                }
+
+                if(in.size() > 0 && out.size() > 0) {
+                    partition[i] = in;
+                    partition.push_back(out);
+                    int o = int(partition.size() - 1);
+
+                    auto it = std::find(queue.begin(), queue.end(), i);
+                    if(it == queue.end()) {
+                        if(in.size() > out.size()) {
+                            queue.push_back(o);
+                        } else {
+                            queue.push_back(i);
+                        }
+                    } else {
+                        queue.push_back(o);
+                    }
+                }
+            }
+        }       
+    }
+
+    std::map<int, int> stateMap;
+    for(int i=0; i<partition.size(); i++) {
+        for(int j : partition[i]) {
+            stateMap[j] = i;
+        }
+    }
+
+    std::vector<State> newStates;
+    for(int i=0; i<partition.size(); i++) {
+        State newState;
+        int s = *partition[i].begin();
+        for(const auto &transition : mStates[s].transitions) {
+            newState.transitions[transition.first] = stateMap[transition.second];
+        }
+        newStates.push_back(std::move(newState));
+    }
+    int newStartState = stateMap[mStartState];
+    std::set<int> newAcceptStates;
+    for(int s : mAcceptStates) {
+        newAcceptStates.insert(stateMap[s]);
+    }
+
+    mStates = std::move(newStates);
+    mStartState = newStartState;
+    mAcceptStates = std::move(newAcceptStates);
 }
