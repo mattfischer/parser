@@ -51,7 +51,7 @@ int DFA::findOrAddState(std::vector<StateSet> &stateSets, const NFA &nfa, const 
     std::map<Symbol, std::set<int>> transitions;
     for(int state : epsilonClosure) {
         for(const NFA::State::Transition &transition : nfa.states()[state].transitions) {
-            transitions[std::get<0>(transition)].insert(std::get<1>(transition));
+            transitions[transition.first].insert(transition.second);
         }
     }
     

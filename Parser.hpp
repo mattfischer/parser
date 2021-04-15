@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <tuple>
 
 class Parser {
 public:
@@ -24,7 +25,8 @@ public:
             Sequence,
             ZeroOrMore,
             OneOrMore,
-            OneOf
+            OneOf,
+            CharacterClass
         };
         Type type;
 
@@ -56,15 +58,24 @@ public:
     };
 
     struct OneOfNode : public Node {
-        OneOfNode(std::vector<std::unique_ptr<Node>> &n) { type = Type::OneOf; nodes = std::move(n); }
+        OneOfNode(std::vector<std::unique_ptr<Node>> &&n) { type = Type::OneOf; nodes = std::move(n); }
     
         std::vector<std::unique_ptr<Node>> nodes;
+    };
+
+    struct CharacterClassNode : public Node {
+        typedef std::pair<Symbol, Symbol> Range;
+
+        CharacterClassNode(std::vector<Range> &&r) { type = Type::CharacterClass; ranges = std::move(r); }
+
+        std::vector<Range> ranges;
     };
 
     static std::unique_ptr<Node> parse(const std::string &regex);
    
 private:
     static std::unique_ptr<Node> parseSymbol(const std::string &regex, int &pos);
+    static std::unique_ptr<Node> parseCharacterClass(const std::string &regex, int &pos);
     static std::unique_ptr<Node> parseSequence(const std::string &regex, int &pos);
     static std::unique_ptr<Node> parseOneOf(const std::string &regex, int &pos);
     static std::unique_ptr<Node> parseSuffix(const std::string &regex, int &pos);

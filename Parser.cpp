@@ -15,10 +15,51 @@ std::unique_ptr<Parser::Node> Parser::parseSymbol(const std::string &regex, int 
         throw ParseException(ss.str(), pos);
     }
 
-    Symbol symbol = regex[pos];
+    if(regex[pos] == '[') {
+        return parseCharacterClass(regex, pos);
+    } else {
+        Symbol symbol = regex[pos];
+        pos++;
+
+        return std::make_unique<SymbolNode>(symbol);
+    }
+}
+
+std::unique_ptr<Parser::Node> Parser::parseCharacterClass(const std::string &regex, int &pos)
+{
+    if(regex[pos] != '[') {
+        throw ParseException("Expected [", pos);
+    }
+
     pos++;
 
-    return std::make_unique<SymbolNode>(symbol);
+    std::vector<CharacterClassNode::Range> ranges;
+    while(true) {
+        if(pos >= regex.size()) {
+            throw ParseException("Expected ]", pos);
+        }
+        if(regex[pos] == ']') {
+            pos++;
+            break;
+        }
+
+        Symbol start = regex[pos];
+        Symbol end = start;
+
+        pos++;
+        if(pos < regex.size() && regex[pos] == '-') {
+            pos++;
+            if(pos >= regex.size()) {
+                throw ParseException("Expected symbol", pos);
+            }
+
+            end = regex[pos];
+            pos++;
+        }
+        ranges.push_back(CharacterClassNode::Range(start, end));
+    }
+
+    return std::make_unique<CharacterClassNode>(std::move(ranges));
 }
 
 std::unique_ptr<Parser::Node> Parser::parseOneOf(const std::string &regex, int &pos)
@@ -129,6 +170,21 @@ void Parser::Node::print(int depth) const
             for(const auto &n : static_cast<const OneOfNode*>(this)->nodes) {
                 n->print(depth + 1);
             }
+            break;
+
+        case Node::Type::CharacterClass:
+            std::cout << "CharacterClass: ";
+
+            for(const auto &r : static_cast<const CharacterClassNode*>(this)->ranges) {
+                Symbol start = r.first;
+                Symbol end = r.second;
+                if(start == end) {
+                    std::cout << start << " ";
+                } else {
+                    std::cout << start << "-" << end << " ";
+                }
+            }
+            std::cout << std::endl;
             break;
     }
 }

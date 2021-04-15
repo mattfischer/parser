@@ -2,15 +2,16 @@
 #define NFA_HPP
 
 #include <vector>
-#include <tuple>
+#include <utility>
 
 #include "Parser.hpp"
+#include "Encoding.hpp"
 
 class NFA {
 public:
-    typedef int Symbol;
+    typedef Encoding::CodePoint Symbol;
     struct State {
-        typedef std::tuple<Symbol, int> Transition;
+        typedef std::pair<Symbol, int> Transition;
         std::vector<Transition> transitions;
         std::vector<int> epsilonTransitions;
     };
@@ -28,10 +29,12 @@ private:
     void addTransition(int fromState, Symbol symbol, int toState);
     void addEpsilonTransition(int fromState, int toState);
     void populate(const Parser::Node &node, int startState, int acceptState);
+    std::vector<Encoding::InputSymbolRange> constructInputSymbolRanges(const Parser::Node &node) const;
 
     std::vector<State> mStates;
     int mStartState;
     int mAcceptState;
+    Encoding mEncoding;
 };
 
 #endif

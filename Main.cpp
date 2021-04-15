@@ -7,7 +7,7 @@
 
 int main(int argc, char *argv[])
 {
-    std::string input = "a(b|c)*cd+";
+    std::string input = "[a-d]*a";
     std::unique_ptr<Parser::Node> node;
     
     try {

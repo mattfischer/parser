@@ -5,5 +5,6 @@ set(SOURCES
     Parser.cpp
     NFA.cpp
     DFA.cpp
+    Encoding.cpp
 )
 add_executable(regex ${SOURCES})

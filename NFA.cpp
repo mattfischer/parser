@@ -3,6 +3,7 @@
 #include <iostream>
 
 NFA::NFA(const Parser::Node &node)
+: mEncoding(constructInputSymbolRanges(node))
 {
     mStartState = addState();
     mAcceptState = addState();
@@ -47,7 +48,19 @@ void NFA::populate(const Parser::Node &node, int startState, int acceptState)
         case Parser::Node::Type::Symbol:
         {
             const Parser::SymbolNode &symbolNode = static_cast<const Parser::SymbolNode&>(node);
-            addTransition(startState, symbolNode.symbol, acceptState);
+            addTransition(startState, mEncoding.codePoint(symbolNode.symbol), acceptState);
+            break;
+        }
+
+        case Parser::Node::Type::CharacterClass:
+        {
+            const Parser::CharacterClassNode &characterClassNode = static_cast<const Parser::CharacterClassNode&>(node);
+            for(const auto &range : characterClassNode.ranges) {
+                std::vector<Symbol> symbols = mEncoding.codePoints(Encoding::InputSymbolRange(range.first, range.second));
+                for(const auto &symbol : symbols) {
+                    addTransition(startState, symbol, acceptState);
+                }
+            }
             break;
         }
 
@@ -121,8 +134,70 @@ void NFA::print() const
             std::cout << "  -> " << s << std::endl;
         }
         for(const auto &t : state.transitions) {
-            std::cout << "  " << std::get<0>(t) << " -> " << std::get<1>(t) << std::endl;
+            std::cout << "  " << t.first << " -> " << t.second << std::endl;
         }
         std::cout << std::endl;
     }
+}
+
+static void visitNode(const Parser::Node &node, std::vector<Encoding::InputSymbolRange> &inputSymbolRanges)
+{
+    switch(node.type) {
+        case Parser::Node::Type::Symbol:
+        {
+            const Parser::SymbolNode &symbolNode = static_cast<const Parser::SymbolNode&>(node);
+            inputSymbolRanges.push_back(Encoding::InputSymbolRange(symbolNode.symbol, symbolNode.symbol));
+            break;
+        }
+
+        case Parser::Node::Type::CharacterClass:
+        {
+            const Parser::CharacterClassNode &characterClassNode = static_cast<const Parser::CharacterClassNode&>(node);
+            for(const auto &range : characterClassNode.ranges) {
+                inputSymbolRanges.push_back(Encoding::InputSymbolRange(range.first, range.second));
+            }
+            break;
+        }
+
+        case Parser::Node::Type::OneOf:
+        {
+            const Parser::OneOfNode &oneOfNode = static_cast<const Parser::OneOfNode&>(node);
+            for(const auto &child : oneOfNode.nodes) {
+                visitNode(*child, inputSymbolRanges);
+            }
+            break;
+        }
+
+        case Parser::Node::Type::ZeroOrMore:
+        {
+            const Parser::ZeroOrMoreNode &zeroOrMoreNode = static_cast<const Parser::ZeroOrMoreNode&>(node);
+            visitNode(*zeroOrMoreNode.node, inputSymbolRanges);
+            break;
+        }
+
+        case Parser::Node::Type::OneOrMore:
+        {
+            const Parser::OneOrMoreNode &oneOrMoreNode = static_cast<const Parser::OneOrMoreNode&>(node);
+            visitNode(*oneOrMoreNode.node, inputSymbolRanges);
+            break;
+        }
+
+        case Parser::Node::Type::Sequence:
+        {
+            const Parser::SequenceNode &sequenceNode = static_cast<const Parser::SequenceNode&>(node);
+            for(const auto &child : sequenceNode.nodes) {
+                visitNode(*child, inputSymbolRanges);
+            }
+            break;
+        }
+    }
+}
+
+std::vector<Encoding::InputSymbolRange> NFA::constructInputSymbolRanges(const Parser::Node &node) const
+{
+    std::vector<Encoding::InputSymbolRange> inputSymbolRanges;
+
+    visitNode(node, inputSymbolRanges);
+
+    return inputSymbolRanges;
 }
