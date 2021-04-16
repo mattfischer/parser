@@ -123,6 +123,11 @@ Encoding::CodePoint Encoding::codePoint(InputSymbol symbol) const
     }
 }
 
+unsigned int Encoding::numCodePoints() const
+{
+    return mInputSymbolRanges.size();
+}
+
 void Encoding::print() const
 {
     for(int i=0; i<mInputSymbolRanges.size(); i++) {

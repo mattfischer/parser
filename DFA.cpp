@@ -3,13 +3,15 @@
 #include <iostream>
 #include <algorithm>
 
-DFA::DFA(const NFA &nfa, bool minimize)
+DFA::DFA(const NFA &nfa, const Encoding &encoding)
 {
     std::set<unsigned int> nfaStates;
     nfaStates.insert(nfa.startState());
 
     std::vector<StateSet> stateSets;
-    mStartState = findOrAddState(stateSets, nfa, nfaStates);
+    std::vector<State> states;
+    std::set<unsigned int> acceptStates;
+    unsigned int startState = findOrAddState(stateSets, nfa, nfaStates);
 
     for(unsigned int i=0; i<stateSets.size(); i++) {
         const StateSet &stateSet = stateSets[i];
@@ -20,14 +22,77 @@ DFA::DFA(const NFA &nfa, bool minimize)
         }
 
         if(stateSet.nfaStates.find(nfa.acceptState()) != stateSet.nfaStates.end()) {
-            mAcceptStates.insert(i);
+            acceptStates.insert(i);
         }
 
-        mStates.push_back(std::move(state));
+        states.push_back(std::move(state));
     }
 
-    if(minimize) {
-        minimizeStates();
+    minimize(states, startState, acceptStates);
+
+    mStartState = startState;
+    states.push_back(State());
+    mNumStates = (unsigned int)states.size();
+    mNumCodePoints = encoding.numCodePoints();
+    mRejectState = mNumStates - 1;
+    mTransitions.resize(mNumStates * mNumCodePoints);
+    mAcceptStates.resize(mNumStates);
+
+    for(unsigned int i=0; i<mNumStates; i++) {
+        const State &state = states[i];
+        mAcceptStates[i] = (acceptStates.count(i) > 0);
+
+        for(unsigned int j=0; j<mNumCodePoints; j++) {
+            auto it = state.transitions.find(j);
+            if(it == state.transitions.end()) {
+                mTransitions[i*mNumCodePoints + j] = mRejectState;
+            } else {
+                mTransitions[i*mNumCodePoints + j] = it->second;
+            }
+        }
+    }
+}
+
+unsigned int DFA::startState() const
+{
+    return mStartState;
+}
+
+unsigned int DFA::rejectState() const
+{
+    return mRejectState;
+}
+
+unsigned int DFA::transition(unsigned int state, Encoding::CodePoint codePoint) const
+{
+    return mTransitions[state * mNumCodePoints + codePoint];
+}
+
+bool DFA::accept(unsigned int state) const
+{
+    return mAcceptStates[state];
+}
+
+void DFA::print() const
+{
+    std::cout << "Start state: " << mStartState << std::endl;
+    std::cout << "Accept states: ";
+    for(unsigned int i = 0; i < mAcceptStates.size(); i++) {
+        if(mAcceptStates[i]) {
+            std::cout << i << " ";
+        }
+    }
+    std::cout << std::endl;
+
+    for(unsigned int i=0; i<mNumStates; i++) {
+        std::cout << "State " << i << ":" << std::endl;
+        for(unsigned int j = 0; j < mNumCodePoints; j++) {
+            unsigned int nextState = transition(i, j);
+            if(nextState != mRejectState) {
+                std::cout << "  " << i << " -> " << j << std::endl;
+            }
+        }
+        std::cout << std::endl;
     }
 }
 
@@ -60,7 +125,7 @@ unsigned int DFA::findOrAddState(std::vector<StateSet> &stateSets, const NFA &nf
     }
     
     stateSets.push_back(StateSet());
-    unsigned int idx = stateSets.size() - 1;
+    unsigned int idx = (unsigned int)(stateSets.size() - 1);
     stateSets[idx].nfaStates = epsilonClosure;
     
     for(const auto &pair : transitions) {
@@ -70,43 +135,11 @@ unsigned int DFA::findOrAddState(std::vector<StateSet> &stateSets, const NFA &nf
     return idx;
 }
 
-const std::vector<DFA::State> &DFA::states() const
-{
-    return mStates;
-}
-
-unsigned int DFA::startState() const
-{
-    return mStartState;
-}
-
-const std::set<unsigned int> &DFA::acceptStates() const
-{
-    return mAcceptStates;
-}
-
-void DFA::print() const
-{
-    std::cout << "Start state: " << mStartState << std::endl;
-    std::cout << "Accept states: ";
-    for(int state : mAcceptStates) {
-        std::cout << state << " ";
-    }
-    std::cout << std::endl;
-    for(int i=0; i<mStates.size(); i++) {
-        std::cout << "State " << i << ":" << std::endl;
-        for(const auto &pair : mStates[i].transitions) {
-            std::cout << "  " << pair.first << " -> " << pair.second << std::endl;
-        }
-        std::cout << std::endl;
-    }
-}
-
-void DFA::minimizeStates()
+void DFA::minimize(std::vector<State> &states, unsigned int &startState, std::set<unsigned int> &acceptStates)
 {
     std::set<Symbol> alphabet;
 
-    for(const auto &state : mStates) {
+    for(const auto &state : states) {
         for(const auto &transition : state.transitions) {
             alphabet.insert(transition.first);
         }
@@ -114,10 +147,10 @@ void DFA::minimizeStates()
 
     std::vector<std::set<unsigned int>> partition;
 
-    partition.push_back(mAcceptStates);
+    partition.push_back(acceptStates);
     std::set<unsigned int> others;
-    for(unsigned int i=0; i<mStates.size(); i++) {
-        if(mAcceptStates.count(i) == 0) {
+    for(unsigned int i=0; i<states.size(); i++) {
+        if(acceptStates.count(i) == 0) {
             others.insert(i);
         }
     }
@@ -132,8 +165,8 @@ void DFA::minimizeStates()
 
         for(Symbol c : alphabet) {
             std::set<unsigned int> inbound;
-            for(unsigned int i=0; i<mStates.size(); i++) {
-                const auto &state = mStates[i];
+            for(unsigned int i=0; i<states.size(); i++) {
+                const auto &state = states[i];
                 const auto it = state.transitions.find(c);
                 if(it != state.transitions.end() && distinguisher.count(it->second)) {
                     inbound.insert(i);
@@ -159,7 +192,7 @@ void DFA::minimizeStates()
                 if(in.size() > 0 && out.size() > 0) {
                     partition[i] = in;
                     partition.push_back(out);
-                    unsigned int o = partition.size() - 1;
+                    unsigned int o = (unsigned int)(partition.size() - 1);
 
                     auto it = std::find(queue.begin(), queue.end(), i);
                     if(it == queue.end()) {
@@ -187,18 +220,18 @@ void DFA::minimizeStates()
     for(unsigned int i=0; i<partition.size(); i++) {
         State newState;
         int s = *partition[i].begin();
-        for(const auto &transition : mStates[s].transitions) {
+        for(const auto &transition : states[s].transitions) {
             newState.transitions[transition.first] = stateMap[transition.second];
         }
         newStates.push_back(std::move(newState));
     }
-    unsigned int newStartState = stateMap[mStartState];
+    unsigned int newStartState = stateMap[startState];
     std::set<unsigned int> newAcceptStates;
-    for(unsigned int s : mAcceptStates) {
+    for(unsigned int s : acceptStates) {
         newAcceptStates.insert(stateMap[s]);
     }
 
-    mStates = std::move(newStates);
-    mStartState = newStartState;
-    mAcceptStates = std::move(newAcceptStates);
+    states = std::move(newStates);
+    startState = newStartState;
+    acceptStates = std::move(newAcceptStates);
 }

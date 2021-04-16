@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
         return 1;
     }
  
-    unsigned int matched = matcher.match("abcd");
+    unsigned int matched = matcher.match("abcda");
     std::cout << "Matched " << matched << " characters" << std::endl;
 
     return 0;

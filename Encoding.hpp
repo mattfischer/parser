@@ -19,6 +19,7 @@ public:
 
     std::vector<CodePoint> codePointRanges(InputSymbolRange range) const;
     CodePoint codePoint(InputSymbol symbol) const;
+    unsigned int numCodePoints() const;
 
     void print() const;
 
