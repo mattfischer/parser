@@ -33,6 +33,13 @@ namespace Regex {
                 break;
             }
 
+            case Parser::Node::Type::ZeroOrOne:
+            {
+                const Parser::ZeroOrOneNode &zeroOrOneNode = static_cast<const Parser::ZeroOrOneNode&>(node);
+                visitNode(*zeroOrOneNode.node, inputSymbolRanges);
+                break;
+            }
+
             case Parser::Node::Type::ZeroOrMore:
             {
                 const Parser::ZeroOrMoreNode &zeroOrMoreNode = static_cast<const Parser::ZeroOrMoreNode&>(node);
@@ -93,11 +100,15 @@ namespace Regex {
         }
 
         mInputSymbolRanges.push_back(current);
+        mInvalidCodePoint = mInputSymbolRanges.size();
+        mTotalRange.first = mInputSymbolRanges[0].first;
+        mTotalRange.second = mInputSymbolRanges[mInputSymbolRanges.size() - 1].second;
 
+        mSymbolMap.resize(mTotalRange.second - mTotalRange.first + 1, mInvalidCodePoint);
         for(unsigned int i = 0; i<mInputSymbolRanges.size(); i++) {
             const auto &range = mInputSymbolRanges[i];
             for(InputSymbol j = range.first; j <= range.second; j++) {
-                mSymbolMap[j] = i;
+                mSymbolMap[j - mTotalRange.first] = i;
             }
         }
     }
@@ -117,17 +128,16 @@ namespace Regex {
 
     Encoding::CodePoint Encoding::codePoint(InputSymbol symbol) const
     {
-        auto it = mSymbolMap.find(symbol);
-        if(it == mSymbolMap.end()) {
-            return 0;
-        } else {
-            return it->second;
+        if(symbol < mTotalRange.first || symbol > mTotalRange.second) {
+            return mInvalidCodePoint;
         }
+
+        return mSymbolMap[symbol - mTotalRange.first];
     }
 
     unsigned int Encoding::numCodePoints() const
     {
-        return mInputSymbolRanges.size();
+        return (unsigned int)mInputSymbolRanges.size();
     }
 
     void Encoding::print() const

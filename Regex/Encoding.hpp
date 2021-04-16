@@ -27,7 +27,9 @@ namespace Regex {
 
     private:
         std::vector<InputSymbolRange> mInputSymbolRanges;
-        std::map<InputSymbol, CodePoint> mSymbolMap;
+        InputSymbolRange mTotalRange;
+        CodePoint mInvalidCodePoint;
+        std::vector<CodePoint> mSymbolMap;
     };
 }
 
