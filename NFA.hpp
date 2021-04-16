@@ -11,30 +11,28 @@ class NFA {
 public:
     typedef Encoding::CodePoint Symbol;
     struct State {
-        typedef std::pair<Symbol, int> Transition;
+        typedef std::pair<Symbol, unsigned int> Transition;
         std::vector<Transition> transitions;
-        std::vector<int> epsilonTransitions;
+        std::vector<unsigned int> epsilonTransitions;
     };
 
-    NFA(const Parser::Node &node);
+    NFA(const Parser::Node &node, const Encoding &encoding);
 
-    int startState() const;
-    int acceptState() const;
+    unsigned int startState() const;
+    unsigned int acceptState() const;
     const std::vector<State> &states() const;
 
     void print() const;
 
 private:
-    int addState();
-    void addTransition(int fromState, Symbol symbol, int toState);
-    void addEpsilonTransition(int fromState, int toState);
-    void populate(const Parser::Node &node, int startState, int acceptState);
-    std::vector<Encoding::InputSymbolRange> constructInputSymbolRanges(const Parser::Node &node) const;
-
+    unsigned int addState();
+    void addTransition(unsigned int fromState, Symbol symbol, unsigned int toState);
+    void addEpsilonTransition(unsigned int fromState, unsigned int toState);
+    void populate(const Parser::Node &node, const Encoding &encoding, unsigned int startState, unsigned int acceptState);
+    
     std::vector<State> mStates;
-    int mStartState;
-    int mAcceptState;
-    Encoding mEncoding;
+    unsigned int mStartState;
+    unsigned int mAcceptState;
 };
 
 #endif

@@ -5,13 +5,13 @@
 
 DFA::DFA(const NFA &nfa)
 {
-    std::set<int> nfaStates;
+    std::set<unsigned int> nfaStates;
     nfaStates.insert(nfa.startState());
 
     std::vector<StateSet> stateSets;
     mStartState = findOrAddState(stateSets, nfa, nfaStates);
 
-    for(int i=0; i<stateSets.size(); i++) {
+    for(unsigned int i=0; i<stateSets.size(); i++) {
         const StateSet &stateSet = stateSets[i];
         State state;
 
@@ -27,13 +27,13 @@ DFA::DFA(const NFA &nfa)
     }
 }
 
-int DFA::findOrAddState(std::vector<StateSet> &stateSets, const NFA &nfa, const std::set<int> &nfaStates)
+unsigned int DFA::findOrAddState(std::vector<StateSet> &stateSets, const NFA &nfa, const std::set<unsigned int> &nfaStates)
 {
-    std::set<int> epsilonClosure;
-    std::vector<int> queue;
+    std::set<unsigned int> epsilonClosure;
+    std::vector<unsigned int> queue;
     queue.insert(queue.end(), nfaStates.begin(), nfaStates.end());
     while(queue.size() > 0) {
-        int state = queue.front();
+        unsigned int state = queue.front();
         queue.erase(queue.begin());
         if(epsilonClosure.find(state) == epsilonClosure.end()) {
             epsilonClosure.insert(state);
@@ -42,21 +42,21 @@ int DFA::findOrAddState(std::vector<StateSet> &stateSets, const NFA &nfa, const 
         }
     }
 
-    for(int i=0; i<stateSets.size(); i++) {
+    for(unsigned int i=0; i<stateSets.size(); i++) {
         if(stateSets[i].nfaStates == epsilonClosure) {
             return i;
         }
     }
 
-    std::map<Symbol, std::set<int>> transitions;
-    for(int state : epsilonClosure) {
+    std::map<Symbol, std::set<unsigned int>> transitions;
+    for(unsigned int state : epsilonClosure) {
         for(const NFA::State::Transition &transition : nfa.states()[state].transitions) {
             transitions[transition.first].insert(transition.second);
         }
     }
     
     stateSets.push_back(StateSet());
-    int idx = int(stateSets.size() - 1);
+    unsigned int idx = stateSets.size() - 1;
     stateSets[idx].nfaStates = epsilonClosure;
     
     for(const auto &pair : transitions) {
@@ -64,6 +64,21 @@ int DFA::findOrAddState(std::vector<StateSet> &stateSets, const NFA &nfa, const 
     }
 
     return idx;
+}
+
+const std::vector<DFA::State> &DFA::states() const
+{
+    return mStates;
+}
+
+unsigned int DFA::startState() const
+{
+    return mStartState;
+}
+
+const std::set<unsigned int> &DFA::acceptStates() const
+{
+    return mAcceptStates;
 }
 
 void DFA::print() const
@@ -85,7 +100,7 @@ void DFA::print() const
 
 void DFA::minimize()
 {
-    std::set<int> alphabet;
+    std::set<Symbol> alphabet;
 
     for(const auto &state : mStates) {
         for(const auto &transition : state.transitions) {
@@ -93,27 +108,27 @@ void DFA::minimize()
         }
     }
 
-    std::vector<std::set<int>> partition;
+    std::vector<std::set<unsigned int>> partition;
 
     partition.push_back(mAcceptStates);
-    std::set<int> others;
-    for(int i=0; i<mStates.size(); i++) {
+    std::set<unsigned int> others;
+    for(unsigned int i=0; i<mStates.size(); i++) {
         if(mAcceptStates.count(i) == 0) {
             others.insert(i);
         }
     }
     partition.push_back(std::move(others));
 
-    std::vector<int> queue;
+    std::vector<unsigned int> queue;
     queue.push_back(0);
 
     while(queue.size() > 0) {
-        std::set<int> distinguisher = partition[queue.front()];
+        std::set<unsigned int> distinguisher = partition[queue.front()];
         queue.erase(queue.begin());
 
-        for(int c : alphabet) {
-            std::set<int> inbound;
-            for(int i=0; i<mStates.size(); i++) {
+        for(Symbol c : alphabet) {
+            std::set<unsigned int> inbound;
+            for(unsigned int i=0; i<mStates.size(); i++) {
                 const auto &state = mStates[i];
                 const auto it = state.transitions.find(c);
                 if(it != state.transitions.end() && distinguisher.count(it->second)) {
@@ -125,9 +140,9 @@ void DFA::minimize()
                 continue;
             }
 
-            for(int i=0; i<partition.size(); i++) {
-                std::set<int> in;
-                std::set<int> out;
+            for(unsigned int i=0; i<partition.size(); i++) {
+                std::set<unsigned int> in;
+                std::set<unsigned int> out;
 
                 for(int s : partition[i]) {
                     if(inbound.count(s)) {
@@ -140,7 +155,7 @@ void DFA::minimize()
                 if(in.size() > 0 && out.size() > 0) {
                     partition[i] = in;
                     partition.push_back(out);
-                    int o = int(partition.size() - 1);
+                    unsigned int o = partition.size() - 1;
 
                     auto it = std::find(queue.begin(), queue.end(), i);
                     if(it == queue.end()) {
@@ -157,15 +172,15 @@ void DFA::minimize()
         }       
     }
 
-    std::map<int, int> stateMap;
-    for(int i=0; i<partition.size(); i++) {
-        for(int j : partition[i]) {
+    std::map<unsigned int, unsigned int> stateMap;
+    for(unsigned int i=0; i<partition.size(); i++) {
+        for(unsigned int j : partition[i]) {
             stateMap[j] = i;
         }
     }
 
     std::vector<State> newStates;
-    for(int i=0; i<partition.size(); i++) {
+    for(unsigned int i=0; i<partition.size(); i++) {
         State newState;
         int s = *partition[i].begin();
         for(const auto &transition : mStates[s].transitions) {
@@ -173,9 +188,9 @@ void DFA::minimize()
         }
         newStates.push_back(std::move(newState));
     }
-    int newStartState = stateMap[mStartState];
-    std::set<int> newAcceptStates;
-    for(int s : mAcceptStates) {
+    unsigned int newStartState = stateMap[mStartState];
+    std::set<unsigned int> newAcceptStates;
+    for(unsigned int s : mAcceptStates) {
         newAcceptStates.insert(stateMap[s]);
     }
 

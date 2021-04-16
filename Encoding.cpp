@@ -1,9 +1,66 @@
 #include "Encoding.hpp"
 
 #include <algorithm>
+#include <iostream>
 
-Encoding::Encoding(std::vector<InputSymbolRange> &&inputSymbolRanges)
+static void visitNode(const Parser::Node &node, std::vector<Encoding::InputSymbolRange> &inputSymbolRanges)
 {
+    switch(node.type) {
+        case Parser::Node::Type::Symbol:
+        {
+            const Parser::SymbolNode &symbolNode = static_cast<const Parser::SymbolNode&>(node);
+            inputSymbolRanges.push_back(Encoding::InputSymbolRange(symbolNode.symbol, symbolNode.symbol));
+            break;
+        }
+
+        case Parser::Node::Type::CharacterClass:
+        {
+            const Parser::CharacterClassNode &characterClassNode = static_cast<const Parser::CharacterClassNode&>(node);
+            for(const auto &range : characterClassNode.ranges) {
+                inputSymbolRanges.push_back(Encoding::InputSymbolRange(range.first, range.second));
+            }
+            break;
+        }
+
+        case Parser::Node::Type::OneOf:
+        {
+            const Parser::OneOfNode &oneOfNode = static_cast<const Parser::OneOfNode&>(node);
+            for(const auto &child : oneOfNode.nodes) {
+                visitNode(*child, inputSymbolRanges);
+            }
+            break;
+        }
+
+        case Parser::Node::Type::ZeroOrMore:
+        {
+            const Parser::ZeroOrMoreNode &zeroOrMoreNode = static_cast<const Parser::ZeroOrMoreNode&>(node);
+            visitNode(*zeroOrMoreNode.node, inputSymbolRanges);
+            break;
+        }
+
+        case Parser::Node::Type::OneOrMore:
+        {
+            const Parser::OneOrMoreNode &oneOrMoreNode = static_cast<const Parser::OneOrMoreNode&>(node);
+            visitNode(*oneOrMoreNode.node, inputSymbolRanges);
+            break;
+        }
+
+        case Parser::Node::Type::Sequence:
+        {
+            const Parser::SequenceNode &sequenceNode = static_cast<const Parser::SequenceNode&>(node);
+            for(const auto &child : sequenceNode.nodes) {
+                visitNode(*child, inputSymbolRanges);
+            }
+            break;
+        }
+    }
+}
+
+Encoding::Encoding(const Parser::Node &node)
+{
+    std::vector<Encoding::InputSymbolRange> inputSymbolRanges;
+    visitNode(node, inputSymbolRanges);
+
     auto cmp = [](const InputSymbolRange &a, const InputSymbolRange &b) { return a.first < b.first; };
     std::sort(inputSymbolRanges.begin(), inputSymbolRanges.end(), cmp);
     InputSymbolRange current = inputSymbolRanges.front();
@@ -34,15 +91,22 @@ Encoding::Encoding(std::vector<InputSymbolRange> &&inputSymbolRanges)
     }
 
     mInputSymbolRanges.push_back(current);
+
+    for(unsigned int i = 0; i<mInputSymbolRanges.size(); i++) {
+        const auto &range = mInputSymbolRanges[i];
+        for(InputSymbol j = range.first; j <= range.second; j++) {
+            mSymbolMap[j] = i;
+        }
+    }
 }
 
-std::vector<Encoding::CodePoint> Encoding::codePoints(InputSymbolRange inputSymbolRange) const
+std::vector<Encoding::CodePoint> Encoding::codePointRanges(InputSymbolRange inputSymbolRange) const
 {
     std::vector<Encoding::CodePoint> codePoints;
     while(inputSymbolRange.first <= inputSymbolRange.second) {
         auto cmp = [](const InputSymbolRange &a, const InputSymbolRange &b) { return a.first < b.first; };
         auto it = std::lower_bound(mInputSymbolRanges.begin(), mInputSymbolRanges.end(), inputSymbolRange, cmp);
-        codePoints.push_back(it - mInputSymbolRanges.begin());
+        codePoints.push_back(Encoding::CodePoint(it - mInputSymbolRanges.begin()));
         inputSymbolRange.first = it->second + 1;
     }
 
@@ -51,5 +115,22 @@ std::vector<Encoding::CodePoint> Encoding::codePoints(InputSymbolRange inputSymb
 
 Encoding::CodePoint Encoding::codePoint(InputSymbol symbol) const
 {
-    return codePoints(InputSymbolRange(symbol, symbol))[0];
+    auto it = mSymbolMap.find(symbol);
+    if(it == mSymbolMap.end()) {
+        return 0;
+    } else {
+        return it->second;
+    }
+}
+
+void Encoding::print() const
+{
+    for(int i=0; i<mInputSymbolRanges.size(); i++) {
+        std::cout << i << ": " << mInputSymbolRanges[i].first;
+
+        if(mInputSymbolRanges[i].second != mInputSymbolRanges[i].first) {
+            std::cout << "-" << mInputSymbolRanges[i].second;
+        }
+        std::cout << std::endl;
+    }
 }

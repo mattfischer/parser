@@ -4,6 +4,7 @@
 #include "Parser.hpp"
 #include "NFA.hpp"
 #include "DFA.hpp"
+#include "Matcher.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -20,7 +21,12 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    NFA nfa(*node);
+    Encoding encoding(*node);
+    std::cout << "**** Encoding:" << std::endl;
+    encoding.print();
+    std::cout << std::endl;
+
+    NFA nfa(*node, encoding);
     std::cout << "**** NFA:" << std::endl;
     nfa.print();
     std::cout << std::endl;
@@ -34,6 +40,10 @@ int main(int argc, char *argv[])
     std::cout << "**** Minimized DFA:" << std::endl;
     dfa.print();
     std::cout << std::endl;
+
+    Matcher matcher(dfa, encoding);
+    unsigned int matched = matcher.match("abcd");
+    std::cout << "Matched " << matched << " characters" << std::endl;
 
     return 0;
 }

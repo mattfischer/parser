@@ -17,7 +17,7 @@ public:
         int pos;
     };
 
-    typedef int Symbol;
+    typedef char Symbol;
 
     struct Node {
         enum class Type {
