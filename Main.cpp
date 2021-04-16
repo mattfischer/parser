@@ -1,11 +1,11 @@
 #include <iostream>
 
-#include "Matcher.hpp"
+#include "Regex/Matcher.hpp"
 
 int main(int argc, char *argv[])
 {
     std::string pattern = "a?b";
-    Matcher matcher(pattern);
+    Regex::Matcher matcher(pattern);
     if(!matcher.valid()) {
         std::cout << "Error: " << matcher.parseErrorMessage() << std::endl;
         return 1;

@@ -1,11 +1,12 @@
 project(regex)
 
 set(SOURCES
+    Regex/DFA.cpp
+    Regex/Encoding.cpp
+    Regex/Matcher.cpp
+    Regex/NFA.cpp
+    Regex/Parser.cpp
     Main.cpp
-    Parser.cpp
-    NFA.cpp
-    DFA.cpp
-    Encoding.cpp
-    Matcher.cpp
 )
+
 add_executable(regex ${SOURCES})
