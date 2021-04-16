@@ -75,6 +75,20 @@ void NFA::populate(const Parser::Node &node, const Encoding &encoding, unsigned 
             break;
         }
 
+        case Parser::Node::Type::ZeroOrOne:
+        {
+            const Parser::ZeroOrOneNode &zeroOrOneNode = static_cast<const Parser::ZeroOrOneNode&>(node);
+            unsigned int first = addState();
+            addEpsilonTransition(startState, first);
+
+            unsigned int next = addState();
+            addEpsilonTransition(next, acceptState);
+
+            populate(*zeroOrOneNode.node, encoding, first, next);
+            addEpsilonTransition(first, next);
+            break;
+        }
+
         case Parser::Node::Type::ZeroOrMore:
         {
             const Parser::ZeroOrMoreNode &zeroOrMoreNode = static_cast<const Parser::ZeroOrMoreNode&>(node);

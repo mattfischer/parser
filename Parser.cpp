@@ -9,7 +9,7 @@ std::unique_ptr<Parser::Node> Parser::parseSymbol(const std::string &regex, int 
         throw ParseException("Expected symbol", pos);
     }
 
-    if(regex[pos] == ')' || regex[pos] == '|' || regex[pos] == '*' || regex[pos] == '+') {
+    if(regex[pos] == ')' || regex[pos] == '|' || regex[pos] == '*' || regex[pos] == '+' || regex[pos] == '?') {
         std::stringstream ss;
         ss << "Unexpected character '" << regex[pos] << "'";
         throw ParseException(ss.str(), pos);
@@ -104,6 +104,9 @@ std::unique_ptr<Parser::Node> Parser::parseSuffix(const std::string &regex, int 
         } else if(regex[pos] == '+') {
             node = std::make_unique<OneOrMoreNode>(std::move(node));
             pos++;
+        } else if(regex[pos] == '?') {
+            node = std::make_unique<ZeroOrOneNode>(std::move(node));
+            pos++;
         } else {
             break;
         }
@@ -147,7 +150,22 @@ void Parser::Node::print(int depth) const
         case Node::Type::Symbol:
             std::cout << "Symbol: " << static_cast<const SymbolNode*>(this)->symbol << std::endl;
             break;
-        
+
+        case Node::Type::CharacterClass:
+            std::cout << "CharacterClass: ";
+
+            for(const auto &r : static_cast<const CharacterClassNode*>(this)->ranges) {
+                Symbol start = r.first;
+                Symbol end = r.second;
+                if(start == end) {
+                    std::cout << start << " ";
+                } else {
+                    std::cout << start << "-" << end << " ";
+                }
+            }
+            std::cout << std::endl;
+            break;
+   
         case Node::Type::Sequence:
             std::cout << "Sequence:" << std::endl;
             for(const auto &n : static_cast<const SequenceNode*>(this)->nodes) {
@@ -155,6 +173,11 @@ void Parser::Node::print(int depth) const
             }
             break;
         
+        case Node::Type::ZeroOrOne:
+            std::cout << "ZeroOrOne:" << std::endl;
+            static_cast<const ZeroOrOneNode*>(this)->node->print(depth + 1);
+            break;
+
         case Node::Type::ZeroOrMore:
             std::cout << "ZeroOrMore:" << std::endl;
             static_cast<const ZeroOrMoreNode*>(this)->node->print(depth + 1);
@@ -170,21 +193,6 @@ void Parser::Node::print(int depth) const
             for(const auto &n : static_cast<const OneOfNode*>(this)->nodes) {
                 n->print(depth + 1);
             }
-            break;
-
-        case Node::Type::CharacterClass:
-            std::cout << "CharacterClass: ";
-
-            for(const auto &r : static_cast<const CharacterClassNode*>(this)->ranges) {
-                Symbol start = r.first;
-                Symbol end = r.second;
-                if(start == end) {
-                    std::cout << start << " ";
-                } else {
-                    std::cout << start << "-" << end << " ";
-                }
-            }
-            std::cout << std::endl;
             break;
     }
 }
