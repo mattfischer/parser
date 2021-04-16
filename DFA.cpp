@@ -3,7 +3,7 @@
 #include <iostream>
 #include <algorithm>
 
-DFA::DFA(const NFA &nfa)
+DFA::DFA(const NFA &nfa, bool minimize)
 {
     std::set<unsigned int> nfaStates;
     nfaStates.insert(nfa.startState());
@@ -24,6 +24,10 @@ DFA::DFA(const NFA &nfa)
         }
 
         mStates.push_back(std::move(state));
+    }
+
+    if(minimize) {
+        minimizeStates();
     }
 }
 
@@ -98,7 +102,7 @@ void DFA::print() const
     }
 }
 
-void DFA::minimize()
+void DFA::minimizeStates()
 {
     std::set<Symbol> alphabet;
 

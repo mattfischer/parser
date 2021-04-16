@@ -4,15 +4,22 @@
 #include "DFA.hpp"
 #include "Encoding.hpp"
 
+#include <memory>
+#include <string>
+
 class Matcher {
 public:
-    Matcher(const DFA &dfa, const Encoding &encoding);
+    Matcher(const std::string &pattern);
+
+    bool valid() const;
+    const std::string &parseErrorMessage() const;
 
     unsigned int match(const std::string &string) const;
 
 private:
-    const DFA &mDFA;
-    const Encoding &mEncoding;
+    std::unique_ptr<DFA> mDFA;
+    std::unique_ptr<Encoding> mEncoding;
+    std::string mParseErrorMessage;
 };
 
 #endif
