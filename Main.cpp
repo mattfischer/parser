@@ -1,21 +1,28 @@
 #include <iostream>
 
-#include "Regex/Matcher.hpp"
+#include "Tokenizer.hpp"
 
 int main(int argc, char *argv[])
 {
-    std::vector<std::string> patterns;
-    patterns.push_back("a?be");
-    patterns.push_back("adc");
-    Regex::Matcher matcher(patterns);
-    if(!matcher.valid()) {
-        std::cout << "Error: " << matcher.parseErrorMessage() << std::endl;
+    std::vector<std::string> patterns{"[0-9]+", "[a-zA-Z][a-zA-Z0-9]*", " "};
+    std::string input = "12345 abc123 abc";
+    Tokenizer tokenizer(patterns, input);
+    if(!tokenizer.valid()) {
+        const Regex::Matcher::ParseError &parseError = tokenizer.regexParseError();
+        std::cout << "Error, pattern " << parseError.pattern << " character " << parseError.character << ": " << parseError.message << std::endl;
         return 1;
     }
- 
-    unsigned int pattern;
-    unsigned int matched = matcher.match("be", pattern);
-    std::cout << "Matched " << matched << " characters (pattern " << pattern << ")" << std::endl;
+
+    while(true) {
+        std::string substr = input.substr(tokenizer.nextToken().start, tokenizer.nextToken().length);
+        std::cout << "Token " << tokenizer.nextToken().index << ": " << substr << std::endl;
+        
+        if(tokenizer.nextToken().index == tokenizer.endToken() || tokenizer.nextToken().index == tokenizer.errorToken()) {
+            break;
+        }
+
+        tokenizer.consumeToken();
+    }
 
     return 0;
 }

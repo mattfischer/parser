@@ -2,8 +2,6 @@
 
 #include "NFA.hpp"
 
-#include <sstream>
-
 namespace Regex {
 
     Matcher::Matcher(const std::vector<std::string> &patterns)
@@ -11,16 +9,19 @@ namespace Regex {
         std::vector<std::unique_ptr<Parser::Node>> nodes;
         
         try {
-            for(const auto &pattern : patterns) {
+            for(unsigned int i=0; i<patterns.size(); i++) {
+                const std::string &pattern = patterns[i];
+                mParseError.pattern = i;
                 nodes.push_back(Parser::parse(pattern));
             }
         } catch(Parser::ParseException e) {
-            std::stringstream ss;
-            
-            ss << "Position " << e.pos << ": " << e.message;
-            mParseErrorMessage = ss.str();
+            mParseError.character = e.pos;
+            mParseError.message = e.message;
             return;
         }
+
+        mParseError.pattern = 0;
+        mParseError.character = 0;
 
         mEncoding = std::make_unique<Encoding>(nodes);
         NFA nfa(nodes, *mEncoding);
@@ -32,17 +33,17 @@ namespace Regex {
         return (bool)mDFA;
     }
 
-    const std::string &Matcher::parseErrorMessage() const
+    const Matcher::ParseError &Matcher::parseError() const
     {
-        return mParseErrorMessage;
+        return mParseError;
     }
 
-    unsigned int Matcher::match(const std::string &string, unsigned int &pattern) const
+    unsigned int Matcher::match(const std::string &string, unsigned int start, unsigned int &pattern) const
     {
         unsigned int state = mDFA->startState();
         unsigned int matched = 0;
         
-        for(unsigned int i=0; i<string.size(); i++) {    
+        for(unsigned int i=start; i<string.size(); i++) {    
             Encoding::CodePoint codePoint = mEncoding->codePoint(string[i]);
             unsigned int nextState = mDFA->transition(state, codePoint);
             
@@ -50,7 +51,7 @@ namespace Regex {
                 break;
             } else {
                 if(mDFA->accept(nextState, pattern)) {
-                    matched = i + 1;
+                    matched = (i - start) + 1;
                 }
                 state = nextState;
             }

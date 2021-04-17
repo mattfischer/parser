@@ -176,10 +176,14 @@ namespace Regex {
             }
         }
         
-        partition.push_back(std::move(others));
+        if(others.size() > 0) {
+            partition.push_back(std::move(others));
+        }
 
         std::vector<unsigned int> queue;
-        queue.push_back(0);
+        for(unsigned int i = 0; i<acceptStates.size(); i++) {
+            queue.push_back(i);
+        }
 
         while(queue.size() > 0) {
             std::set<unsigned int> distinguisher = partition[queue.front()];

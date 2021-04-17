@@ -14,14 +14,20 @@ namespace Regex {
         Matcher(const std::vector<std::string> &patterns);
 
         bool valid() const;
-        const std::string &parseErrorMessage() const;
 
-        unsigned int match(const std::string &string, unsigned int &pattern) const;
+        struct ParseError {
+            unsigned int pattern;
+            unsigned int character;
+            std::string message;
+        };
+        const ParseError &parseError() const;
+
+        unsigned int match(const std::string &string, unsigned int start, unsigned int &pattern) const;
 
     private:
         std::unique_ptr<DFA> mDFA;
         std::unique_ptr<Encoding> mEncoding;
-        std::string mParseErrorMessage;
+        ParseError mParseError;
     };
 }
 
