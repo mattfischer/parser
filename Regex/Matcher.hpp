@@ -23,11 +23,13 @@ namespace Regex {
         const ParseError &parseError() const;
 
         unsigned int match(const std::string &string, unsigned int start, unsigned int &pattern) const;
+        unsigned int numPatterns() const;
 
     private:
         std::unique_ptr<DFA> mDFA;
         std::unique_ptr<Encoding> mEncoding;
         ParseError mParseError;
+        unsigned int mNumPatterns;
     };
 }
 

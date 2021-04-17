@@ -6,6 +6,8 @@ namespace Regex {
 
     Matcher::Matcher(const std::vector<std::string> &patterns)
     {
+        mNumPatterns = patterns.size();
+
         std::vector<std::unique_ptr<Parser::Node>> nodes;
         
         try {
@@ -58,5 +60,10 @@ namespace Regex {
         }
 
         return matched;
+    }
+
+    unsigned int Matcher::numPatterns() const
+    {
+        return mNumPatterns;
     }
 }

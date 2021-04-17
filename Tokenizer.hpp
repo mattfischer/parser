@@ -9,10 +9,7 @@
 class Tokenizer
 {
 public:
-    Tokenizer(const std::vector<std::string> &patterns, const std::string &input);
-
-    bool valid() const;
-    const Regex::Matcher::ParseError &regexParseError() const;
+    Tokenizer(const Regex::Matcher &matcher, const std::string &input);
 
     struct Token {
         unsigned int index;
@@ -26,8 +23,9 @@ public:
     unsigned int errorToken() const;
 
 private:
-    Regex::Matcher mMatcher;
+    const Regex::Matcher &mMatcher;
     const std::string &mInput;
+
     unsigned int mConsumed;
     unsigned int mEndToken;
     unsigned int mErrorToken;

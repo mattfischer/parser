@@ -1,28 +1,34 @@
 #include <iostream>
 
 #include "Tokenizer.hpp"
+#include "Parser.hpp"
 
 int main(int argc, char *argv[])
 {
-    std::vector<std::string> patterns{"[0-9]+", "[a-zA-Z][a-zA-Z0-9]*", " "};
-    std::string input = "12345 abc123 abc";
-    Tokenizer tokenizer(patterns, input);
-    if(!tokenizer.valid()) {
-        const Regex::Matcher::ParseError &parseError = tokenizer.regexParseError();
+    std::vector<std::string> patterns{"a", "b"};
+    Regex::Matcher matcher(patterns);
+
+    if(!matcher.valid()) {
+        const Regex::Matcher::ParseError &parseError = matcher.parseError();
         std::cout << "Error, pattern " << parseError.pattern << " character " << parseError.character << ": " << parseError.message << std::endl;
         return 1;
     }
 
-    while(true) {
-        std::string substr = input.substr(tokenizer.nextToken().start, tokenizer.nextToken().length);
-        std::cout << "Token " << tokenizer.nextToken().index << ": " << substr << std::endl;
-        
-        if(tokenizer.nextToken().index == tokenizer.endToken() || tokenizer.nextToken().index == tokenizer.errorToken()) {
-            break;
-        }
+    std::vector<Parser::Rule> rules {
+        Parser::Rule{ std::vector<Parser::RHS>{ 
+            Parser::RHS{ std::vector<Parser::Symbol>{ 
+                Parser::Symbol{ Parser::Symbol::Type::Terminal, 0 }, 
+                Parser::Symbol{ Parser::Symbol::Type::Terminal, 1 }
+            } } 
+        } }
+    };
 
-        tokenizer.consumeToken();
-    }
+    Parser parser(rules);
+
+    std::string input = "ab";
+    Tokenizer tokenizer(matcher, input);
+
+    parser.parse(tokenizer);
 
     return 0;
 }

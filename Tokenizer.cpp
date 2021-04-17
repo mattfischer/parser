@@ -1,23 +1,13 @@
 #include "Tokenizer.hpp"
 
-Tokenizer::Tokenizer(const std::vector<std::string> &patterns, const std::string &input)
-: mMatcher(patterns), mInput(input)
+Tokenizer::Tokenizer(const Regex::Matcher &matcher, const std::string &input)
+: mMatcher(matcher), mInput(input)
 {
     mConsumed = 0;
-    mEndToken = patterns.size();
-    mErrorToken = patterns.size() + 1;
+    mEndToken = mMatcher.numPatterns();
+    mErrorToken = mMatcher.numPatterns() + 1;
 
     consumeToken();
-}
-
-bool Tokenizer::valid() const
-{
-    return mMatcher.valid();
-}
-
-const Regex::Matcher::ParseError &Tokenizer::regexParseError() const
-{
-    return mMatcher.parseError();
 }
 
 const Tokenizer::Token &Tokenizer::nextToken() const
