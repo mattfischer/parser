@@ -4,11 +4,18 @@
 
 namespace Regex {
 
-    NFA::NFA(const Parser::Node &node, const Encoding &encoding)
+    NFA::NFA(const std::vector<std::unique_ptr<Parser::Node>> &nodes, const Encoding &encoding)
     {
         mStartState = addState();
-        mAcceptState = addState();
-        populate(node, encoding, mStartState, mAcceptState);
+        for(const auto &node : nodes) {
+            unsigned int start = addState();
+            unsigned int accept = addState();
+
+            populate(*node, encoding, start, accept);
+
+            addEpsilonTransition(mStartState, start);
+            mAcceptStates.push_back(accept);
+        }
     }
 
     unsigned int NFA::startState() const
@@ -16,9 +23,9 @@ namespace Regex {
         return mStartState;
     }
 
-    unsigned int NFA::acceptState() const
+    const std::vector<unsigned int> &NFA::acceptStates() const
     {
-        return mAcceptState;
+        return mAcceptStates;
     }
 
     const std::vector<NFA::State> &NFA::states() const
@@ -139,8 +146,12 @@ namespace Regex {
     void NFA::print() const
     {
         std::cout << "Start: " << mStartState << std::endl;
-        std::cout << "Accept: " << mAcceptState << std::endl;
+        std::cout << "Accept: ";
+        for(unsigned int s : mAcceptStates) {
+            std::cout << s << " ";
+        }
         std::cout << std::endl;
+
         for(unsigned int i=0; i<mStates.size(); i++) {
             const State &state = mStates[i];
             std::cout << "State " << i << ":" << std::endl;

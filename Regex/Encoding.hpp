@@ -17,7 +17,7 @@ namespace Regex {
 
         typedef std::pair<InputSymbol, InputSymbol> InputSymbolRange;
 
-        Encoding(const Parser::Node &node);
+        Encoding(const std::vector<std::unique_ptr<Parser::Node>> &nodes);
 
         std::vector<CodePoint> codePointRanges(InputSymbolRange range) const;
         CodePoint codePoint(InputSymbol symbol) const;

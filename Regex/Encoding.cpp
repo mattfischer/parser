@@ -65,10 +65,12 @@ namespace Regex {
         }
     }
 
-    Encoding::Encoding(const Parser::Node &node)
+    Encoding::Encoding(const std::vector<std::unique_ptr<Parser::Node>> &nodes)
     {
         std::vector<Encoding::InputSymbolRange> inputSymbolRanges;
-        visitNode(node, inputSymbolRanges);
+        for(const auto &node : nodes) {
+            visitNode(*node, inputSymbolRanges);
+        }
 
         auto cmp = [](const InputSymbolRange &a, const InputSymbolRange &b) { return a.first < b.first; };
         std::sort(inputSymbolRanges.begin(), inputSymbolRanges.end(), cmp);

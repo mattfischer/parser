@@ -18,7 +18,7 @@ namespace Regex {
         unsigned int rejectState() const;
 
         unsigned int transition(unsigned int state, Encoding::CodePoint codePoint) const;
-        bool accept(unsigned int state) const;
+        bool accept(unsigned int state, unsigned int &index) const;
 
         void print() const;
 
@@ -33,14 +33,14 @@ namespace Regex {
         };
 
         unsigned int findOrAddState(std::vector<StateSet> &stateSets, const NFA &nfa, const std::set<unsigned int> &nfaStates);
-        void minimize(std::vector<State> &states, unsigned int &startState, std::set<unsigned int> &acceptStates);
+        void minimize(std::vector<State> &states, unsigned int &startState, std::vector<std::set<unsigned int>> &acceptStates);
 
         unsigned int mNumCodePoints;
         unsigned int mNumStates;
         unsigned int mStartState;
         unsigned int mRejectState;
         std::vector<unsigned int> mTransitions;
-        std::vector<bool> mAcceptStates;
+        std::vector<unsigned int> mAcceptStates;
     };
 }
 

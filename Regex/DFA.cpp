@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <climits>
 
 namespace Regex {
     DFA::DFA(const NFA &nfa, const Encoding &encoding)
@@ -11,9 +12,11 @@ namespace Regex {
 
         std::vector<StateSet> stateSets;
         std::vector<State> states;
-        std::set<unsigned int> acceptStates;
         unsigned int startState = findOrAddState(stateSets, nfa, nfaStates);
 
+        std::vector<std::set<unsigned int>> acceptStates;
+        acceptStates.resize(nfa.acceptStates().size());
+    
         for(unsigned int i=0; i<stateSets.size(); i++) {
             const StateSet &stateSet = stateSets[i];
             State state;
@@ -22,8 +25,10 @@ namespace Regex {
                 state.transitions[pair.first] = pair.second;
             }
 
-            if(stateSet.nfaStates.find(nfa.acceptState()) != stateSet.nfaStates.end()) {
-                acceptStates.insert(i);
+            for(unsigned int j=0; j<nfa.acceptStates().size(); j++) { 
+                if(stateSet.nfaStates.find(nfa.acceptStates()[j]) != stateSet.nfaStates.end()) {
+                    acceptStates[j].insert(i);
+                }
             }
 
             states.push_back(std::move(state));
@@ -41,7 +46,13 @@ namespace Regex {
 
         for(unsigned int i=0; i<mNumStates; i++) {
             const State &state = states[i];
-            mAcceptStates[i] = (acceptStates.count(i) > 0);
+            mAcceptStates[i] = UINT_MAX;
+            for(unsigned int j=0; j<acceptStates.size(); j++) {
+                if(acceptStates[j].count(i) > 0) {
+                    mAcceptStates[i] = j;
+                    break;
+                }
+            }
 
             for(unsigned int j=0; j<mNumCodePoints; j++) {
                 auto it = state.transitions.find(j);
@@ -69,9 +80,14 @@ namespace Regex {
         return mTransitions[state * mNumCodePoints + codePoint];
     }
 
-    bool DFA::accept(unsigned int state) const
+    bool DFA::accept(unsigned int state, unsigned int &index) const
     {
-        return mAcceptStates[state];
+        if(mAcceptStates[state] == UINT_MAX) {
+            return false;
+        } else {
+            index = mAcceptStates[state];
+            return true;
+        }
     }
 
     void DFA::print() const
@@ -136,7 +152,7 @@ namespace Regex {
         return idx;
     }
 
-    void DFA::minimize(std::vector<State> &states, unsigned int &startState, std::set<unsigned int> &acceptStates)
+    void DFA::minimize(std::vector<State> &states, unsigned int &startState, std::vector<std::set<unsigned int>> &acceptStates)
     {
         std::set<Symbol> alphabet;
 
@@ -148,13 +164,18 @@ namespace Regex {
 
         std::vector<std::set<unsigned int>> partition;
 
-        partition.push_back(acceptStates);
         std::set<unsigned int> others;
         for(unsigned int i=0; i<states.size(); i++) {
-            if(acceptStates.count(i) == 0) {
-                others.insert(i);
+            others.insert(i);
+        }
+
+        for(unsigned int i=0; i<acceptStates.size(); i++) {
+            partition.push_back(acceptStates[i]);
+            for(unsigned int s : acceptStates[i]) {
+                others.erase(s);
             }
         }
+        
         partition.push_back(std::move(others));
 
         std::vector<unsigned int> queue;
@@ -227,9 +248,12 @@ namespace Regex {
             newStates.push_back(std::move(newState));
         }
         unsigned int newStartState = stateMap[startState];
-        std::set<unsigned int> newAcceptStates;
-        for(unsigned int s : acceptStates) {
-            newAcceptStates.insert(stateMap[s]);
+        std::vector<std::set<unsigned int>> newAcceptStates;
+        newAcceptStates.resize(acceptStates.size());
+        for(unsigned int i=0; i<acceptStates.size(); i++) {
+            for(unsigned int s : acceptStates[i]) {
+                newAcceptStates[i].insert(stateMap[s]);
+            }
         }
 
         states = std::move(newStates);

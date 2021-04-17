@@ -18,10 +18,10 @@ namespace Regex {
             std::vector<unsigned int> epsilonTransitions;
         };
 
-        NFA(const Parser::Node &node, const Encoding &encoding);
+        NFA(const std::vector<std::unique_ptr<Parser::Node>> &nodes, const Encoding &encoding);
 
         unsigned int startState() const;
-        unsigned int acceptState() const;
+        const std::vector<unsigned int> &acceptStates() const;
         const std::vector<State> &states() const;
 
         void print() const;
@@ -34,7 +34,7 @@ namespace Regex {
         
         std::vector<State> mStates;
         unsigned int mStartState;
-        unsigned int mAcceptState;
+        std::vector<unsigned int> mAcceptStates;
     };
 }
 

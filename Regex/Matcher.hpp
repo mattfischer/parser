@@ -11,12 +11,12 @@ namespace Regex {
 
     class Matcher {
     public:
-        Matcher(const std::string &pattern);
+        Matcher(const std::vector<std::string> &patterns);
 
         bool valid() const;
         const std::string &parseErrorMessage() const;
 
-        unsigned int match(const std::string &string) const;
+        unsigned int match(const std::string &string, unsigned int &pattern) const;
 
     private:
         std::unique_ptr<DFA> mDFA;
