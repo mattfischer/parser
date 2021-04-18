@@ -64,33 +64,38 @@ bool Parser::computeParseTable(const std::vector<std::set<unsigned int>> &firstS
         const Rule &rule = mRules[i];
 
         for(unsigned int j=0; j<mNumSymbols; j++) {
-            unsigned int rhs = (unsigned int)(rule.rhs.size());
-            for(unsigned int k=0; k<rule.rhs.size(); k++) {
-                const Symbol &symbol = rule.rhs[k].symbols[0];
-                bool match = false;
-                switch(symbol.type) {
-                    case Symbol::Type::Terminal:
-                        match = (symbol.index == j);
-                        break;
-                    
-                    case Symbol::Type::Nonterminal:
-                        match = (firstSets[symbol.index].count(j) > 0);
-                        break;
-                }
+            mParseTable[i*mNumSymbols+j] = rule.rhs.size();
+        }
 
-                if(match) {
-                    if(rhs == rule.rhs.size()) {
-                        rhs = k;
+        for(unsigned int j=0; j<rule.rhs.size(); j++) {
+            const Symbol &symbol = rule.rhs[j].symbols[0];
+            switch(symbol.type) {
+                case Symbol::Type::Terminal:
+                    if(mParseTable[i*mNumSymbols+symbol.index] == rule.rhs.size()) {
+                        mParseTable[i*mNumSymbols+symbol.index] = j;
                     } else {
                         mConflict.rule = i;
-                        mConflict.rhs1 = rhs;
-                        mConflict.rhs2 = k;
+                        mConflict.symbol = symbol.index;
+                        mConflict.rhs1 = mParseTable[i*mNumSymbols+symbol.index];
+                        mConflict.rhs2 = j;
                         return false;
+                    } 
+                    break;
+                
+                case Symbol::Type::Nonterminal:
+                    for(unsigned int s : firstSets[symbol.index]) {
+                        if(mParseTable[i*mNumSymbols+s] == rule.rhs.size()) {
+                            mParseTable[i*mNumSymbols+s] = j;
+                        } else {
+                            mConflict.rule = i;
+                            mConflict.symbol = s;
+                            mConflict.rhs1 = mParseTable[i*mNumSymbols+s];
+                            mConflict.rhs2 = j;
+                            return false;
+                        }   
                     }
-                }
+                    break;
             }
-
-            mParseTable[i*mNumSymbols+j] = rhs;
         }
     }
 

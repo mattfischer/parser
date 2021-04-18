@@ -38,6 +38,7 @@ public:
 
     struct Conflict {
         unsigned int rule;
+        unsigned int symbol;
         unsigned int rhs1;
         unsigned int rhs2;
     };
