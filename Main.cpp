@@ -25,10 +25,20 @@ int main(int argc, char *argv[])
 
     Parser parser(rules);
 
+    if(!parser.valid()) {
+        std::cout << "Conflict on rule " << parser.conflict().rule << ": " << parser.conflict().rhs1 << " vs " << parser.conflict().rhs2 << std::endl;
+        return 1; 
+    }
+
     std::string input = "ab";
     Tokenizer tokenizer(matcher, input);
 
-    parser.parse(tokenizer);
+    try {
+        parser.parse(tokenizer);
+    } catch (Parser::ParseException e) {
+        std::cout << "Error: Unexpected symbol " << e.symbol << std::endl;
+        return 1;
+    }
 
     return 0;
 }

@@ -25,18 +25,37 @@ public:
         std::vector<RHS> rhs;
     };
 
+    class ParseException : public std::exception {
+    public:
+        ParseException(unsigned int s) { symbol = s; }
+
+        unsigned int symbol;
+    };
+
     Parser(const std::vector<Rule> &rules);
+
+    bool valid() const;
+
+    struct Conflict {
+        unsigned int rule;
+        unsigned int rhs1;
+        unsigned int rhs2;
+    };
+    const Conflict &conflict() const;
 
     void parse(Tokenizer &tokenizer) const;
 
 private:
-    void computeFirstSets();
+    std::vector<std::set<unsigned int>> computeFirstSets();
+    bool computeParseTable(const std::vector<std::set<unsigned int>> &firstSets);
 
     void parseRule(unsigned int rule, Tokenizer &tokenizer) const;
-
+    
     const std::vector<Rule> &mRules;
-
-    std::vector<std::set<unsigned int>> mFirstSets;    
+    std::vector<unsigned int> mParseTable;  
+    unsigned int mNumSymbols;
+    bool mValid;
+    Conflict mConflict;
 };
 
 #endif
