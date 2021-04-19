@@ -6,6 +6,7 @@ int main(int argc, char *argv[])
 {
     DefReader reader("grammar.def");
     if(!reader.valid()) {
+        std::cout << "Error in def file, line " << reader.parseError().line << ": " << reader.parseError().message << std::endl;
         return 1;
     }
 

@@ -40,7 +40,10 @@ DefReader::DefReader(const std::string &filename)
 {
     std::map<std::string, std::string> terminalDef;
     std::map<std::string, Rule> ruleDef;
-    parseFile(filename, terminalDef, ruleDef);
+    bool success = parseFile(filename, terminalDef, ruleDef);
+    if(!success) {
+        return;
+    }
 
     std::map<std::string, unsigned int> terminalMap;
     std::vector<std::string> terminals;
@@ -64,10 +67,22 @@ DefReader::DefReader(const std::string &filename)
                 Parser::Symbol symbol;
                 if(s[0] == '<') {
                     symbol.type = Parser::Symbol::Type::Nonterminal;
-                    symbol.index = ruleMap[s];
+                    auto it = ruleMap.find(s);
+                    if(it == ruleMap.end()) {
+                        mParseError.message = "Unknown nonterminal " + s;
+                        return;
+                    } else {
+                        symbol.index = it->second;
+                    }
                 } else {
                     symbol.type = Parser::Symbol::Type::Terminal;
-                    symbol.index = terminalMap[s];
+                    auto it = terminalMap.find(s);
+                    if(it == terminalMap.end()) {
+                        mParseError.message = "Unknown terminal " + s;
+                        return;
+                    } else {
+                        symbol.index = it->second;
+                    }
                 }
                 rhs.symbols.push_back(symbol);
             }
@@ -75,28 +90,44 @@ DefReader::DefReader(const std::string &filename)
         }
     }
 
-    mParser = std::make_unique<Parser>(mParserRules, ruleMap["<root>"]);
+    auto it = ruleMap.find("<root>");
+    if(it == ruleMap.end()) {
+        mParseError.message = "No <root> nonterminal defined";
+        return;
+    } else {
+        mParser = std::make_unique<Parser>(mParserRules, it->second);
+    }
 }
 
-void DefReader::parseFile(const std::string &filename, std::map<std::string, std::string> &terminals, std::map<std::string, Rule> &rules)
+bool DefReader::parseFile(const std::string &filename, std::map<std::string, std::string> &terminals, std::map<std::string, Rule> &rules)
 {
     std::ifstream file(filename);
-    
+    unsigned int lineNumber = 0;
+
     while(!file.fail() && !file.eof()) {
+        lineNumber++;
         std::string line;
         std::getline(file, line);
+        line = trim(line);
         if(line.size() == 0) {
             continue;
         }
 
         size_t pos = line.find(':');
         if(pos == std::string::npos) {
-            continue;
+            mParseError.line = lineNumber;
+            mParseError.message = "Invalid line";
+            return false;
         }    
 
         std::string left = trim(line.substr(0, pos));
         std::string right = trim(line.substr(pos+1));
         if(left[0] == '<') {
+            if(left[left.size()-1] != '>') {
+                mParseError.line = lineNumber;
+                mParseError.message = "Invalid symbol name " + left;
+                return false;
+            }
             std::vector<std::string> rhs = split(right, '|');
             for(const std::string &r : rhs) {
                 std::vector<std::string> symbols = split(r, ' ');
@@ -106,6 +137,8 @@ void DefReader::parseFile(const std::string &filename, std::map<std::string, std
             terminals[left] = right;
         }
     }
+
+    return true;
 }
 
 bool DefReader::valid() const
@@ -116,6 +149,11 @@ bool DefReader::valid() const
 const Regex::Matcher &DefReader::matcher() const
 {
     return *mMatcher;
+}
+
+const DefReader::ParseError &DefReader::parseError() const
+{
+    return mParseError;
 }
 
 const Parser &DefReader::parser() const

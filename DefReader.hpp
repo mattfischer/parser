@@ -18,12 +18,19 @@ public:
     const Regex::Matcher &matcher() const;
     const Parser &parser() const;
 
+    struct ParseError {
+        unsigned int line;
+        std::string message;
+    };
+    const ParseError &parseError() const;
+
 private:
     typedef std::vector<std::vector<std::string>> Rule;
-    void parseFile(const std::string &filename, std::map<std::string, std::string> &terminals, std::map<std::string, Rule> &rules);
+    bool parseFile(const std::string &filename, std::map<std::string, std::string> &terminals, std::map<std::string, Rule> &rules);
 
     std::unique_ptr<Regex::Matcher> mMatcher;
     std::vector<Parser::Rule> mParserRules;
     std::unique_ptr<Parser> mParser;
+    ParseError mParseError;
 };
 #endif
