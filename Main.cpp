@@ -1,40 +1,30 @@
 #include <iostream>
 
-#include "Tokenizer.hpp"
-#include "Parser.hpp"
+#include "DefReader.hpp"
 
 int main(int argc, char *argv[])
 {
-    std::vector<std::string> patterns{"a", "b"};
-    Regex::Matcher matcher(patterns);
+    DefReader reader("grammar.def");
+    if(!reader.valid()) {
+        return 1;
+    }
 
-    if(!matcher.valid()) {
-        const Regex::Matcher::ParseError &parseError = matcher.parseError();
+    if(!reader.matcher().valid()) {
+        const Regex::Matcher::ParseError &parseError = reader.matcher().parseError();
         std::cout << "Error, pattern " << parseError.pattern << " character " << parseError.character << ": " << parseError.message << std::endl;
         return 1;
     }
 
-    std::vector<Parser::Rule> rules {
-        Parser::Rule{ std::vector<Parser::RHS>{ 
-            Parser::RHS{ std::vector<Parser::Symbol>{ 
-                Parser::Symbol{ Parser::Symbol::Type::Terminal, 0 }, 
-                Parser::Symbol{ Parser::Symbol::Type::Terminal, 1 }
-            } } 
-        } }
-    };
-
-    Parser parser(rules);
-
-    if(!parser.valid()) {
-        std::cout << "Conflict on rule " << parser.conflict().rule << ": " << parser.conflict().rhs1 << " vs " << parser.conflict().rhs2 << std::endl;
+    if(!reader.parser().valid()) {
+        std::cout << "Conflict on rule " << reader.parser().conflict().rule << ": " << reader.parser().conflict().rhs1 << " vs " << reader.parser().conflict().rhs2 << std::endl;
         return 1; 
     }
 
-    std::string input = "ab";
-    Tokenizer tokenizer(matcher, input);
+    std::string input = "abc";
+    Tokenizer tokenizer(reader.matcher(), input);
 
     try {
-        parser.parse(tokenizer);
+        reader.parser().parse(tokenizer);
     } catch (Parser::ParseException e) {
         std::cout << "Error: Unexpected symbol " << e.symbol << std::endl;
         return 1;

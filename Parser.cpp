@@ -2,11 +2,12 @@
 
 #include <algorithm>
 
-Parser::Parser(const std::vector<Rule> &rules)
+Parser::Parser(const std::vector<Rule> &rules, unsigned int startRule)
 : mRules(rules)
 {
     std::vector<std::set<unsigned int>> firstSets = computeFirstSets();
     mValid = computeParseTable(firstSets);
+    mStartRule = startRule;
 }
 
 std::vector<std::set<unsigned int>> Parser::computeFirstSets()
@@ -114,7 +115,7 @@ const Parser::Conflict &Parser::conflict() const
 
 void Parser::parse(Tokenizer &tokenizer) const
 {
-    parseRule(0, tokenizer);
+    parseRule(mStartRule, tokenizer);
 }
 
 void Parser::parseRule(unsigned int rule, Tokenizer &tokenizer) const

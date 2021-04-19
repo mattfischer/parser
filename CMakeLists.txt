@@ -6,6 +6,7 @@ set(SOURCES
     Regex/Matcher.cpp
     Regex/NFA.cpp
     Regex/Parser.cpp
+    DefReader.cpp
     Parser.cpp
     Tokenizer.cpp
     Main.cpp
