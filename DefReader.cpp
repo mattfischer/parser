@@ -36,6 +36,27 @@ std::vector<std::string> split(const std::string &input, char c)
     return results;
 }
 
+std::string escape(const std::string &input)
+{
+    std::string result;
+
+    for(char c : input) {
+        switch(c) {
+            case ' ': result.append("\\s"); break;
+            case '+':
+            case '*':
+            case '?':
+            case '(':
+            case ')':
+            case '[':
+            case ']': result.push_back('\\');
+            default: result.push_back(c); break;
+        }
+    }
+
+    return result;
+}
+
 DefReader::DefReader(const std::string &filename)
 {
     std::map<std::string, std::string> terminalDef;
@@ -76,6 +97,7 @@ DefReader::DefReader(const std::string &filename)
                     }
                 } else if(s[0] == '\'') {
                     std::string text = s.substr(1, s.size() - 2);
+                    text = escape(text);
                     symbol.type = Parser::Symbol::Type::Terminal;
 
                     auto it = anonymousTerminalMap.find(text);

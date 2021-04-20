@@ -21,6 +21,20 @@ namespace Regex {
             return parseCharacterClass(regex, pos);
         } else {
             Symbol symbol = regex[pos];
+            if(symbol == '\\') {
+                pos++;
+                if(pos >= regex.size()) {
+                    throw ParseException("Incomplete escape", pos);
+                }
+
+                switch(regex[pos]) {
+                    case 's': symbol = ' '; break;
+                    case 't': symbol = '\t'; break;
+                    case 'n': symbol = '\n'; break;
+                    case 'r': symbol = '\r'; break;
+                    default: symbol = regex[pos]; break;
+                }
+            }
             pos++;
 
             return std::make_unique<SymbolNode>(symbol);
