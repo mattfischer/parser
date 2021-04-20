@@ -32,7 +32,7 @@ public:
         unsigned int symbol;
     };
 
-    Parser(const std::vector<Rule> &rules, unsigned int startRule);
+    Parser(const std::vector<Rule> &rules, unsigned int startRule, unsigned int ignoreSymbol);
 
     bool valid() const;
 
@@ -56,6 +56,7 @@ private:
     const std::vector<Rule> &mRules;
     std::vector<unsigned int> mParseTable;  
     unsigned int mNumSymbols;
+    unsigned int mIgnoreSymbol;
     bool mValid;
     Conflict mConflict;
 };

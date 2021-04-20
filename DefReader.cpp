@@ -66,12 +66,16 @@ DefReader::DefReader(const std::string &filename)
         return;
     }
 
+    unsigned int ignorePattern = UINT_MAX;
     std::map<std::string, unsigned int> terminalMap;
     std::map<std::string, unsigned int> anonymousTerminalMap;
     std::vector<std::string> terminals;
     for(const auto &pair: terminalDef) {
         terminals.push_back(pair.second);
         terminalMap[pair.first] = terminals.size() - 1;
+        if(pair.first == "IGNORE") {
+            ignorePattern = terminals.size() - 1;
+        }
     }
 
     std::map<std::string, unsigned int> ruleMap;
@@ -129,7 +133,7 @@ DefReader::DefReader(const std::string &filename)
         return;
     } else {
         mMatcher = std::make_unique<Regex::Matcher>(terminals);
-        mParser = std::make_unique<Parser>(mParserRules, it->second);
+        mParser = std::make_unique<Parser>(mParserRules, it->second, ignorePattern);
     }
 }
 

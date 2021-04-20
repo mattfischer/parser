@@ -1,5 +1,4 @@
-A: a
-B: b
-C: c
+NUMBER: [0-9]+
+IGNORE: \s
 
-<root> : A '+*' C
+<root> : NUMBER '+' NUMBER
