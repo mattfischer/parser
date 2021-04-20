@@ -46,12 +46,12 @@ DefReader::DefReader(const std::string &filename)
     }
 
     std::map<std::string, unsigned int> terminalMap;
+    std::map<std::string, unsigned int> anonymousTerminalMap;
     std::vector<std::string> terminals;
     for(const auto &pair: terminalDef) {
         terminals.push_back(pair.second);
         terminalMap[pair.first] = terminals.size() - 1;
     }
-    mMatcher = std::make_unique<Regex::Matcher>(terminals);
 
     std::map<std::string, unsigned int> ruleMap;
     for(const auto &pair: ruleDef) {
@@ -71,6 +71,17 @@ DefReader::DefReader(const std::string &filename)
                     if(it == ruleMap.end()) {
                         mParseError.message = "Unknown nonterminal " + s;
                         return;
+                    } else {
+                        symbol.index = it->second;
+                    }
+                } else if(s[0] == '\'') {
+                    std::string text = s.substr(1, s.size() - 2);
+                    symbol.type = Parser::Symbol::Type::Terminal;
+
+                    auto it = anonymousTerminalMap.find(text);
+                    if(it == anonymousTerminalMap.end()) {
+                        terminals.push_back(text);
+                        symbol.index = anonymousTerminalMap[text] = terminals.size() - 1;
                     } else {
                         symbol.index = it->second;
                     }
@@ -95,6 +106,7 @@ DefReader::DefReader(const std::string &filename)
         mParseError.message = "No <root> nonterminal defined";
         return;
     } else {
+        mMatcher = std::make_unique<Regex::Matcher>(terminals);
         mParser = std::make_unique<Parser>(mParserRules, it->second);
     }
 }

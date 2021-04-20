@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
         return 1; 
     }
 
-    std::string input = "abc";
+    std::string input = "adefc";
     Tokenizer tokenizer(reader.matcher(), input);
 
     try {

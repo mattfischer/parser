@@ -2,4 +2,4 @@ A: a
 B: b
 C: c
 
-<root> : A B C
+<root> : A 'def' C
