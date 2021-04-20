@@ -1,11 +1,12 @@
 #include "Tokenizer.hpp"
 
-Tokenizer::Tokenizer(const Regex::Matcher &matcher, const std::string &input)
+Tokenizer::Tokenizer(const Regex::Matcher &matcher, unsigned int ignorePattern, const std::string &input)
 : mMatcher(matcher), mInput(input)
 {
     mConsumed = 0;
     mEndToken = mMatcher.numPatterns();
     mErrorToken = mMatcher.numPatterns() + 1;
+    mIgnorePattern = ignorePattern;
 
     consumeToken();
 }
@@ -28,18 +29,27 @@ void Tokenizer::consumeToken()
         return;
     }
 
-    unsigned int pattern;
-    unsigned int matched = mMatcher.match(mInput, mConsumed, pattern);
-    if(matched == 0) {
-        mNextToken.index = mErrorToken;
-        mNextToken.start = mConsumed;
-        mNextToken.length = 0;
-    } else {
-        mNextToken.index = pattern;
-        mNextToken.start = mConsumed;
-        mNextToken.length = matched;
+    bool repeat = true;
+    while(repeat) {
+        unsigned int pattern;
+        unsigned int matched = mMatcher.match(mInput, mConsumed, pattern);
+        if(matched == 0) {
+            mNextToken.index = mErrorToken;
+            mNextToken.start = mConsumed;
+            mNextToken.length = 0;
 
-        mConsumed += matched;
+            repeat = false;
+        } else {
+            mConsumed += matched;
+
+            if(pattern != mIgnorePattern) {
+                mNextToken.index = pattern;
+                mNextToken.start = mConsumed;
+                mNextToken.length = matched;
+
+                repeat = false;
+            }
+        }
     }
 }
 

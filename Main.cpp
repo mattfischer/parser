@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     }
 
     std::string input = "2345 + 2";
-    Tokenizer tokenizer(reader.matcher(), input);
+    Tokenizer tokenizer(reader.matcher(), reader.ignorePattern(), input);
 
     try {
         reader.parser().parse(tokenizer);

@@ -17,6 +17,7 @@ public:
 
     const Regex::Matcher &matcher() const;
     const Parser &parser() const;
+    unsigned int ignorePattern() const;
 
     struct ParseError {
         unsigned int line;
@@ -31,6 +32,7 @@ private:
     std::unique_ptr<Regex::Matcher> mMatcher;
     std::vector<Parser::Rule> mParserRules;
     std::unique_ptr<Parser> mParser;
+    unsigned int mIgnorePattern;
     ParseError mParseError;
 };
 #endif

@@ -66,22 +66,22 @@ DefReader::DefReader(const std::string &filename)
         return;
     }
 
-    unsigned int ignorePattern = UINT_MAX;
+    mIgnorePattern = UINT_MAX;
     std::map<std::string, unsigned int> terminalMap;
     std::map<std::string, unsigned int> anonymousTerminalMap;
     std::vector<std::string> terminals;
     for(const auto &pair: terminalDef) {
         terminals.push_back(pair.second);
-        terminalMap[pair.first] = terminals.size() - 1;
+        terminalMap[pair.first] = (unsigned int)(terminals.size() - 1);
         if(pair.first == "IGNORE") {
-            ignorePattern = terminals.size() - 1;
+            mIgnorePattern = (unsigned int)(terminals.size() - 1);
         }
     }
 
     std::map<std::string, unsigned int> ruleMap;
     for(const auto &pair: ruleDef) {
         mParserRules.push_back(Parser::Rule());
-        ruleMap[pair.first] = mParserRules.size() - 1;
+        ruleMap[pair.first] = (unsigned int)(mParserRules.size() - 1);
     }
 
     for(const auto &pair: ruleDef) {
@@ -107,7 +107,7 @@ DefReader::DefReader(const std::string &filename)
                     auto it = anonymousTerminalMap.find(text);
                     if(it == anonymousTerminalMap.end()) {
                         terminals.push_back(text);
-                        symbol.index = anonymousTerminalMap[text] = terminals.size() - 1;
+                        symbol.index = anonymousTerminalMap[text] = (unsigned int)(terminals.size() - 1);
                     } else {
                         symbol.index = it->second;
                     }
@@ -133,7 +133,7 @@ DefReader::DefReader(const std::string &filename)
         return;
     } else {
         mMatcher = std::make_unique<Regex::Matcher>(terminals);
-        mParser = std::make_unique<Parser>(mParserRules, it->second, ignorePattern);
+        mParser = std::make_unique<Parser>(mParserRules, it->second);
     }
 }
 
@@ -187,6 +187,11 @@ bool DefReader::valid() const
 const Regex::Matcher &DefReader::matcher() const
 {
     return *mMatcher;
+}
+
+unsigned int DefReader::ignorePattern() const
+{
+    return mIgnorePattern;
 }
 
 const DefReader::ParseError &DefReader::parseError() const

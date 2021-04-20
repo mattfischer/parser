@@ -2,13 +2,12 @@
 
 #include <algorithm>
 
-Parser::Parser(const std::vector<Rule> &rules, unsigned int startRule, unsigned int ignoreSymbol)
+Parser::Parser(const std::vector<Rule> &rules, unsigned int startRule)
 : mRules(rules)
 {
     std::vector<std::set<unsigned int>> firstSets = computeFirstSets();
     mValid = computeParseTable(firstSets);
     mStartRule = startRule;
-    mIgnoreSymbol = ignoreSymbol;
 }
 
 std::vector<std::set<unsigned int>> Parser::computeFirstSets()
@@ -66,7 +65,7 @@ bool Parser::computeParseTable(const std::vector<std::set<unsigned int>> &firstS
         const Rule &rule = mRules[i];
 
         for(unsigned int j=0; j<mNumSymbols; j++) {
-            mParseTable[i*mNumSymbols+j] = rule.rhs.size();
+            mParseTable[i*mNumSymbols+j] = (unsigned int)rule.rhs.size();
         }
 
         for(unsigned int j=0; j<rule.rhs.size(); j++) {
@@ -116,10 +115,6 @@ const Parser::Conflict &Parser::conflict() const
 
 void Parser::parse(Tokenizer &tokenizer) const
 {
-    while(tokenizer.nextToken().index == mIgnoreSymbol) {
-        tokenizer.consumeToken();
-    }
-
     parseRule(mStartRule, tokenizer);
 }
 
@@ -138,10 +133,6 @@ void Parser::parseRule(unsigned int rule, Tokenizer &tokenizer) const
             case Symbol::Type::Terminal:
                 if(tokenizer.nextToken().index == symbol.index) {
                     tokenizer.consumeToken();
-
-                    while(tokenizer.nextToken().index == mIgnoreSymbol) {
-                        tokenizer.consumeToken();
-                    }
                 } else {
                     throw ParseException(tokenizer.nextToken().index);
                 }

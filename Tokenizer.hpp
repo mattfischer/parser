@@ -9,7 +9,7 @@
 class Tokenizer
 {
 public:
-    Tokenizer(const Regex::Matcher &matcher, const std::string &input);
+    Tokenizer(const Regex::Matcher &matcher, unsigned int ignorePattern, const std::string &input);
 
     struct Token {
         unsigned int index;
@@ -29,6 +29,7 @@ private:
     unsigned int mConsumed;
     unsigned int mEndToken;
     unsigned int mErrorToken;
+    unsigned int mIgnorePattern;
     Token mNextToken;
 };
 
