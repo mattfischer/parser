@@ -22,10 +22,10 @@ int main(int argc, char *argv[])
     }
 
     std::string input = "2345 + 2 + 5";
-    Tokenizer tokenizer(reader.matcher(), reader.ignorePattern(), input);
+    Tokenizer::Stream stream(reader.tokenizer(), input);
 
     try {
-        reader.parser().parse(tokenizer);
+        reader.parser().parse(stream);
     } catch (Parser::ParseException e) {
         std::cout << "Error: Unexpected symbol " << e.symbol << std::endl;
         return 1;

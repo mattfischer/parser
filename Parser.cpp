@@ -191,17 +191,17 @@ const Parser::Conflict &Parser::conflict() const
     return mConflict;
 }
 
-void Parser::parse(Tokenizer &tokenizer) const
+void Parser::parse(Tokenizer::Stream &stream) const
 {
-    parseRule(mStartRule, tokenizer);
+    parseRule(mStartRule, stream);
 }
 
-void Parser::parseRule(unsigned int rule, Tokenizer &tokenizer) const
+void Parser::parseRule(unsigned int rule, Tokenizer::Stream &stream) const
 {
-    unsigned int rhs = mParseTable[rule*mNumSymbols + tokenizer.nextToken().index];
+    unsigned int rhs = mParseTable[rule*mNumSymbols + stream.nextToken().index];
 
     if(rhs == UINT_MAX) {
-        throw ParseException(tokenizer.nextToken().index);
+        throw ParseException(stream.nextToken().index);
     }   
 
     const std::vector<Symbol> &symbols = mRules[rule].rhs[rhs].symbols;
@@ -209,15 +209,15 @@ void Parser::parseRule(unsigned int rule, Tokenizer &tokenizer) const
         const Symbol &symbol = symbols[i];
         switch(symbol.type) {
             case Symbol::Type::Terminal:
-                if(tokenizer.nextToken().index == symbol.index) {
-                    tokenizer.consumeToken();
+                if(stream.nextToken().index == symbol.index) {
+                    stream.consumeToken();
                 } else {
-                    throw ParseException(tokenizer.nextToken().index);
+                    throw ParseException(stream.nextToken().index);
                 }
                 break;
 
             case Symbol::Type::Nonterminal:
-                parseRule(symbol.index, tokenizer);
+                parseRule(symbol.index, stream);
                 break;
         }
     }

@@ -3,6 +3,7 @@
 
 #include "Regex/Matcher.hpp"
 #include "Parser.hpp"
+#include "Tokenizer.hpp"
 
 #include <string>
 #include <vector>
@@ -16,8 +17,8 @@ public:
     bool valid() const;
 
     const Regex::Matcher &matcher() const;
+    const Tokenizer &tokenizer() const;
     const Parser &parser() const;
-    unsigned int ignorePattern() const;
 
     struct ParseError {
         unsigned int line;
@@ -30,6 +31,7 @@ private:
     bool parseFile(const std::string &filename, std::map<std::string, std::string> &terminals, std::map<std::string, Rule> &rules);
 
     std::unique_ptr<Regex::Matcher> mMatcher;
+    std::unique_ptr<Tokenizer> mTokenizer;
     std::vector<Parser::Rule> mParserRules;
     std::unique_ptr<Parser> mParser;
     unsigned int mIgnorePattern;

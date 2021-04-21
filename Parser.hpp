@@ -46,7 +46,7 @@ public:
     };
     const Conflict &conflict() const;
 
-    void parse(Tokenizer &tokenizer) const;
+    void parse(Tokenizer::Stream &stream) const;
 
 private:
     void computeSets(std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals);
@@ -54,7 +54,7 @@ private:
     bool addParseTableEntries(unsigned int rule, const std::set<unsigned int> &symbols, unsigned int rhs);
     bool computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals);
 
-    void parseRule(unsigned int rule, Tokenizer &tokenizer) const;
+    void parseRule(unsigned int rule, Tokenizer::Stream &stream) const;
     
     unsigned int mStartRule;
     const std::vector<Rule> &mRules;

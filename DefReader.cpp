@@ -66,7 +66,7 @@ DefReader::DefReader(const std::string &filename)
         return;
     }
 
-    mIgnorePattern = UINT_MAX;
+    unsigned int ignorePattern = UINT_MAX;
     std::map<std::string, unsigned int> terminalMap;
     std::map<std::string, unsigned int> anonymousTerminalMap;
     std::vector<std::string> terminals;
@@ -74,7 +74,7 @@ DefReader::DefReader(const std::string &filename)
         terminals.push_back(pair.second);
         terminalMap[pair.first] = (unsigned int)(terminals.size() - 1);
         if(pair.first == "IGNORE") {
-            mIgnorePattern = (unsigned int)(terminals.size() - 1);
+            ignorePattern = (unsigned int)(terminals.size() - 1);
         }
     }
 
@@ -147,6 +147,7 @@ DefReader::DefReader(const std::string &filename)
         }
 
         mMatcher = std::make_unique<Regex::Matcher>(terminals);
+        mTokenizer = std::make_unique<Tokenizer>(*mMatcher, ignorePattern);
         mParser = std::make_unique<Parser>(mParserRules, it->second);
     }
 }
@@ -195,17 +196,7 @@ bool DefReader::parseFile(const std::string &filename, std::map<std::string, std
 
 bool DefReader::valid() const
 {
-    return mMatcher && mParser;
-}
-
-const Regex::Matcher &DefReader::matcher() const
-{
-    return *mMatcher;
-}
-
-unsigned int DefReader::ignorePattern() const
-{
-    return mIgnorePattern;
+    return mTokenizer && mParser;
 }
 
 const DefReader::ParseError &DefReader::parseError() const
@@ -213,7 +204,17 @@ const DefReader::ParseError &DefReader::parseError() const
     return mParseError;
 }
 
+const Regex::Matcher &DefReader::matcher() const
+{
+    return *mMatcher;
+}
+
 const Parser &DefReader::parser() const
 {
     return *mParser;
+}
+
+const Tokenizer &DefReader::tokenizer() const
+{
+    return *mTokenizer;
 }
