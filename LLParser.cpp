@@ -1,8 +1,8 @@
-#include "Parser.hpp"
+#include "LLParser.hpp"
 
 #include <algorithm>
 
-Parser::Parser(const std::vector<Rule> &rules, unsigned int startRule)
+LLParser::LLParser(const std::vector<Rule> &rules, unsigned int startRule)
 : mRules(rules)
 {
     std::vector<std::set<unsigned int>> firstSets;
@@ -54,7 +54,7 @@ bool isNullable(const Parser::Symbol &symbol, const std::set<unsigned int> &null
     return false;
 }
 
-void Parser::computeSets(std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals)
+void LLParser::computeSets(std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals)
 {
     firstSets.resize(mRules.size());
     followSets.resize(mRules.size());
@@ -100,7 +100,7 @@ void Parser::computeSets(std::vector<std::set<unsigned int>> &firstSets, std::ve
     }
 }
 
-bool Parser::addParseTableEntry(unsigned int rule, unsigned int symbol, unsigned int rhs)
+bool LLParser::addParseTableEntry(unsigned int rule, unsigned int symbol, unsigned int rhs)
 {
     if(mParseTable[rule*mNumSymbols+symbol] == UINT_MAX) {
         mParseTable[rule*mNumSymbols+symbol] = rhs;
@@ -114,7 +114,7 @@ bool Parser::addParseTableEntry(unsigned int rule, unsigned int symbol, unsigned
     }
 }
 
-bool Parser::addParseTableEntries(unsigned int rule, const std::set<unsigned int> &symbols, unsigned int rhs)
+bool LLParser::addParseTableEntries(unsigned int rule, const std::set<unsigned int> &symbols, unsigned int rhs)
 {
     for(unsigned int s : symbols) {
         if(!addParseTableEntry(rule, s, rhs)) {
@@ -125,7 +125,7 @@ bool Parser::addParseTableEntries(unsigned int rule, const std::set<unsigned int
     return true;
 }
 
-bool Parser::computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals)
+bool LLParser::computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals)
 {
     unsigned int maxSymbol = 0;
     for(const auto &rule : mRules) {
@@ -181,22 +181,22 @@ bool Parser::computeParseTable(const std::vector<std::set<unsigned int>> &firstS
     return true;
 }
 
-bool Parser::valid() const
+bool LLParser::valid() const
 {
     return mValid;
 }
 
-const Parser::Conflict &Parser::conflict() const
+const LLParser::Conflict &LLParser::conflict() const
 {
     return mConflict;
 }
 
-void Parser::parse(Tokenizer::Stream &stream) const
+void LLParser::parse(Tokenizer::Stream &stream) const
 {
     parseRule(mStartRule, stream);
 }
 
-void Parser::parseRule(unsigned int rule, Tokenizer::Stream &stream) const
+void LLParser::parseRule(unsigned int rule, Tokenizer::Stream &stream) const
 {
     unsigned int rhs = mParseTable[rule*mNumSymbols + stream.nextToken().index];
 

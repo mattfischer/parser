@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 
     try {
         reader.parser().parse(stream);
-    } catch (Parser::ParseException e) {
+    } catch (LLParser::ParseException e) {
         std::cout << "Error: Unexpected symbol " << e.symbol << std::endl;
         return 1;
     }

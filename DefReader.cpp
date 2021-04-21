@@ -148,7 +148,7 @@ DefReader::DefReader(const std::string &filename)
 
         mMatcher = std::make_unique<Regex::Matcher>(terminals);
         mTokenizer = std::make_unique<Tokenizer>(*mMatcher, ignorePattern);
-        mParser = std::make_unique<Parser>(mParserRules, it->second);
+        mParser = std::make_unique<LLParser>(mParserRules, it->second);
     }
 }
 
@@ -209,7 +209,7 @@ const Regex::Matcher &DefReader::matcher() const
     return *mMatcher;
 }
 
-const Parser &DefReader::parser() const
+const LLParser &DefReader::parser() const
 {
     return *mParser;
 }

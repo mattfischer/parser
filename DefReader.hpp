@@ -2,7 +2,7 @@
 #define DEFREADER_HPP
 
 #include "Regex/Matcher.hpp"
-#include "Parser.hpp"
+#include "LLParser.hpp"
 #include "Tokenizer.hpp"
 
 #include <string>
@@ -18,7 +18,7 @@ public:
 
     const Regex::Matcher &matcher() const;
     const Tokenizer &tokenizer() const;
-    const Parser &parser() const;
+    const LLParser &parser() const;
 
     struct ParseError {
         unsigned int line;
@@ -33,8 +33,7 @@ private:
     std::unique_ptr<Regex::Matcher> mMatcher;
     std::unique_ptr<Tokenizer> mTokenizer;
     std::vector<Parser::Rule> mParserRules;
-    std::unique_ptr<Parser> mParser;
-    unsigned int mIgnorePattern;
+    std::unique_ptr<LLParser> mParser;
     ParseError mParseError;
 };
 #endif
