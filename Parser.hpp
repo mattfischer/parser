@@ -11,10 +11,12 @@ public:
     struct Symbol {
         enum class Type {
             Terminal,
-            Nonterminal
+            Nonterminal,
+            Epsilon
         };
         Type type;
         unsigned int index;
+        std::string name;
     };
 
     struct RHS {
@@ -47,8 +49,10 @@ public:
     void parse(Tokenizer &tokenizer) const;
 
 private:
-    std::vector<std::set<unsigned int>> computeFirstSets();
-    bool computeParseTable(const std::vector<std::set<unsigned int>> &firstSets);
+    void computeSets(std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals);
+    bool addParseTableEntry(unsigned int rule, unsigned int symbol, unsigned int rhs);
+    bool addParseTableEntries(unsigned int rule, const std::set<unsigned int> &symbols, unsigned int rhs);
+    bool computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals);
 
     void parseRule(unsigned int rule, Tokenizer &tokenizer) const;
     

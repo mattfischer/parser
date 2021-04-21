@@ -98,6 +98,7 @@ DefReader::DefReader(const std::string &filename)
                         return;
                     } else {
                         symbol.index = it->second;
+                        symbol.name = s;
                     }
                 } else if(s[0] == '\'') {
                     std::string text = s.substr(1, s.size() - 2);
@@ -111,6 +112,11 @@ DefReader::DefReader(const std::string &filename)
                     } else {
                         symbol.index = it->second;
                     }
+                    symbol.name = text;
+                } else if(s == "0") {
+                    symbol.type = Parser::Symbol::Type::Epsilon;
+                    symbol.index = 0;
+                    symbol.name = "epsilon";
                 } else {
                     symbol.type = Parser::Symbol::Type::Terminal;
                     auto it = terminalMap.find(s);
@@ -119,6 +125,7 @@ DefReader::DefReader(const std::string &filename)
                         return;
                     } else {
                         symbol.index = it->second;
+                        symbol.name = s;
                     }
                 }
                 rhs.symbols.push_back(symbol);
@@ -132,6 +139,13 @@ DefReader::DefReader(const std::string &filename)
         mParseError.message = "No <root> nonterminal defined";
         return;
     } else {
+        Parser::Symbol endSymbol;
+        endSymbol.type = Parser::Symbol::Type::Terminal;
+        endSymbol.index = (unsigned int)terminals.size();
+        for(auto &rhs: mParserRules[it->second].rhs) {
+            rhs.symbols.push_back(endSymbol);
+        }
+
         mMatcher = std::make_unique<Regex::Matcher>(terminals);
         mParser = std::make_unique<Parser>(mParserRules, it->second);
     }
