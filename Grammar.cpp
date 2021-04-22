@@ -15,6 +15,18 @@ unsigned int Grammar::startRule() const
     return mStartRule;
 }
 
+bool isNullable(const Grammar::Symbol &symbol, const std::set<unsigned int> &nullableNonterminals) {
+    switch(symbol.type) {
+        case Grammar::Symbol::Type::Terminal:
+            return false;
+        case Grammar::Symbol::Type::Epsilon:
+            return true;
+        case Grammar::Symbol::Type::Nonterminal:
+            return nullableNonterminals.count(symbol.index) > 0;
+    }
+    return false;
+}
+
 void addSymbol(std::set<unsigned int> &set, unsigned int symbol, bool &changed)
 {
     if(set.count(symbol) == 0) {
@@ -43,16 +55,23 @@ void addFirstSet(std::set<unsigned int> &set, const Grammar::Symbol &symbol, con
     }
 }
 
-bool isNullable(const Grammar::Symbol &symbol, const std::set<unsigned int> &nullable) {
-    switch(symbol.type) {
-        case Grammar::Symbol::Type::Terminal:
-            return false;
-        case Grammar::Symbol::Type::Epsilon:
-            return true;
-        case Grammar::Symbol::Type::Nonterminal:
-            return nullable.count(symbol.index) > 0;
+void addFirstSet(std::set<unsigned int> &set, 
+                 std::vector<Grammar::Symbol>::const_iterator begin,
+                 std::vector<Grammar::Symbol>::const_iterator end,
+                 const std::vector<std::set<unsigned int>> &firstSets,
+                 const std::set<unsigned int> &nullableNonterminals,
+                 bool &nullable,
+                 bool &changed)
+{
+    nullable = true;
+    for(auto it = begin; it != end; it++) {
+        const Grammar::Symbol &symbol = *it;
+        addFirstSet(set, symbol, firstSets, changed);
+        if(!isNullable(symbol, nullableNonterminals)) {
+            nullable = false;
+            break;
+        }
     }
-    return false;
 }
 
 void Grammar::computeSets(std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals) const
@@ -65,36 +84,21 @@ void Grammar::computeSets(std::vector<std::set<unsigned int>> &firstSets, std::v
         changed = false;
         for(unsigned int i=0; i<mRules.size(); i++) {
             for(const RHS &rhs : mRules[i].rhs) {
-                bool foundNonNullable = false;
-                for(unsigned int j=0; j<rhs.symbols.size(); j++) {
-                    const Symbol &symbol = rhs.symbols[j];
-                    if(!foundNonNullable) {
-                        addFirstSet(firstSets[i], symbol, firstSets, changed);
-                    }
-
-                    if(!isNullable(symbol, nullableNonterminals)) {
-                        foundNonNullable = true;
-                    }
-
-                    if(symbol.type == Symbol::Type::Nonterminal) {
-                        bool foundOtherNonNullable = false;
-                        for(unsigned int k = j+1; k<rhs.symbols.size(); k++) {
-                            const Symbol &otherSymbol = rhs.symbols[k];
-                            addFirstSet(followSets[j], otherSymbol, firstSets, changed);
-                            if(!isNullable(otherSymbol, nullableNonterminals)) {
-                                foundOtherNonNullable = true;
-                                break;
-                            }
-                        }
-
-                        if(!foundOtherNonNullable) {
-                            addSet(followSets[j], followSets[i], changed);
-                        }
-                    }
+                bool nullable;
+                addFirstSet(firstSets[i], rhs.cbegin(), rhs.cend(), firstSets, nullableNonterminals, nullable, changed);
+                if(nullable) {
+                    addSymbol(nullableNonterminals, i, changed);
                 }
 
-                if(!foundNonNullable) {
-                    addSymbol(nullableNonterminals, i, changed);
+                for(unsigned int j=0; j<rhs.size(); j++) {
+                    const Symbol &symbol = rhs[j];
+                    if(symbol.type == Symbol::Type::Nonterminal) {
+                        bool nullable;
+                        addFirstSet(followSets[symbol.index], rhs.cbegin() + j + 1, rhs.cend(), firstSets, nullableNonterminals, nullable, changed);
+                        if(nullable) {
+                            addSet(followSets[symbol.index], followSets[i], changed);
+                        }
+                    }
                 }
             }
         }       

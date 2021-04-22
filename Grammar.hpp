@@ -18,11 +18,10 @@ public:
         std::string name;
     };
 
-    struct RHS {
-        std::vector<Symbol> symbols;
-    };
+    typedef std::vector<Symbol> RHS;
 
     struct Rule {
+        std::string lhs;
         std::vector<RHS> rhs;
     };
 

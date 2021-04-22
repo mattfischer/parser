@@ -87,6 +87,7 @@ DefReader::DefReader(const std::string &filename)
 
     for(const auto &pair: ruleDef) {
         Grammar::Rule &rule = rules[ruleMap[pair.first]];
+        rule.lhs = pair.first;
         for(const auto &r : pair.second) {
             Grammar::RHS rhs;
             for(const auto &s : r) {
@@ -117,7 +118,7 @@ DefReader::DefReader(const std::string &filename)
                 } else if(s == "0") {
                     symbol.type = Grammar::Symbol::Type::Epsilon;
                     symbol.index = 0;
-                    symbol.name = "epsilon";
+                    symbol.name = "0";
                 } else {
                     symbol.type = Grammar::Symbol::Type::Terminal;
                     auto it = terminalMap.find(s);
@@ -129,7 +130,7 @@ DefReader::DefReader(const std::string &filename)
                         symbol.name = s;
                     }
                 }
-                rhs.symbols.push_back(symbol);
+                rhs.push_back(symbol);
             }
             rule.rhs.push_back(rhs);
         }
@@ -143,8 +144,9 @@ DefReader::DefReader(const std::string &filename)
         Grammar::Symbol endSymbol;
         endSymbol.type = Grammar::Symbol::Type::Terminal;
         endSymbol.index = (unsigned int)terminals.size();
+        endSymbol.name = "#";
         for(auto &rhs: rules[it->second].rhs) {
-            rhs.symbols.push_back(endSymbol);
+            rhs.push_back(endSymbol);
         }
 
         mMatcher = std::make_unique<Regex::Matcher>(terminals);

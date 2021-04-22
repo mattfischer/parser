@@ -43,7 +43,7 @@ bool LLParser::computeParseTable(const std::vector<std::set<unsigned int>> &firs
     unsigned int maxSymbol = 0;
     for(const auto &rule : mGrammar.rules()) {
         for(const auto &rhs : rule.rhs) {
-            for(const auto &symbol : rhs.symbols) {
+            for(const auto &symbol : rhs) {
                 if(symbol.type == Grammar::Symbol::Type::Terminal) {
                     maxSymbol = std::max(maxSymbol, symbol.index);
                 }
@@ -62,7 +62,7 @@ bool LLParser::computeParseTable(const std::vector<std::set<unsigned int>> &firs
         }
 
         for(unsigned int j=0; j<rule.rhs.size(); j++) {
-            const Grammar::Symbol &symbol = rule.rhs[j].symbols[0];
+            const Grammar::Symbol &symbol = rule.rhs[j][0];
             switch(symbol.type) {
                 case Grammar::Symbol::Type::Terminal:
                     if(!addParseTableEntry(i, symbol.index, j)) {
@@ -117,7 +117,7 @@ void LLParser::parseRule(unsigned int rule, Tokenizer::Stream &stream) const
         throw ParseException(stream.nextToken().index);
     }   
 
-    const std::vector<Grammar::Symbol> &symbols = mGrammar.rules()[rule].rhs[rhs].symbols;
+    const std::vector<Grammar::Symbol> &symbols = mGrammar.rules()[rule].rhs[rhs];
     for(unsigned int i=0; i<symbols.size(); i++) {
         const Grammar::Symbol &symbol = symbols[i];
         switch(symbol.type) {
