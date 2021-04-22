@@ -78,20 +78,21 @@ DefReader::DefReader(const std::string &filename)
         }
     }
 
+    std::vector<Grammar::Rule> rules;
     std::map<std::string, unsigned int> ruleMap;
     for(const auto &pair: ruleDef) {
-        mParserRules.push_back(Parser::Rule());
-        ruleMap[pair.first] = (unsigned int)(mParserRules.size() - 1);
+        rules.push_back(Grammar::Rule());
+        ruleMap[pair.first] = (unsigned int)(rules.size() - 1);
     }
 
     for(const auto &pair: ruleDef) {
-        Parser::Rule &rule = mParserRules[ruleMap[pair.first]];
+        Grammar::Rule &rule = rules[ruleMap[pair.first]];
         for(const auto &r : pair.second) {
-            Parser::RHS rhs;
+            Grammar::RHS rhs;
             for(const auto &s : r) {
-                Parser::Symbol symbol;
+                Grammar::Symbol symbol;
                 if(s[0] == '<') {
-                    symbol.type = Parser::Symbol::Type::Nonterminal;
+                    symbol.type = Grammar::Symbol::Type::Nonterminal;
                     auto it = ruleMap.find(s);
                     if(it == ruleMap.end()) {
                         mParseError.message = "Unknown nonterminal " + s;
@@ -103,7 +104,7 @@ DefReader::DefReader(const std::string &filename)
                 } else if(s[0] == '\'') {
                     std::string text = s.substr(1, s.size() - 2);
                     text = escape(text);
-                    symbol.type = Parser::Symbol::Type::Terminal;
+                    symbol.type = Grammar::Symbol::Type::Terminal;
 
                     auto it = anonymousTerminalMap.find(text);
                     if(it == anonymousTerminalMap.end()) {
@@ -114,11 +115,11 @@ DefReader::DefReader(const std::string &filename)
                     }
                     symbol.name = text;
                 } else if(s == "0") {
-                    symbol.type = Parser::Symbol::Type::Epsilon;
+                    symbol.type = Grammar::Symbol::Type::Epsilon;
                     symbol.index = 0;
                     symbol.name = "epsilon";
                 } else {
-                    symbol.type = Parser::Symbol::Type::Terminal;
+                    symbol.type = Grammar::Symbol::Type::Terminal;
                     auto it = terminalMap.find(s);
                     if(it == terminalMap.end()) {
                         mParseError.message = "Unknown terminal " + s;
@@ -139,16 +140,16 @@ DefReader::DefReader(const std::string &filename)
         mParseError.message = "No <root> nonterminal defined";
         return;
     } else {
-        Parser::Symbol endSymbol;
-        endSymbol.type = Parser::Symbol::Type::Terminal;
+        Grammar::Symbol endSymbol;
+        endSymbol.type = Grammar::Symbol::Type::Terminal;
         endSymbol.index = (unsigned int)terminals.size();
-        for(auto &rhs: mParserRules[it->second].rhs) {
+        for(auto &rhs: rules[it->second].rhs) {
             rhs.symbols.push_back(endSymbol);
         }
 
         mMatcher = std::make_unique<Regex::Matcher>(terminals);
         mTokenizer = std::make_unique<Tokenizer>(*mMatcher, ignorePattern);
-        mParser = std::make_unique<LLParser>(mParserRules, it->second);
+        mGrammar = std::make_unique<Grammar>(std::move(rules), it->second);
     }
 }
 
@@ -196,7 +197,7 @@ bool DefReader::parseFile(const std::string &filename, std::map<std::string, std
 
 bool DefReader::valid() const
 {
-    return mTokenizer && mParser;
+    return mTokenizer && mGrammar;
 }
 
 const DefReader::ParseError &DefReader::parseError() const
@@ -209,12 +210,12 @@ const Regex::Matcher &DefReader::matcher() const
     return *mMatcher;
 }
 
-const LLParser &DefReader::parser() const
-{
-    return *mParser;
-}
-
 const Tokenizer &DefReader::tokenizer() const
 {
     return *mTokenizer;
+}
+
+const Grammar &DefReader::grammar() const
+{
+    return *mGrammar;
 }

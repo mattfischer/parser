@@ -7,6 +7,7 @@ set(SOURCES
     Regex/NFA.cpp
     Regex/Parser.cpp
     DefReader.cpp
+    Grammar.cpp
     LLParser.cpp
     Tokenizer.cpp
     Main.cpp

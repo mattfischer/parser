@@ -2,102 +2,15 @@
 
 #include <algorithm>
 
-LLParser::LLParser(const std::vector<Rule> &rules, unsigned int startRule)
-: mRules(rules)
+LLParser::LLParser(const Grammar &grammar)
+: mGrammar(grammar)
 {
     std::vector<std::set<unsigned int>> firstSets;
     std::vector<std::set<unsigned int>> followSets;
     std::set<unsigned int> nullableNonterminals;
-    computeSets(firstSets, followSets, nullableNonterminals);
+    mGrammar.computeSets(firstSets, followSets, nullableNonterminals);
 
     mValid = computeParseTable(firstSets, followSets, nullableNonterminals);
-    mStartRule = startRule;
-}
-
-void addSymbol(std::set<unsigned int> &set, unsigned int symbol, bool &changed)
-{
-    if(set.count(symbol) == 0) {
-        set.insert(symbol);
-        changed = true;
-    }
-}
-
-void addSet(std::set<unsigned int> &set, const std::set<unsigned int> &source, bool &changed)
-{
-    for(unsigned int s : source) {
-        addSymbol(set, s, changed);
-    }
-}
-
-void addFirstSet(std::set<unsigned int> &set, const Parser::Symbol &symbol, const std::vector<std::set<unsigned int>> &firstSets, bool &changed)
-{
-    switch(symbol.type) {
-        case Parser::Symbol::Type::Terminal:
-            addSymbol(set, symbol.index, changed);
-            break;
-        
-        case Parser::Symbol::Type::Nonterminal:
-            addSet(set, firstSets[symbol.index], changed);
-            break;
-    }
-}
-
-bool isNullable(const Parser::Symbol &symbol, const std::set<unsigned int> &nullable) {
-    switch(symbol.type) {
-        case Parser::Symbol::Type::Terminal:
-            return false;
-        case Parser::Symbol::Type::Epsilon:
-            return true;
-        case Parser::Symbol::Type::Nonterminal:
-            return nullable.count(symbol.index) > 0;
-    }
-    return false;
-}
-
-void LLParser::computeSets(std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals)
-{
-    firstSets.resize(mRules.size());
-    followSets.resize(mRules.size());
-
-    bool changed = true;
-    while(changed) {
-        changed = false;
-        for(unsigned int i=0; i<mRules.size(); i++) {
-            for(const RHS &rhs : mRules[i].rhs) {
-                bool foundNonNullable = false;
-                for(unsigned int j=0; j<rhs.symbols.size(); j++) {
-                    const Symbol &symbol = rhs.symbols[j];
-                    if(!foundNonNullable) {
-                        addFirstSet(firstSets[i], symbol, firstSets, changed);
-                    }
-
-                    if(!isNullable(symbol, nullableNonterminals)) {
-                        foundNonNullable = true;
-                    }
-
-                    if(symbol.type == Symbol::Type::Nonterminal) {
-                        bool foundOtherNonNullable = false;
-                        for(unsigned int k = j+1; k<rhs.symbols.size(); k++) {
-                            const Symbol &otherSymbol = rhs.symbols[k];
-                            addFirstSet(followSets[j], otherSymbol, firstSets, changed);
-                            if(!isNullable(otherSymbol, nullableNonterminals)) {
-                                foundOtherNonNullable = true;
-                                break;
-                            }
-                        }
-
-                        if(!foundOtherNonNullable) {
-                            addSet(followSets[j], followSets[i], changed);
-                        }
-                    }
-                }
-
-                if(!foundNonNullable) {
-                    addSymbol(nullableNonterminals, i, changed);
-                }
-            }
-        }       
-    }
 }
 
 bool LLParser::addParseTableEntry(unsigned int rule, unsigned int symbol, unsigned int rhs)
@@ -128,10 +41,10 @@ bool LLParser::addParseTableEntries(unsigned int rule, const std::set<unsigned i
 bool LLParser::computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals)
 {
     unsigned int maxSymbol = 0;
-    for(const auto &rule : mRules) {
+    for(const auto &rule : mGrammar.rules()) {
         for(const auto &rhs : rule.rhs) {
             for(const auto &symbol : rhs.symbols) {
-                if(symbol.type == Symbol::Type::Terminal) {
+                if(symbol.type == Grammar::Symbol::Type::Terminal) {
                     maxSymbol = std::max(maxSymbol, symbol.index);
                 }
             }
@@ -139,25 +52,25 @@ bool LLParser::computeParseTable(const std::vector<std::set<unsigned int>> &firs
     }
 
     mNumSymbols = maxSymbol + 1;
-    mParseTable.resize(mRules.size() * mNumSymbols);
+    mParseTable.resize(mGrammar.rules().size() * mNumSymbols);
 
-    for(unsigned int i=0; i<mRules.size(); i++) {
-        const Rule &rule = mRules[i];
+    for(unsigned int i=0; i<mGrammar.rules().size(); i++) {
+        const Grammar::Rule &rule = mGrammar.rules()[i];
 
         for(unsigned int j=0; j<mNumSymbols; j++) {
             mParseTable[i*mNumSymbols+j] = UINT_MAX;
         }
 
         for(unsigned int j=0; j<rule.rhs.size(); j++) {
-            const Symbol &symbol = rule.rhs[j].symbols[0];
+            const Grammar::Symbol &symbol = rule.rhs[j].symbols[0];
             switch(symbol.type) {
-                case Symbol::Type::Terminal:
+                case Grammar::Symbol::Type::Terminal:
                     if(!addParseTableEntry(i, symbol.index, j)) {
                         return false;
                     }
                     break;
                 
-                case Symbol::Type::Nonterminal:
+                case Grammar::Symbol::Type::Nonterminal:
                     if(!addParseTableEntries(i, firstSets[symbol.index], j)) {
                         return false;
                     }
@@ -169,7 +82,7 @@ bool LLParser::computeParseTable(const std::vector<std::set<unsigned int>> &firs
                     }
                     break;
                 
-                case Symbol::Type::Epsilon:
+                case Grammar::Symbol::Type::Epsilon:
                     if(!addParseTableEntries(i, followSets[i], j)) {
                         return false;
                     }
@@ -193,7 +106,7 @@ const LLParser::Conflict &LLParser::conflict() const
 
 void LLParser::parse(Tokenizer::Stream &stream) const
 {
-    parseRule(mStartRule, stream);
+    parseRule(mGrammar.startRule(), stream);
 }
 
 void LLParser::parseRule(unsigned int rule, Tokenizer::Stream &stream) const
@@ -204,11 +117,11 @@ void LLParser::parseRule(unsigned int rule, Tokenizer::Stream &stream) const
         throw ParseException(stream.nextToken().index);
     }   
 
-    const std::vector<Symbol> &symbols = mRules[rule].rhs[rhs].symbols;
+    const std::vector<Grammar::Symbol> &symbols = mGrammar.rules()[rule].rhs[rhs].symbols;
     for(unsigned int i=0; i<symbols.size(); i++) {
-        const Symbol &symbol = symbols[i];
+        const Grammar::Symbol &symbol = symbols[i];
         switch(symbol.type) {
-            case Symbol::Type::Terminal:
+            case Grammar::Symbol::Type::Terminal:
                 if(stream.nextToken().index == symbol.index) {
                     stream.consumeToken();
                 } else {
@@ -216,7 +129,7 @@ void LLParser::parseRule(unsigned int rule, Tokenizer::Stream &stream) const
                 }
                 break;
 
-            case Symbol::Type::Nonterminal:
+            case Grammar::Symbol::Type::Nonterminal:
                 parseRule(symbol.index, stream);
                 break;
         }

@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "DefReader.hpp"
+#include "LLParser.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -16,8 +17,9 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if(!reader.parser().valid()) {
-        std::cout << "Conflict on rule " << reader.parser().conflict().rule << ": " << reader.parser().conflict().rhs1 << " vs " << reader.parser().conflict().rhs2 << std::endl;
+    LLParser parser(reader.grammar());
+    if(!parser.valid()) {
+        std::cout << "Conflict on rule " << parser.conflict().rule << ": " << parser.conflict().rhs1 << " vs " << parser.conflict().rhs2 << std::endl;
         return 1; 
     }
 
@@ -25,7 +27,7 @@ int main(int argc, char *argv[])
     Tokenizer::Stream stream(reader.tokenizer(), input);
 
     try {
-        reader.parser().parse(stream);
+        parser.parse(stream);
     } catch (LLParser::ParseException e) {
         std::cout << "Error: Unexpected symbol " << e.symbol << std::endl;
         return 1;

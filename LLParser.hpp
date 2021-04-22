@@ -1,13 +1,13 @@
 #ifndef LLPARSER_HPP
 #define LLPARSER_HPP
 
-#include "Parser.hpp"
+#include "Grammar.hpp"
 #include "Tokenizer.hpp"
 
 #include <vector>
 #include <set>
 
-class LLParser : public Parser {
+class LLParser {
 public:
     class ParseException : public std::exception {
     public:
@@ -16,7 +16,7 @@ public:
         unsigned int symbol;
     };
 
-    LLParser(const std::vector<Rule> &rules, unsigned int startRule);
+    LLParser(const Grammar &grammar);
 
     bool valid() const;
 
@@ -31,15 +31,13 @@ public:
     void parse(Tokenizer::Stream &stream) const;
 
 private:
-    void computeSets(std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals);
     bool addParseTableEntry(unsigned int rule, unsigned int symbol, unsigned int rhs);
     bool addParseTableEntries(unsigned int rule, const std::set<unsigned int> &symbols, unsigned int rhs);
     bool computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals);
 
     void parseRule(unsigned int rule, Tokenizer::Stream &stream) const;
     
-    unsigned int mStartRule;
-    const std::vector<Rule> &mRules;
+    const Grammar &mGrammar;
     std::vector<unsigned int> mParseTable;  
     unsigned int mNumSymbols;
     bool mValid;
