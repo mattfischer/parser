@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <string>
+#include <istream>
 
 class Tokenizer
 {
@@ -14,7 +15,8 @@ public:
     struct Token {
         unsigned int index;
         unsigned int start;
-        unsigned int length;
+        unsigned int line;
+        std::string text;
     };
 
     unsigned int endToken() const;
@@ -23,16 +25,18 @@ public:
     class Stream
     {
     public:
-        Stream(const Tokenizer &tokenizer, const std::string &input);
+        Stream(const Tokenizer &tokenizer, std::istream &input);
 
         const Token &nextToken() const;
         void consumeToken();
 
     private:
         const Tokenizer &mTokenizer;
-        const std::string &mInput;
+        std::istream &mInput;
+        std::string mCurrentLine;
         unsigned int mConsumed;
         Token mNextToken;
+        unsigned int mLine;
     };
 
 private:

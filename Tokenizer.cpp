@@ -18,11 +18,12 @@ unsigned int Tokenizer::errorToken() const
     return mErrorToken;
 }
 
-Tokenizer::Stream::Stream(const Tokenizer &tokenizer, const std::string &input)
+Tokenizer::Stream::Stream(const Tokenizer &tokenizer, std::istream &input)
 : mTokenizer(tokenizer), mInput(input)
 {
     mConsumed = 0;
-    
+    mLine = 0;
+
     consumeToken();
 }
 
@@ -33,37 +34,45 @@ const Tokenizer::Token &Tokenizer::Stream::nextToken() const
 
 void Tokenizer::Stream::consumeToken()
 {
-    if(mNextToken.index == mTokenizer.mErrorToken) {
-        return;
-    }
-
-    if(mConsumed == mInput.size()) {
-        mNextToken.index = mTokenizer.mEndToken;
-        mNextToken.start = mConsumed;
-        mNextToken.length = 0;
+    if(mNextToken.index == mTokenizer.mErrorToken || mNextToken.index == mTokenizer.mEndToken) {
         return;
     }
 
     bool repeat = true;
     while(repeat) {
+        while(mConsumed >= mCurrentLine.size()) {
+            if(mInput.eof() || mInput.fail()) {
+                mNextToken.index = mTokenizer.mEndToken;
+                mNextToken.start = mConsumed;
+                mNextToken.line = mLine;
+                mNextToken.text = "#";
+                return;
+            }
+
+            std::getline(mInput, mCurrentLine);
+            mConsumed = 0;
+            mLine++;
+        }
+
         unsigned int pattern;
-        unsigned int matched = mTokenizer.mMatcher.match(mInput, mConsumed, pattern);
+        unsigned int matched = mTokenizer.mMatcher.match(mCurrentLine, mConsumed, pattern);
         if(matched == 0) {
             mNextToken.index = mTokenizer.mErrorToken;
             mNextToken.start = mConsumed;
-            mNextToken.length = 0;
+            mNextToken.line = mLine;
 
             repeat = false;
         } else {
-            mConsumed += matched;
-
             if(pattern != mTokenizer.mIgnorePattern) {
                 mNextToken.index = pattern;
                 mNextToken.start = mConsumed;
-                mNextToken.length = matched;
+                mNextToken.line = mLine;
+                mNextToken.text = mCurrentLine.substr(mConsumed, matched);
 
                 repeat = false;
             }
+
+            mConsumed += matched;
         }
     }
 }

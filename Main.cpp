@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 
 #include "DefReader.hpp"
 #include "LLParser.hpp"
@@ -23,8 +24,8 @@ int main(int argc, char *argv[])
         return 1; 
     }
 
-    std::string input = "2345 + 2 + 5";
-    Tokenizer::Stream stream(reader.tokenizer(), input);
+    std::stringstream ss("2345 + 2 + 5");
+    Tokenizer::Stream stream(reader.tokenizer(), ss);
 
     try {
         parser.parse(stream);

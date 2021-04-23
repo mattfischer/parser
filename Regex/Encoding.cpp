@@ -42,7 +42,7 @@ namespace Regex {
                     ranges = invertRanges(ranges);
                 }
 
-                inputSymbolRanges.insert(ranges.begin(), ranges.end(), inputSymbolRanges.end());
+                inputSymbolRanges.insert(inputSymbolRanges.end(), ranges.begin(), ranges.end());
                 break;
             }
 
