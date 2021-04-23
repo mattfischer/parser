@@ -85,6 +85,7 @@ namespace Regex {
     private:
         static std::unique_ptr<Node> parseSymbol(const std::string &regex, int &pos);
         static std::unique_ptr<Node> parseCharacterClass(const std::string &regex, int &pos);
+        static std::unique_ptr<Node> parseEscape(const std::string &regex, int &pos);
         static std::unique_ptr<Node> parseSequence(const std::string &regex, int &pos);
         static std::unique_ptr<Node> parseOneOf(const std::string &regex, int &pos);
         static std::unique_ptr<Node> parseSuffix(const std::string &regex, int &pos);

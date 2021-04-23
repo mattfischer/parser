@@ -19,22 +19,10 @@ namespace Regex {
 
         if(regex[pos] == '[') {
             return parseCharacterClass(regex, pos);
+        } else if(regex[pos] == '\\') {
+            return parseEscape(regex, pos);
         } else {
             Symbol symbol = regex[pos];
-            if(symbol == '\\') {
-                pos++;
-                if(pos >= regex.size()) {
-                    throw ParseException("Incomplete escape", pos);
-                }
-
-                switch(regex[pos]) {
-                    case 's': symbol = ' '; break;
-                    case 't': symbol = '\t'; break;
-                    case 'n': symbol = '\n'; break;
-                    case 'r': symbol = '\r'; break;
-                    default: symbol = regex[pos]; break;
-                }
-            }
             pos++;
 
             return std::make_unique<SymbolNode>(symbol);
@@ -76,6 +64,31 @@ namespace Regex {
         }
 
         return std::make_unique<CharacterClassNode>(std::move(ranges));
+    }
+
+    std::unique_ptr<Parser::Node> Parser::parseEscape(const std::string &regex, int &pos)
+    {
+        if(regex[pos] != '\\') {
+            throw ParseException("Expected \\", pos);
+        }
+
+        pos++;
+
+        if(pos >= regex.size()) {
+            throw ParseException("Incomplete escape", pos);
+        }
+
+        Symbol symbol;
+        switch(regex[pos]) {
+            case 's': symbol = ' '; break;
+            case 't': symbol = '\t'; break;
+            case 'n': symbol = '\n'; break;
+            case 'r': symbol = '\r'; break;
+            default: symbol = regex[pos]; break;
+        }
+        pos++;
+
+        return std::make_unique<SymbolNode>(symbol);        
     }
 
     std::unique_ptr<Parser::Node> Parser::parseOneOf(const std::string &regex, int &pos)
