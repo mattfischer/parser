@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     }
 
     std::stringstream ss("2345 + 2 + 5");
-    Tokenizer::Stream stream(reader.tokenizer(), ss);
+    Tokenizer::Stream stream(reader.tokenizer(), ss, Tokenizer::Stream::Decorator());
 
     try {
         parser.parse(stream);

@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <istream>
+#include <functional>
 
 class Tokenizer
 {
@@ -18,10 +19,12 @@ public:
     Tokenizer(Regex::Matcher &&matcher, unsigned int ignorePattern);
 
     struct Token {
+        struct Data {};
+
         unsigned int index;
         unsigned int start;
         unsigned int line;
-        std::string text;
+        std::unique_ptr<Data> data;
     };
 
     unsigned int endToken() const;
@@ -30,7 +33,8 @@ public:
     class Stream
     {
     public:
-        Stream(const Tokenizer &tokenizer, std::istream &input);
+        typedef std::function<void(Token&, const std::string&)> Decorator;
+        Stream(const Tokenizer &tokenizer, std::istream &input, Decorator decorator);
 
         const Token &nextToken() const;
         void consumeToken();
@@ -46,6 +50,7 @@ public:
         Token mNextToken;
         unsigned int mLine;
         unsigned int mConfiguration;
+        Decorator mDecorator;
     };
 
 private:

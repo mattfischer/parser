@@ -33,8 +33,8 @@ unsigned int Tokenizer::errorToken() const
     return mErrorToken;
 }
 
-Tokenizer::Stream::Stream(const Tokenizer &tokenizer, std::istream &input)
-: mTokenizer(tokenizer), mInput(input)
+Tokenizer::Stream::Stream(const Tokenizer &tokenizer, std::istream &input, Decorator decorator)
+: mTokenizer(tokenizer), mInput(input), mDecorator(decorator)
 {
     mConsumed = 0;
     mLine = 0;
@@ -71,7 +71,6 @@ void Tokenizer::Stream::consumeToken()
                 mNextToken.index = mTokenizer.mEndToken;
                 mNextToken.start = mConsumed;
                 mNextToken.line = mLine;
-                mNextToken.text = "#";
                 return;
             }
 
@@ -93,8 +92,10 @@ void Tokenizer::Stream::consumeToken()
                 mNextToken.index = pattern;
                 mNextToken.start = mConsumed;
                 mNextToken.line = mLine;
-                mNextToken.text = mCurrentLine.substr(mConsumed, matched);
-
+                if(mDecorator) {
+                    std::string text = mCurrentLine.substr(mConsumed, matched);
+                    mDecorator(mNextToken, text);
+                }
                 repeat = false;
             }
 
