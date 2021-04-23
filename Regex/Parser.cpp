@@ -37,6 +37,16 @@ namespace Regex {
 
         pos++;
 
+        if(pos >= regex.size()) {
+            throw ParseException("Expected ]", pos);
+        }
+
+        bool invert = false;
+        if(regex[pos] == '^') {
+            invert = true;
+            pos++;
+        }
+
         std::vector<CharacterClassNode::Range> ranges;
         while(true) {
             if(pos >= regex.size()) {
@@ -63,7 +73,7 @@ namespace Regex {
             ranges.push_back(CharacterClassNode::Range(start, end));
         }
 
-        return std::make_unique<CharacterClassNode>(std::move(ranges));
+        return std::make_unique<CharacterClassNode>(std::move(ranges), invert);
     }
 
     std::unique_ptr<Parser::Node> Parser::parseEscape(const std::string &regex, int &pos)
