@@ -35,7 +35,16 @@ private:
     bool addParseTableEntries(unsigned int rule, const std::set<unsigned int> &symbols, unsigned int rhs);
     bool computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals);
 
-    void parseRule(unsigned int rule, Tokenizer::Stream &stream) const;
+    struct ParseItem {
+        enum class Type {
+            Terminal,
+            Nonterminal
+        };
+        Type type;
+        unsigned int index;
+    };
+
+    void parseRule(unsigned int rule, Tokenizer::Stream &stream, std::vector<ParseItem> &parseStack) const;
     
     const Grammar &mGrammar;
     std::vector<unsigned int> mParseTable;  
