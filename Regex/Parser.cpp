@@ -88,9 +88,30 @@ namespace Regex {
             throw ParseException("Incomplete escape", pos);
         }
 
+        std::vector<CharacterClassNode::Range> ranges;
+        bool invert = false;
+        switch(regex[pos]) {
+            case 'S': invert = true;
+            case 's':
+                ranges.push_back(CharacterClassNode::Range(' ', ' '));
+                ranges.push_back(CharacterClassNode::Range('\t', '\t'));
+                break;
+
+            case 'W': invert = true;
+            case 'w':
+                ranges.push_back(CharacterClassNode::Range('a', 'z'));
+                ranges.push_back(CharacterClassNode::Range('A', 'Z'));
+                ranges.push_back(CharacterClassNode::Range('0', '9'));
+                ranges.push_back(CharacterClassNode::Range('_', '_'));
+                break;
+        }
+        if(ranges.size() > 0) {
+            pos++;
+            return std::make_unique<CharacterClassNode>(std::move(ranges), invert);
+        }
+
         Symbol symbol;
         switch(regex[pos]) {
-            case 's': symbol = ' '; break;
             case 't': symbol = '\t'; break;
             case 'n': symbol = '\n'; break;
             case 'r': symbol = '\r'; break;
