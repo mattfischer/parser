@@ -28,23 +28,26 @@ public:
     };
     const Conflict &conflict() const;
 
-    void parse(Tokenizer::Stream &stream) const;
-
-private:
-    bool addParseTableEntry(unsigned int rule, unsigned int symbol, unsigned int rhs);
-    bool addParseTableEntries(unsigned int rule, const std::set<unsigned int> &symbols, unsigned int rhs);
-    bool computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals);
-
     struct ParseItem {
+        struct Data {};
         enum class Type {
             Terminal,
             Nonterminal
         };
         Type type;
         unsigned int index;
+        std::unique_ptr<Data> data;
     };
 
-    void parseRule(unsigned int rule, Tokenizer::Stream &stream, std::vector<ParseItem> &parseStack) const;
+    typedef std::function<void(ParseItem&, const Tokenizer::Token&)> TerminalDecorator;
+    void parse(Tokenizer::Stream &stream, TerminalDecorator terminalDecorator) const;
+
+private:
+    bool addParseTableEntry(unsigned int rule, unsigned int symbol, unsigned int rhs);
+    bool addParseTableEntries(unsigned int rule, const std::set<unsigned int> &symbols, unsigned int rhs);
+    bool computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals);
+
+    void parseRule(unsigned int rule, Tokenizer::Stream &stream, std::vector<ParseItem> &parseStack, TerminalDecorator terminalDecorator) const;
     
     const Grammar &mGrammar;
     std::vector<unsigned int> mParseTable;  

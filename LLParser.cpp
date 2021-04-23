@@ -104,13 +104,13 @@ const LLParser::Conflict &LLParser::conflict() const
     return mConflict;
 }
 
-void LLParser::parse(Tokenizer::Stream &stream) const
+void LLParser::parse(Tokenizer::Stream &stream, TerminalDecorator terminalDecorator) const
 {
     std::vector<ParseItem> parseStack;
-    parseRule(mGrammar.startRule(), stream, parseStack);
+    parseRule(mGrammar.startRule(), stream, parseStack, terminalDecorator);
 }
 
-void LLParser::parseRule(unsigned int rule, Tokenizer::Stream &stream, std::vector<ParseItem> &parseStack) const
+void LLParser::parseRule(unsigned int rule, Tokenizer::Stream &stream, std::vector<ParseItem> &parseStack, TerminalDecorator terminalDecorator) const
 {
     unsigned int rhs = mParseTable[rule*mNumSymbols + stream.nextToken().index];
 
@@ -127,7 +127,8 @@ void LLParser::parseRule(unsigned int rule, Tokenizer::Stream &stream, std::vect
                     ParseItem parseItem;
                     parseItem.type = ParseItem::Type::Terminal;
                     parseItem.index = symbol.index;
-                    parseStack.push_back(parseItem);
+                    terminalDecorator(parseItem, stream.nextToken());
+                    parseStack.push_back(std::move(parseItem));
                     stream.consumeToken();
                 } else {
                     throw ParseException(stream.nextToken().index);
@@ -135,7 +136,7 @@ void LLParser::parseRule(unsigned int rule, Tokenizer::Stream &stream, std::vect
                 break;
 
             case Grammar::Symbol::Type::Nonterminal:
-                parseRule(symbol.index, stream, parseStack);
+                parseRule(symbol.index, stream, parseStack, terminalDecorator);
                 break;
         }
     }
@@ -149,5 +150,5 @@ void LLParser::parseRule(unsigned int rule, Tokenizer::Stream &stream, std::vect
     ParseItem parseItem;
     parseItem.type = ParseItem::Type::Nonterminal;
     parseItem.index = rule;
-    parseStack.push_back(parseItem);
+    parseStack.push_back(std::move(parseItem));
 }
