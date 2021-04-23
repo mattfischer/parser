@@ -10,7 +10,12 @@
 class Tokenizer
 {
 public:
-    Tokenizer(const Regex::Matcher &matcher, unsigned int ignorePattern);
+    struct Configuration {
+        Regex::Matcher matcher;
+        unsigned int ignorePattern;
+    };
+    Tokenizer(std::vector<Configuration> &&configurations);
+    Tokenizer(Regex::Matcher &&matcher, unsigned int ignorePattern);
 
     struct Token {
         unsigned int index;
@@ -30,6 +35,9 @@ public:
         const Token &nextToken() const;
         void consumeToken();
 
+        void setConfiguration(unsigned int configuration);
+        unsigned int configuration() const;
+
     private:
         const Tokenizer &mTokenizer;
         std::istream &mInput;
@@ -37,10 +45,13 @@ public:
         unsigned int mConsumed;
         Token mNextToken;
         unsigned int mLine;
+        unsigned int mConfiguration;
     };
 
 private:
-    const Regex::Matcher &mMatcher;
+    void initialize();
+
+    std::vector<Configuration> mConfigurations;
 
     unsigned int mEndToken;
     unsigned int mErrorToken;

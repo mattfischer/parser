@@ -4,38 +4,6 @@
 #include <vector>
 #include <iostream>
 
-std::string trim(const std::string &input)
-{
-    size_t start = input.find_first_not_of(" ");
-    if(start == std::string::npos) {
-        return "";
-    }
-    size_t end = input.find_last_not_of(" ");
-    return input.substr(start, end-start+1);
-}
-
-std::vector<std::string> split(const std::string &input, char c)
-{
-    std::vector<std::string> results;
-
-    size_t start = 0;
-    while(start < input.size()) {
-        size_t end = input.find(c, start);
-        if(end == std::string::npos) {
-            end = input.size();
-        }
-
-        std::string substr = input.substr(start, end-start);
-        if(substr.size() > 0) {
-            results.push_back(substr);
-        }
-
-        start = end + 1;
-    }
-
-    return results;
-}
-
 std::string escape(const std::string &input)
 {
     std::string result;
@@ -149,49 +117,88 @@ DefReader::DefReader(const std::string &filename)
             rhs.push_back(endSymbol);
         }
 
-        mMatcher = std::make_unique<Regex::Matcher>(terminals);
-        mTokenizer = std::make_unique<Tokenizer>(*mMatcher, ignorePattern);
+        Regex::Matcher matcher(terminals);
+        mTokenizer = std::make_unique<Tokenizer>(std::move(matcher), ignorePattern);
         mGrammar = std::make_unique<Grammar>(std::move(rules), it->second);
+    }
+}
+
+void DefReader::expectToken(Tokenizer::Stream &stream, unsigned int token, const std::string &text)
+{
+    if(stream.nextToken().index == token) {
+        stream.consumeToken();
+    } else {
+        mParseError.line = stream.nextToken().line;
+        mParseError.message = "Expected " + text + " , found " + stream.nextToken().text;
+        throw std::exception();
     }
 }
 
 bool DefReader::parseFile(const std::string &filename, std::map<std::string, std::string> &terminals, std::map<std::string, Rule> &rules)
 {
+    std::vector<Tokenizer::Configuration> configurations;
+    
+    enum PrimaryToken {
+        Terminal,
+        Nonterminal,
+        Colon,
+        Pipe,
+        Literal,
+        Whitespace
+    };
+    std::vector<std::string> primaryPatterns{"\\w+", "<\\w+>", ":", "\\|", "'[^']+'", "\\s" };
+    configurations.push_back(Tokenizer::Configuration{primaryPatterns, Whitespace});
+
+    enum RegexToken {
+        Regex,
+        RegexWhitespace
+    };
+    std::vector<std::string> regexPatterns{"\\S+", "\\s"};
+    configurations.push_back(Tokenizer::Configuration{regexPatterns, RegexWhitespace});
+
+    Tokenizer tokenizer(std::move(configurations));
+
     std::ifstream file(filename);
-    unsigned int lineNumber = 0;
+    Tokenizer::Stream stream(tokenizer, file);
 
-    while(!file.fail() && !file.eof()) {
-        lineNumber++;
-        std::string line;
-        std::getline(file, line);
-        line = trim(line);
-        if(line.size() == 0) {
-            continue;
-        }
+    try {
+        while(stream.nextToken().index != tokenizer.endToken()) {
+            if(stream.nextToken().index == Terminal) {
+                std::string name = stream.nextToken().text;
+                stream.consumeToken();
 
-        size_t pos = line.find(':');
-        if(pos == std::string::npos) {
-            mParseError.line = lineNumber;
-            mParseError.message = "Invalid line";
-            return false;
-        }    
+                stream.setConfiguration(1);
+                expectToken(stream, Colon, ":");
 
-        std::string left = trim(line.substr(0, pos));
-        std::string right = trim(line.substr(pos+1));
-        if(left[0] == '<') {
-            if(left[left.size()-1] != '>') {
-                mParseError.line = lineNumber;
-                mParseError.message = "Invalid symbol name " + left;
+                std::string pattern = stream.nextToken().text;
+                stream.setConfiguration(0);
+                stream.consumeToken();
+                terminals[name] = pattern;
+            } else if(stream.nextToken().index == Nonterminal) {
+                std::string name = stream.nextToken().text;
+                stream.consumeToken();
+
+                expectToken(stream, Colon, ":");
+                unsigned int line = stream.nextToken().line;
+                std::vector<std::string> symbols;
+                while(stream.nextToken().line == line) {
+                    if(stream.nextToken().index == PrimaryToken::Pipe) {
+                        rules[name].push_back(symbols);
+                        symbols.clear();
+                    } else {
+                        symbols.push_back(stream.nextToken().text);
+                    }
+                    stream.consumeToken();
+                }
+                rules[name].push_back(symbols);
+            } else {
+                mParseError.line = stream.nextToken().line;
+                mParseError.message = "Unexpected token " + stream.nextToken().text;
                 return false;
             }
-            std::vector<std::string> rhs = split(right, '|');
-            for(const std::string &r : rhs) {
-                std::vector<std::string> symbols = split(r, ' ');
-                rules[left].push_back(symbols);
-            }
-        } else {
-            terminals[left] = right;
         }
+    } catch(std::exception e) {
+        return false;
     }
 
     return true;
@@ -205,11 +212,6 @@ bool DefReader::valid() const
 const DefReader::ParseError &DefReader::parseError() const
 {
     return mParseError;
-}
-
-const Regex::Matcher &DefReader::matcher() const
-{
-    return *mMatcher;
 }
 
 const Tokenizer &DefReader::tokenizer() const

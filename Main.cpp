@@ -12,12 +12,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if(!reader.matcher().valid()) {
-        const Regex::Matcher::ParseError &parseError = reader.matcher().parseError();
-        std::cout << "Error, pattern " << parseError.pattern << " character " << parseError.character << ": " << parseError.message << std::endl;
-        return 1;
-    }
-
     LLParser parser(reader.grammar());
     if(!parser.valid()) {
         std::cout << "Conflict on rule " << parser.conflict().rule << ": " << parser.conflict().rhs1 << " vs " << parser.conflict().rhs2 << std::endl;

@@ -5,21 +5,6 @@
 
 namespace Regex {
 
-    std::vector<Encoding::InputSymbolRange> invertRanges(std::vector<Encoding::InputSymbolRange> &ranges)
-    {
-        std::vector<Encoding::InputSymbolRange> outputRanges;
-        std::sort(ranges.begin(), ranges.end(), [](const Encoding::InputSymbolRange &a, const Encoding::InputSymbolRange &b) { return a.first < b.first; });
-        Encoding::InputSymbol start = 0;
-        for(const auto &range : ranges) {
-            if(range.first > start) {
-                outputRanges.push_back(Encoding::InputSymbolRange(start, range.first - 1));
-            }
-            start = range.second + 1;
-        }
-        outputRanges.push_back(Encoding::InputSymbolRange(start, 127));
-        return outputRanges;
-    }
-
     static void visitNode(const Parser::Node &node, std::vector<Encoding::InputSymbolRange> &inputSymbolRanges)
     {
         switch(node.type) {
@@ -33,16 +18,9 @@ namespace Regex {
             case Parser::Node::Type::CharacterClass:
             {
                 const Parser::CharacterClassNode &characterClassNode = static_cast<const Parser::CharacterClassNode&>(node);
-                std::vector<Encoding::InputSymbolRange> ranges;
                 for(const auto &range : characterClassNode.ranges) {
-                    ranges.push_back(Encoding::InputSymbolRange(range.first, range.second));
+                    inputSymbolRanges.push_back(Encoding::InputSymbolRange(range.first, range.second));
                 }
-
-                if(characterClassNode.invert) {
-                    ranges = invertRanges(ranges);
-                }
-
-                inputSymbolRanges.insert(inputSymbolRanges.end(), ranges.begin(), ranges.end());
                 break;
             }
 
@@ -111,7 +89,7 @@ namespace Regex {
             if(next.first > current.first) {
                 InputSymbolRange head(current.first, next.first - 1);
                 mInputSymbolRanges.push_back(head);
-                current.first = head.first;
+                current.first = next.first;
             }
 
             if(current.second != next.second) {
@@ -131,7 +109,7 @@ namespace Regex {
         mSymbolMap.resize(mTotalRange.second - mTotalRange.first + 1, mInvalidCodePoint);
         for(unsigned int i = 0; i<mInputSymbolRanges.size(); i++) {
             const auto &range = mInputSymbolRanges[i];
-            for(InputSymbol j = range.first; j <= range.second; j++) {
+            for(InputSymbol j = range.first; j>=0 && j <= range.second; j++) {
                 mSymbolMap[j - mTotalRange.first] = i;
             }
         }
@@ -140,7 +118,7 @@ namespace Regex {
     std::vector<Encoding::CodePoint> Encoding::codePointRanges(InputSymbolRange inputSymbolRange) const
     {
         std::vector<Encoding::CodePoint> codePoints;
-        while(inputSymbolRange.first <= inputSymbolRange.second) {
+        while(inputSymbolRange.first >= 0 && inputSymbolRange.first <= inputSymbolRange.second) {
             auto cmp = [](const InputSymbolRange &a, const InputSymbolRange &b) { return a.first < b.first; };
             auto it = std::lower_bound(mInputSymbolRanges.begin(), mInputSymbolRanges.end(), inputSymbolRange, cmp);
             codePoints.push_back(Encoding::CodePoint(it - mInputSymbolRanges.begin()));

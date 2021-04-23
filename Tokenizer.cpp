@@ -1,11 +1,26 @@
 #include "Tokenizer.hpp"
 
-Tokenizer::Tokenizer(const Regex::Matcher &matcher, unsigned int ignorePattern)
-: mMatcher(matcher)
+#include <algorithm>
+
+Tokenizer::Tokenizer(std::vector<Configuration> &&configurations)
+: mConfigurations(std::move(configurations))
 {
-    mEndToken = mMatcher.numPatterns();
-    mErrorToken = mMatcher.numPatterns() + 1;
-    mIgnorePattern = ignorePattern;
+    initialize();
+}
+
+Tokenizer::Tokenizer(Regex::Matcher &&matcher, unsigned int ignorePattern)
+{
+    mConfigurations.push_back(Configuration{std::move(matcher), ignorePattern});
+    initialize();
+}
+
+void Tokenizer::initialize()
+{
+    mEndToken = 0;
+    for(const auto &configuration : mConfigurations) {
+        mEndToken = std::max(mEndToken, configuration.matcher.numPatterns());
+    }
+    mErrorToken = mEndToken+1;
 }
 
 unsigned int Tokenizer::endToken() const
@@ -23,8 +38,19 @@ Tokenizer::Stream::Stream(const Tokenizer &tokenizer, std::istream &input)
 {
     mConsumed = 0;
     mLine = 0;
+    mConfiguration = 0;
 
     consumeToken();
+}
+
+void Tokenizer::Stream::setConfiguration(unsigned int configuration)
+{
+    mConfiguration = configuration;
+}
+
+unsigned int Tokenizer::Stream::configuration() const
+{
+    return mConfiguration;
 }
 
 const Tokenizer::Token &Tokenizer::Stream::nextToken() const
@@ -55,7 +81,7 @@ void Tokenizer::Stream::consumeToken()
         }
 
         unsigned int pattern;
-        unsigned int matched = mTokenizer.mMatcher.match(mCurrentLine, mConsumed, pattern);
+        unsigned int matched = mTokenizer.mConfigurations[mConfiguration].matcher.match(mCurrentLine, mConsumed, pattern);
         if(matched == 0) {
             mNextToken.index = mTokenizer.mErrorToken;
             mNextToken.start = mConsumed;
@@ -63,7 +89,7 @@ void Tokenizer::Stream::consumeToken()
 
             repeat = false;
         } else {
-            if(pattern != mTokenizer.mIgnorePattern) {
+            if(pattern != mTokenizer.mConfigurations[mConfiguration].ignorePattern) {
                 mNextToken.index = pattern;
                 mNextToken.start = mConsumed;
                 mNextToken.line = mLine;

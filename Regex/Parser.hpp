@@ -45,10 +45,9 @@ namespace Regex {
         struct CharacterClassNode : public Node {
             typedef std::pair<Symbol, Symbol> Range;
 
-            CharacterClassNode(std::vector<Range> &&r, bool i) { type = Type::CharacterClass; ranges = std::move(r); invert = i;}
+            CharacterClassNode(std::vector<Range> &&r) { type = Type::CharacterClass; ranges = std::move(r); }
 
             std::vector<Range> ranges;
-            bool invert;
         };
 
         struct SequenceNode : public Node {

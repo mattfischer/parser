@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 
 namespace Regex {
 
@@ -27,6 +28,21 @@ namespace Regex {
 
             return std::make_unique<SymbolNode>(symbol);
         }
+    }
+
+    std::vector<Parser::CharacterClassNode::Range> invertRanges(std::vector<Parser::CharacterClassNode::Range> &ranges)
+    {
+        std::vector<Parser::CharacterClassNode::Range> outputRanges;
+        std::sort(ranges.begin(), ranges.end(), [](const Parser::CharacterClassNode::Range &a, const Parser::CharacterClassNode::Range &b) { return a.first < b.first; });
+        Parser::Symbol start = 0;
+        for(const auto &range : ranges) {
+            if(range.first > start) {
+                outputRanges.push_back(Parser::CharacterClassNode::Range(start, range.first - 1));
+            }
+            start = range.second + 1;
+        }
+        outputRanges.push_back(Parser::CharacterClassNode::Range(start, 127));
+        return outputRanges;
     }
 
     std::unique_ptr<Parser::Node> Parser::parseCharacterClass(const std::string &regex, int &pos)
@@ -73,7 +89,11 @@ namespace Regex {
             ranges.push_back(CharacterClassNode::Range(start, end));
         }
 
-        return std::make_unique<CharacterClassNode>(std::move(ranges), invert);
+        if(invert) {
+            ranges = invertRanges(ranges);
+        }
+
+        return std::make_unique<CharacterClassNode>(std::move(ranges));
     }
 
     std::unique_ptr<Parser::Node> Parser::parseEscape(const std::string &regex, int &pos)
@@ -107,7 +127,10 @@ namespace Regex {
         }
         if(ranges.size() > 0) {
             pos++;
-            return std::make_unique<CharacterClassNode>(std::move(ranges), invert);
+            if(invert) {
+                ranges = invertRanges(ranges);
+            }
+            return std::make_unique<CharacterClassNode>(std::move(ranges));
         }
 
         Symbol symbol;
