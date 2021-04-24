@@ -30,6 +30,8 @@ public:
     const std::vector<Rule> &rules() const;
     unsigned int startRule() const;
 
+    unsigned int ruleIndex(const std::string &name) const;
+
     void computeSets(std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals) const;
 
 private:

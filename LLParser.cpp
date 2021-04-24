@@ -103,3 +103,8 @@ const LLParser::Conflict &LLParser::conflict() const
 {
     return mConflict;
 }
+
+const Grammar &LLParser::grammar() const
+{
+    return mGrammar;
+}

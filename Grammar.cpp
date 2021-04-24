@@ -15,6 +15,17 @@ unsigned int Grammar::startRule() const
     return mStartRule;
 }
 
+unsigned int Grammar::ruleIndex(const std::string &name) const
+{
+    for(unsigned int i=0; mRules.size(); i++) {
+        if(mRules[i].lhs == name) {
+            return i;
+        }
+    }
+
+    return UINT_MAX;
+}
+
 bool isNullable(const Grammar::Symbol &symbol, const std::set<unsigned int> &nullableNonterminals) {
     switch(symbol.type) {
         case Grammar::Symbol::Type::Terminal:

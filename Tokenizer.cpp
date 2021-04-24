@@ -8,9 +8,9 @@ Tokenizer::Tokenizer(std::vector<Configuration> &&configurations)
     initialize();
 }
 
-Tokenizer::Tokenizer(Regex::Matcher &&matcher, unsigned int ignorePattern)
+Tokenizer::Tokenizer(Regex::Matcher &&matcher, unsigned int ignorePattern, std::vector<std::string> &&patternNames)
 {
-    mConfigurations.push_back(Configuration{std::move(matcher), ignorePattern});
+    mConfigurations.push_back(Configuration{std::move(matcher), ignorePattern, std::move(patternNames)});
     initialize();
 }
 
@@ -31,4 +31,15 @@ unsigned int Tokenizer::endToken() const
 unsigned int Tokenizer::errorToken() const
 {
     return mErrorToken;
+}
+
+unsigned int Tokenizer::patternIndex(const std::string &name, unsigned int configuration) const
+{
+    for(unsigned int i=0; i<mConfigurations[configuration].patternNames.size(); i++) {
+        if(mConfigurations[configuration].patternNames[i] == name) {
+            return i;
+        }
+    }
+
+    return UINT_MAX;
 }

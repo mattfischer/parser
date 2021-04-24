@@ -38,7 +38,9 @@ DefReader::DefReader(const std::string &filename)
     std::map<std::string, unsigned int> terminalMap;
     std::map<std::string, unsigned int> anonymousTerminalMap;
     std::vector<std::string> terminals;
+    std::vector<std::string> terminalNames;
     for(const auto &pair: terminalDef) {
+        terminalNames.push_back(pair.first);
         terminals.push_back(pair.second);
         terminalMap[pair.first] = (unsigned int)(terminals.size() - 1);
         if(pair.first == "IGNORE") {
@@ -118,7 +120,7 @@ DefReader::DefReader(const std::string &filename)
         }
 
         Regex::Matcher matcher(terminals);
-        mTokenizer = std::make_unique<Tokenizer>(std::move(matcher), ignorePattern);
+        mTokenizer = std::make_unique<Tokenizer>(std::move(matcher), ignorePattern, std::move(terminalNames));
         mGrammar = std::make_unique<Grammar>(std::move(rules), it->second);
     }
 }
@@ -165,10 +167,10 @@ bool DefReader::parseFile(const std::string &filename, std::map<std::string, std
     std::vector<Tokenizer::Configuration> configurations;
     
     std::vector<std::string> primaryPatterns{"\\w+", "<\\w+>", ":", "\\|", "'[^']+'", "\\s" };
-    configurations.push_back(Tokenizer::Configuration{primaryPatterns, PrimaryToken::Whitespace});
+    configurations.push_back(Tokenizer::Configuration{primaryPatterns, PrimaryToken::Whitespace, std::vector<std::string>()});
 
     std::vector<std::string> regexPatterns{"\\S+", "\\s"};
-    configurations.push_back(Tokenizer::Configuration{regexPatterns, RegexToken::RegexWhitespace});
+    configurations.push_back(Tokenizer::Configuration{regexPatterns, RegexToken::RegexWhitespace, std::vector<std::string>()});
 
     Tokenizer tokenizer(std::move(configurations));
 

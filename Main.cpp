@@ -11,9 +11,10 @@ struct NumberData
     int number;
 };
 
+unsigned int numberToken;
 std::unique_ptr<NumberData> decorateToken(unsigned int index, const std::string &text)
 {
-    if(index == 1) {
+    if(index == numberToken) {
         return std::make_unique<NumberData>(std::atoi(text.c_str()));
     }
 
@@ -26,22 +27,17 @@ struct AstNode
         Number,
         Add
     };
+    AstNode(Type t) : type(t) {}
+
     Type type;
+    std::vector<std::unique_ptr<AstNode>> children;
 };
 
 struct AstNodeNumber : public AstNode
 {
-    AstNodeNumber(int n) : number(n) { type = Type::Number; }
+    AstNodeNumber(int n) : AstNode(Type::Number), number(n) {}
 
     int number;
-};
-
-struct AstNodeAdd : public AstNode
-{
-    AstNodeAdd(std::unique_ptr<AstNode> _a, std::unique_ptr<AstNode> _b) : a(std::move(_a)), b(std::move(_b)) { type = Type::Add; }
-
-    std::unique_ptr<AstNode> a;
-    std::unique_ptr<AstNode> b;
 };
 
 std::unique_ptr<AstNode> decorateTerminal(const Tokenizer::Token<NumberData> &token)
@@ -53,15 +49,23 @@ std::unique_ptr<AstNode> decorateTerminal(const Tokenizer::Token<NumberData> &to
     return nullptr;
 }
 
+unsigned int ERule;
+unsigned int rootRule;
+
 std::unique_ptr<AstNode> reduce(std::vector<LLParser::ParseItem<AstNode>> &parseStack, unsigned int parseStart, unsigned int rule, unsigned int rhs)
 {
-    if(rule == 0) {
+    if(rule == ERule) {
         std::unique_ptr<AstNode> node = std::move(parseStack[parseStart].data);
         for(unsigned int i=parseStart + 2; i<parseStack.size(); i+=2) {
             std::unique_ptr<AstNode> b = std::move(parseStack[i].data);
-            node = std::make_unique<AstNodeAdd>(std::move(node), std::move(b));
+            std::unique_ptr<AstNode> result = std::make_unique<AstNode>(AstNode::Type::Add);
+            result->children.push_back(std::move(node));
+            result->children.push_back(std::move(b));
+            node = std::move(result);
         }
         return node;
+    } else if(rule == rootRule) {
+        return std::move(parseStack[parseStart].data);
     }
 
     return nullptr;
@@ -80,12 +84,16 @@ int main(int argc, char *argv[])
         std::cout << "Conflict on rule " << parser.conflict().rule << ": " << parser.conflict().rhs1 << " vs " << parser.conflict().rhs2 << std::endl;
         return 1; 
     }
+    
+    numberToken = reader.tokenizer().patternIndex("NUMBER", 0);
+    ERule = parser.grammar().ruleIndex("<E>");
+    rootRule = parser.grammar().ruleIndex("<root>");
 
     std::stringstream ss("2345 + 2 + 5");
     Tokenizer::Stream<NumberData> stream(reader.tokenizer(), ss, decorateToken);
 
     try {
-        parser.parse<AstNode, NumberData>(stream, decorateTerminal, reduce);
+        std::unique_ptr<AstNode> ast = parser.parse<AstNode, NumberData>(stream, decorateTerminal, reduce);
     } catch (LLParser::ParseException e) {
         std::cout << "Error: Unexpected symbol " << e.symbol << std::endl;
         return 1;

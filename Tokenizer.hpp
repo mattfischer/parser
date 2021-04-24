@@ -14,9 +14,10 @@ public:
     struct Configuration {
         Regex::Matcher matcher;
         unsigned int ignorePattern;
+        std::vector<std::string> patternNames;
     };
     Tokenizer(std::vector<Configuration> &&configurations);
-    Tokenizer(Regex::Matcher &&matcher, unsigned int ignorePattern);
+    Tokenizer(Regex::Matcher &&matcher, unsigned int ignorePattern, std::vector<std::string> &&patternNames);
 
     template<typename Data> struct Token {
         unsigned int index;
@@ -27,6 +28,8 @@ public:
 
     unsigned int endToken() const;
     unsigned int errorToken() const;
+
+    unsigned int patternIndex(const std::string &name, unsigned int configuration) const;
 
     template<typename TokenData> class Stream
     {

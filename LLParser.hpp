@@ -28,6 +28,8 @@ public:
     };
     const Conflict &conflict() const;
 
+    const Grammar &grammar() const;
+
     template<typename Data> struct ParseItem {
         enum class Type {
             Terminal,
@@ -41,10 +43,12 @@ public:
     template<typename ParseData, typename TokenData> using TerminalDecorator = std::function<std::unique_ptr<ParseData>(const Tokenizer::Token<TokenData>&)>;
     template<typename ParseData> using Reducer = std::function<std::unique_ptr<ParseData>(std::vector<ParseItem<ParseData>>&, unsigned int, unsigned int, unsigned int)>;
 
-    template<typename ParseData, typename TokenData> void parse(Tokenizer::Stream<TokenData> &stream, TerminalDecorator<ParseData, TokenData> terminalDecorator, Reducer<ParseData> reducer) const
+    template<typename ParseData, typename TokenData> std::unique_ptr<ParseData> parse(Tokenizer::Stream<TokenData> &stream, TerminalDecorator<ParseData, TokenData> terminalDecorator, Reducer<ParseData> reducer) const
     {
         std::vector<ParseItem<ParseData>> parseStack;
         parseRule(mGrammar.startRule(), stream, parseStack, terminalDecorator, reducer);
+    
+        return std::move(parseStack[0].data);
     }
 
 private:
