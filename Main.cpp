@@ -28,6 +28,18 @@ struct AstNode
         Add
     };
     AstNode(Type t) : type(t) {}
+    template<typename ...Children> AstNode(Type t, Children&&... c)
+    {
+        type = t;
+        addChildren(std::forward<Children&&>(c)...);
+    }
+
+    void addChildren() {}
+    template<typename ...Children> void addChildren(std::unique_ptr<AstNode> &&firstChild, Children&&... otherChildren)
+    {
+        children.push_back(std::move(firstChild));
+        addChildren(std::forward<Children&&>(otherChildren)...);
+    }
 
     Type type;
     std::vector<std::unique_ptr<AstNode>> children;
@@ -57,11 +69,7 @@ std::unique_ptr<AstNode> reduce(std::vector<LLParser::ParseItem<AstNode>> &parse
     if(rule == ERule) {
         std::unique_ptr<AstNode> node = std::move(parseStack[parseStart].data);
         for(unsigned int i=parseStart + 2; i<parseStack.size(); i+=2) {
-            std::unique_ptr<AstNode> b = std::move(parseStack[i].data);
-            std::unique_ptr<AstNode> result = std::make_unique<AstNode>(AstNode::Type::Add);
-            result->children.push_back(std::move(node));
-            result->children.push_back(std::move(b));
-            node = std::move(result);
+            node = std::make_unique<AstNode>(AstNode::Type::Add, std::move(node), std::move(parseStack[i].data));
         }
         return node;
     } else if(rule == rootRule) {
