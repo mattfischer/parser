@@ -4,18 +4,20 @@
 #include "DefReader.hpp"
 #include "LLParser.hpp"
 
-struct NumberData : public Tokenizer::Token::Data
+struct NumberData
 {
     NumberData(int n) : number(n) {}
 
     int number;
 };
 
-void decorateToken(Tokenizer::Token &token, const std::string &text)
+std::unique_ptr<NumberData> decorateToken(unsigned int index, const std::string &text)
 {
-    if(token.index == 1) {
-        token.data = std::make_unique<NumberData>(std::atoi(text.c_str()));
+    if(index == 1) {
+        return std::make_unique<NumberData>(std::atoi(text.c_str()));
     }
+
+    return nullptr;
 }
 
 struct AstNode
@@ -42,10 +44,10 @@ struct AstNodeAdd : public AstNode
     std::unique_ptr<AstNode> b;
 };
 
-std::unique_ptr<AstNode> decorateTerminal(const Tokenizer::Token &token)
+std::unique_ptr<AstNode> decorateTerminal(const Tokenizer::Token<NumberData> &token)
 {
     if(token.index == 1) {
-        return std::make_unique<AstNodeNumber>(static_cast<const NumberData&>(*token.data).number);
+        return std::make_unique<AstNodeNumber>(token.data->number);
     }
 
     return nullptr;
@@ -80,10 +82,10 @@ int main(int argc, char *argv[])
     }
 
     std::stringstream ss("2345 + 2 + 5");
-    Tokenizer::Stream stream(reader.tokenizer(), ss, decorateToken);
+    Tokenizer::Stream<NumberData> stream(reader.tokenizer(), ss, decorateToken);
 
     try {
-        parser.parse<AstNode>(stream, decorateTerminal, reduce);
+        parser.parse<AstNode, NumberData>(stream, decorateTerminal, reduce);
     } catch (LLParser::ParseException e) {
         std::cout << "Error: Unexpected symbol " << e.symbol << std::endl;
         return 1;

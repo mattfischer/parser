@@ -28,7 +28,6 @@ public:
 private:
     typedef std::vector<std::vector<std::string>> Rule;
     bool parseFile(const std::string &filename, std::map<std::string, std::string> &terminals, std::map<std::string, Rule> &rules);
-    void expectToken(Tokenizer::Stream &stream, unsigned int token, const std::string &text);
 
     std::unique_ptr<Tokenizer> mTokenizer;
     std::unique_ptr<Grammar> mGrammar;

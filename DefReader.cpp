@@ -123,17 +123,6 @@ DefReader::DefReader(const std::string &filename)
     }
 }
 
-void DefReader::expectToken(Tokenizer::Stream &stream, unsigned int token, const std::string &text)
-{
-    if(stream.nextToken().index == token) {
-        stream.consumeToken();
-    } else {
-        mParseError.line = stream.nextToken().line;
-        mParseError.message = "Expected " + text;
-        throw std::exception();
-    }
-}
-
 struct PrimaryToken {
     enum {
         Terminal,
@@ -152,27 +141,23 @@ struct RegexToken {
     };
 };
 
-struct StringData : public Tokenizer::Token::Data
+struct StringData
 {
     StringData(const std::string &t) : text(t) {}
 
     std::string text;
 };
 
-static const std::string &getString(const Tokenizer::Token &token)
+static std::unique_ptr<StringData> decorateToken(unsigned int index, const std::string &text)
 {
-    return static_cast<const StringData&>(*token.data).text;
-}
-
-static void decorateToken(Tokenizer::Token &token, const std::string &text)
-{
-    switch(token.index) {
+    switch(index) {
         case PrimaryToken::Terminal:
         case PrimaryToken::Nonterminal:
         case PrimaryToken::Literal:
-            token.data = std::make_unique<StringData>(text);
-            break;
+            return std::make_unique<StringData>(text);
     }
+
+    return nullptr;
 }
 
 bool DefReader::parseFile(const std::string &filename, std::map<std::string, std::string> &terminals, std::map<std::string, Rule> &rules)
@@ -188,46 +173,54 @@ bool DefReader::parseFile(const std::string &filename, std::map<std::string, std
     Tokenizer tokenizer(std::move(configurations));
 
     std::ifstream file(filename);
-    Tokenizer::Stream stream(tokenizer, file, decorateToken);
+    Tokenizer::Stream<StringData> stream(tokenizer, file, decorateToken);
 
-    try {
-        while(stream.nextToken().index != tokenizer.endToken()) {
-            if(stream.nextToken().index == PrimaryToken::Terminal) {
-                std::string name = getString(stream.nextToken());
+    while(stream.nextToken().index != tokenizer.endToken()) {
+        if(stream.nextToken().index == PrimaryToken::Terminal) {
+            std::string name = stream.nextToken().data->text;
+            stream.consumeToken();
+
+            stream.setConfiguration(1);
+            if(stream.nextToken().index == PrimaryToken::Colon) {
                 stream.consumeToken();
-
-                stream.setConfiguration(1);
-                expectToken(stream, PrimaryToken::Colon, ":");
-
-                std::string pattern = getString(stream.nextToken());
-                stream.setConfiguration(0);
-                stream.consumeToken();
-                terminals[name] = pattern;
-            } else if(stream.nextToken().index == PrimaryToken::Nonterminal) {
-                std::string name = getString(stream.nextToken());
-                stream.consumeToken();
-
-                expectToken(stream, PrimaryToken::Colon, ":");
-                unsigned int line = stream.nextToken().line;
-                std::vector<std::string> symbols;
-                while(stream.nextToken().line == line) {
-                    if(stream.nextToken().index == PrimaryToken::Pipe) {
-                        rules[name].push_back(symbols);
-                        symbols.clear();
-                    } else {
-                        symbols.push_back(getString(stream.nextToken()));
-                    }
-                    stream.consumeToken();
-                }
-                rules[name].push_back(symbols);
             } else {
                 mParseError.line = stream.nextToken().line;
-                mParseError.message = "Unexpected token " + stream.nextToken().index;
+                mParseError.message = "Expected :";
                 return false;
             }
+
+            std::string pattern = stream.nextToken().data->text;
+            stream.setConfiguration(0);
+            stream.consumeToken();
+            terminals[name] = pattern;
+        } else if(stream.nextToken().index == PrimaryToken::Nonterminal) {
+            std::string name = stream.nextToken().data->text;
+            stream.consumeToken();
+
+            if(stream.nextToken().index == PrimaryToken::Colon) {
+                stream.consumeToken();
+            } else {
+                mParseError.line = stream.nextToken().line;
+                mParseError.message = "Expected :";
+                return false;
+            }
+            unsigned int line = stream.nextToken().line;
+            std::vector<std::string> symbols;
+            while(stream.nextToken().line == line) {
+                if(stream.nextToken().index == PrimaryToken::Pipe) {
+                    rules[name].push_back(symbols);
+                    symbols.clear();
+                } else {
+                    symbols.push_back(stream.nextToken().data->text);
+                }
+                stream.consumeToken();
+            }
+            rules[name].push_back(symbols);
+        } else {
+            mParseError.line = stream.nextToken().line;
+            mParseError.message = "Unexpected token " + stream.nextToken().index;
+            return false;
         }
-    } catch(std::exception e) {
-        return false;
     }
 
     return true;
