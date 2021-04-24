@@ -40,14 +40,15 @@ public:
     };
 
     typedef std::function<void(ParseItem&, const Tokenizer::Token&)> TerminalDecorator;
-    void parse(Tokenizer::Stream &stream, TerminalDecorator terminalDecorator) const;
+    typedef std::function<std::unique_ptr<ParseItem::Data>(std::vector<ParseItem>&, unsigned int, unsigned int, unsigned int)> Reducer;
+    void parse(Tokenizer::Stream &stream, TerminalDecorator terminalDecorator, Reducer reducer) const;
 
 private:
     bool addParseTableEntry(unsigned int rule, unsigned int symbol, unsigned int rhs);
     bool addParseTableEntries(unsigned int rule, const std::set<unsigned int> &symbols, unsigned int rhs);
     bool computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals);
 
-    void parseRule(unsigned int rule, Tokenizer::Stream &stream, std::vector<ParseItem> &parseStack, TerminalDecorator terminalDecorator) const;
+    void parseRule(unsigned int rule, Tokenizer::Stream &stream, std::vector<ParseItem> &parseStack, TerminalDecorator terminalDecorator, Reducer reducer) const;
     
     const Grammar &mGrammar;
     std::vector<unsigned int> mParseTable;  

@@ -104,13 +104,13 @@ const LLParser::Conflict &LLParser::conflict() const
     return mConflict;
 }
 
-void LLParser::parse(Tokenizer::Stream &stream, TerminalDecorator terminalDecorator) const
+void LLParser::parse(Tokenizer::Stream &stream, TerminalDecorator terminalDecorator, Reducer reducer) const
 {
     std::vector<ParseItem> parseStack;
-    parseRule(mGrammar.startRule(), stream, parseStack, terminalDecorator);
+    parseRule(mGrammar.startRule(), stream, parseStack, terminalDecorator, reducer);
 }
 
-void LLParser::parseRule(unsigned int rule, Tokenizer::Stream &stream, std::vector<ParseItem> &parseStack, TerminalDecorator terminalDecorator) const
+void LLParser::parseRule(unsigned int rule, Tokenizer::Stream &stream, std::vector<ParseItem> &parseStack, TerminalDecorator terminalDecorator, Reducer reducer) const
 {
     unsigned int rhs = mParseTable[rule*mNumSymbols + stream.nextToken().index];
 
@@ -118,6 +118,7 @@ void LLParser::parseRule(unsigned int rule, Tokenizer::Stream &stream, std::vect
         throw ParseException(stream.nextToken().index);
     }   
 
+    unsigned int parseStackStart = parseStack.size();
     const std::vector<Grammar::Symbol> &symbols = mGrammar.rules()[rule].rhs[rhs];
     for(unsigned int i=0; i<symbols.size(); i++) {
         const Grammar::Symbol &symbol = symbols[i];
@@ -136,19 +137,19 @@ void LLParser::parseRule(unsigned int rule, Tokenizer::Stream &stream, std::vect
                 break;
 
             case Grammar::Symbol::Type::Nonterminal:
-                parseRule(symbol.index, stream, parseStack, terminalDecorator);
+                parseRule(symbol.index, stream, parseStack, terminalDecorator, reducer);
                 break;
         }
     }
 
-    for(unsigned int i=0; i<symbols.size(); i++) {
-        if(symbols[i].type != Grammar::Symbol::Type::Epsilon) {
-            parseStack.pop_back();
-        }
-    }
+    std::unique_ptr<ParseItem::Data> data = reducer(parseStack, parseStackStart, rule, rhs);
+    if(data) {
+        parseStack.erase(parseStack.begin() + parseStackStart, parseStack.end());
 
-    ParseItem parseItem;
-    parseItem.type = ParseItem::Type::Nonterminal;
-    parseItem.index = rule;
-    parseStack.push_back(std::move(parseItem));
+        ParseItem parseItem;
+        parseItem.type = ParseItem::Type::Nonterminal;
+        parseItem.index = rule;
+        parseItem.data = std::move(data);
+        parseStack.push_back(std::move(parseItem));
+    }
 }

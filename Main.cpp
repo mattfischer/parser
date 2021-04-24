@@ -33,11 +33,33 @@ struct AstNodeNumber : public AstNode
     int number;
 };
 
+struct AstNodeAdd : public AstNode
+{
+    AstNodeAdd(std::unique_ptr<AstNode> _a, std::unique_ptr<AstNode> _b) : a(std::move(_a)), b(std::move(_b)) {}
+
+    std::unique_ptr<AstNode> a;
+    std::unique_ptr<AstNode> b;
+};
+
 void decorateTerminal(LLParser::ParseItem &parseItem, const Tokenizer::Token &token)
 {
     if(parseItem.index == 1) {
         parseItem.data = std::make_unique<AstNodeNumber>(static_cast<const NumberData&>(*token.data).number);
     }
+}
+
+std::unique_ptr<LLParser::ParseItem::Data> reduce(std::vector<LLParser::ParseItem> &parseStack, unsigned int parseStart, unsigned int rule, unsigned int rhs)
+{
+    if(rule == 0) {
+        std::unique_ptr<AstNode> node = std::unique_ptr<AstNode>(static_cast<AstNode*>(parseStack[parseStart].data.release()));
+        for(unsigned int i=parseStart + 2; i<parseStack.size(); i+=2) {
+            std::unique_ptr<AstNode> b = std::unique_ptr<AstNode>(static_cast<AstNode*>(parseStack[i].data.release()));
+            node = std::make_unique<AstNodeAdd>(std::move(node), std::move(b));
+        }
+        return node;
+    }
+
+    return nullptr;
 }
 
 int main(int argc, char *argv[])
@@ -58,7 +80,7 @@ int main(int argc, char *argv[])
     Tokenizer::Stream stream(reader.tokenizer(), ss, decorateToken);
 
     try {
-        parser.parse(stream, decorateTerminal);
+        parser.parse(stream, decorateTerminal, reduce);
     } catch (LLParser::ParseException e) {
         std::cout << "Error: Unexpected symbol " << e.symbol << std::endl;
         return 1;

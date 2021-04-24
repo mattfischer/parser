@@ -3,4 +3,4 @@ IGNORE: \s
 
 <root> : <E>
 <E>: NUMBER <Ee>
-<Ee>: '+' <E> | 0
+<Ee>: '+' NUMBER <Ee> | 0
