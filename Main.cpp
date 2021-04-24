@@ -18,42 +18,45 @@ void decorateToken(Tokenizer::Token &token, const std::string &text)
     }
 }
 
-struct AstNode : public LLParser::ParseItem::Data
+struct AstNode
 {
     enum class Type {
-        Number
+        Number,
+        Add
     };
     Type type;
 };
 
 struct AstNodeNumber : public AstNode
 {
-    AstNodeNumber(int n) : number(n) {}
+    AstNodeNumber(int n) : number(n) { type = Type::Number; }
 
     int number;
 };
 
 struct AstNodeAdd : public AstNode
 {
-    AstNodeAdd(std::unique_ptr<AstNode> _a, std::unique_ptr<AstNode> _b) : a(std::move(_a)), b(std::move(_b)) {}
+    AstNodeAdd(std::unique_ptr<AstNode> _a, std::unique_ptr<AstNode> _b) : a(std::move(_a)), b(std::move(_b)) { type = Type::Add; }
 
     std::unique_ptr<AstNode> a;
     std::unique_ptr<AstNode> b;
 };
 
-void decorateTerminal(LLParser::ParseItem &parseItem, const Tokenizer::Token &token)
+std::unique_ptr<AstNode> decorateTerminal(const Tokenizer::Token &token)
 {
-    if(parseItem.index == 1) {
-        parseItem.data = std::make_unique<AstNodeNumber>(static_cast<const NumberData&>(*token.data).number);
+    if(token.index == 1) {
+        return std::make_unique<AstNodeNumber>(static_cast<const NumberData&>(*token.data).number);
     }
+
+    return nullptr;
 }
 
-std::unique_ptr<LLParser::ParseItem::Data> reduce(std::vector<LLParser::ParseItem> &parseStack, unsigned int parseStart, unsigned int rule, unsigned int rhs)
+std::unique_ptr<AstNode> reduce(std::vector<LLParser::ParseItem<AstNode>> &parseStack, unsigned int parseStart, unsigned int rule, unsigned int rhs)
 {
     if(rule == 0) {
-        std::unique_ptr<AstNode> node = std::unique_ptr<AstNode>(static_cast<AstNode*>(parseStack[parseStart].data.release()));
+        std::unique_ptr<AstNode> node = std::move(parseStack[parseStart].data);
         for(unsigned int i=parseStart + 2; i<parseStack.size(); i+=2) {
-            std::unique_ptr<AstNode> b = std::unique_ptr<AstNode>(static_cast<AstNode*>(parseStack[i].data.release()));
+            std::unique_ptr<AstNode> b = std::move(parseStack[i].data);
             node = std::make_unique<AstNodeAdd>(std::move(node), std::move(b));
         }
         return node;
@@ -80,7 +83,7 @@ int main(int argc, char *argv[])
     Tokenizer::Stream stream(reader.tokenizer(), ss, decorateToken);
 
     try {
-        parser.parse(stream, decorateTerminal, reduce);
+        parser.parse<AstNode>(stream, decorateTerminal, reduce);
     } catch (LLParser::ParseException e) {
         std::cout << "Error: Unexpected symbol " << e.symbol << std::endl;
         return 1;
