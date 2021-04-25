@@ -64,16 +64,16 @@ std::unique_ptr<AstNode> decorateTerminal(const Tokenizer::Token<NumberData> &to
 unsigned int ERule;
 unsigned int rootRule;
 
-std::unique_ptr<AstNode> reduce(std::vector<LLParser::ParseItem<AstNode>> &parseStack, unsigned int parseStart, unsigned int rule, unsigned int rhs)
+std::unique_ptr<AstNode> reduce(LLParser::ParseItem<AstNode> *parseItems, unsigned int numItems, unsigned int rule, unsigned int rhs)
 {
     if(rule == ERule) {
-        std::unique_ptr<AstNode> node = std::move(parseStack[parseStart].data);
-        for(unsigned int i=parseStart + 2; i<parseStack.size(); i+=2) {
-            node = std::make_unique<AstNode>(AstNode::Type::Add, std::move(node), std::move(parseStack[i].data));
+        std::unique_ptr<AstNode> node = std::move(parseItems[0].data);
+        for(unsigned int i=2; i<numItems; i+=2) {
+            node = std::make_unique<AstNode>(AstNode::Type::Add, std::move(node), std::move(parseItems[i].data));
         }
         return node;
     } else if(rule == rootRule) {
-        return std::move(parseStack[parseStart].data);
+        return std::move(parseItems[0].data);
     }
 
     return nullptr;

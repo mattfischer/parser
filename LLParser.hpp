@@ -41,7 +41,7 @@ public:
     };
 
     template<typename ParseData, typename TokenData> using TerminalDecorator = std::function<std::unique_ptr<ParseData>(const Tokenizer::Token<TokenData>&)>;
-    template<typename ParseData> using Reducer = std::function<std::unique_ptr<ParseData>(std::vector<ParseItem<ParseData>>&, unsigned int, unsigned int, unsigned int)>;
+    template<typename ParseData> using Reducer = std::function<std::unique_ptr<ParseData>(ParseItem<ParseData>*, unsigned int, unsigned int, unsigned int)>;
     typedef std::function<void(unsigned int, unsigned int, unsigned int)> MatchListener;
 
     template<typename ParseData, typename TokenData> std::unique_ptr<ParseData> parse(Tokenizer::Stream<TokenData> &stream, TerminalDecorator<ParseData, TokenData> terminalDecorator, Reducer<ParseData> reducer, MatchListener matchListener = MatchListener()) const
@@ -92,15 +92,17 @@ private:
             }
         }
 
-        std::unique_ptr<ParseData> data = reducer(parseStack, parseStackStart, rule, rhs);
-        if(data) {
-            parseStack.erase(parseStack.begin() + parseStackStart, parseStack.end());
+        if(parseStackStart < parseStack.size()) {
+            std::unique_ptr<ParseData> data = reducer(&parseStack[parseStackStart], (unsigned int)(parseStack.size() - parseStackStart), rule, rhs);
+            if(data) {
+                parseStack.erase(parseStack.begin() + parseStackStart, parseStack.end());
 
-            ParseItem<ParseData> parseItem;
-            parseItem.type = ParseItem<ParseData>::Type::Nonterminal;
-            parseItem.index = rule;
-            parseItem.data = std::move(data);
-            parseStack.push_back(std::move(parseItem));
+                ParseItem<ParseData> parseItem;
+                parseItem.type = ParseItem<ParseData>::Type::Nonterminal;
+                parseItem.index = rule;
+                parseItem.data = std::move(data);
+                parseStack.push_back(std::move(parseItem));
+            }
         }
     }
     

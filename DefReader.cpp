@@ -194,40 +194,40 @@ std::unique_ptr<DefNode> terminalDecorator(const Tokenizer::Token<StringData> &t
     return node;
 }
 
-std::unique_ptr<DefNode> reducer(std::vector<LLParser::ParseItem<DefNode>> &parseStack, unsigned int parseStart, unsigned int rule, unsigned int rhs)
+std::unique_ptr<DefNode> reducer(LLParser::ParseItem<DefNode> *parseItems, unsigned int numItems, unsigned int rule, unsigned int rhs)
 {
     std::unique_ptr<DefNode> node;
     if(rule == 0) {
-        node = std::move(parseStack[parseStart].data);
+        node = std::move(parseItems[0].data);
     } else if(rule == 1) {
         node = std::make_unique<DefNode>();
         node->type = DefNode::Type::List;
-        for(unsigned int i=parseStart; i<parseStack.size(); i++) {
-            if(parseStack[i].data) {
-                node->children.push_back(std::move(parseStack[i].data));
+        for(unsigned int i=0; i<numItems; i++) {
+            if(parseItems[i].data) {
+                node->children.push_back(std::move(parseItems[i].data));
             }
         }
     } else if(rule == 3) {
         node = std::make_unique<DefNode>();
         node->type = DefNode::Type::Pattern;
-        node->children.push_back(std::move(parseStack[parseStart].data));
-        node->children.push_back(std::move(parseStack[parseStart+2].data));
+        node->children.push_back(std::move(parseItems[0].data));
+        node->children.push_back(std::move(parseItems[2].data));
     } else if(rule == 4) {
         node = std::make_unique<DefNode>();
         node->type = DefNode::Type::Rule;
-        node->children.push_back(std::move(parseStack[parseStart].data));
-        node->children.push_back(std::move(parseStack[parseStart+2].data));
+        node->children.push_back(std::move(parseItems[0].data));
+        node->children.push_back(std::move(parseItems[2].data));
     } else if(rule == 5) {
         node = std::make_unique<DefNode>();
         node->type = DefNode::Type::List;
-        for(unsigned int i=parseStart; i<parseStack.size(); i+=2) {
-            node->children.push_back(std::move(parseStack[i].data));
+        for(unsigned int i=0; i<numItems; i+=2) {
+            node->children.push_back(std::move(parseItems[i].data));
         }
     } else if(rule == 7) {
         node = std::make_unique<DefNode>();
         node->type = DefNode::Type::List;
-        for(unsigned int i=parseStart; i<parseStack.size(); i++) {
-            node->children.push_back(std::move(parseStack[i].data));
+        for(unsigned int i=0; i<numItems; i++) {
+            node->children.push_back(std::move(parseItems[i].data));
         }
     }
 
