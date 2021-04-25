@@ -77,6 +77,7 @@ public:
                     }
 
                     std::getline(mInput, mCurrentLine);
+                    mCurrentLine += '\n';
                     mConsumed = 0;
                     mLine++;
                 }

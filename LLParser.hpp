@@ -42,11 +42,12 @@ public:
 
     template<typename ParseData, typename TokenData> using TerminalDecorator = std::function<std::unique_ptr<ParseData>(const Tokenizer::Token<TokenData>&)>;
     template<typename ParseData> using Reducer = std::function<std::unique_ptr<ParseData>(std::vector<ParseItem<ParseData>>&, unsigned int, unsigned int, unsigned int)>;
+    typedef std::function<void(unsigned int, unsigned int, unsigned int)> MatchListener;
 
-    template<typename ParseData, typename TokenData> std::unique_ptr<ParseData> parse(Tokenizer::Stream<TokenData> &stream, TerminalDecorator<ParseData, TokenData> terminalDecorator, Reducer<ParseData> reducer) const
+    template<typename ParseData, typename TokenData> std::unique_ptr<ParseData> parse(Tokenizer::Stream<TokenData> &stream, TerminalDecorator<ParseData, TokenData> terminalDecorator, Reducer<ParseData> reducer, MatchListener matchListener = MatchListener()) const
     {
         std::vector<ParseItem<ParseData>> parseStack;
-        parseRule(mGrammar.startRule(), stream, parseStack, terminalDecorator, reducer);
+        parseRule(mGrammar.startRule(), stream, parseStack, terminalDecorator, reducer, matchListener);
     
         return std::move(parseStack[0].data);
     }
@@ -56,7 +57,7 @@ private:
     bool addParseTableEntries(unsigned int rule, const std::set<unsigned int> &symbols, unsigned int rhs);
     bool computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals);
 
-    template<typename ParseData, typename TokenData> void parseRule(unsigned int rule, Tokenizer::Stream<TokenData> &stream, std::vector<ParseItem<ParseData>> &parseStack, TerminalDecorator<ParseData, TokenData> terminalDecorator, Reducer<ParseData> reducer) const
+    template<typename ParseData, typename TokenData> void parseRule(unsigned int rule, Tokenizer::Stream<TokenData> &stream, std::vector<ParseItem<ParseData>> &parseStack, TerminalDecorator<ParseData, TokenData> &terminalDecorator, Reducer<ParseData> &reducer, MatchListener &matchListener) const
     {
         unsigned int rhs = mParseTable[rule*mNumSymbols + stream.nextToken().index];
 
@@ -76,6 +77,9 @@ private:
                         parseItem.index = symbol.index;
                         parseItem.data = terminalDecorator(stream.nextToken());
                         parseStack.push_back(std::move(parseItem));
+                        if(matchListener) {
+                            matchListener(rule, rhs, i);
+                        }
                         stream.consumeToken();
                     } else {
                         throw ParseException(stream.nextToken().index);
@@ -83,7 +87,7 @@ private:
                     break;
 
                 case Grammar::Symbol::Type::Nonterminal:
-                    parseRule(symbol.index, stream, parseStack, terminalDecorator, reducer);
+                    parseRule(symbol.index, stream, parseStack, terminalDecorator, reducer, matchListener);
                     break;
             }
         }

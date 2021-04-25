@@ -112,6 +112,7 @@ namespace Regex {
         bool invert = false;
         switch(regex[pos]) {
             case 'S': invert = true;
+                ranges.push_back(CharacterClassNode::Range('\n', '\n'));
             case 's':
                 ranges.push_back(CharacterClassNode::Range(' ', ' '));
                 ranges.push_back(CharacterClassNode::Range('\t', '\t'));

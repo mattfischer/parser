@@ -1,5 +1,5 @@
 NUMBER: [0-9]+
-IGNORE: \s
+IGNORE: (\s|\n)
 
 <root> : <E>
 <E>: NUMBER <Ee>
