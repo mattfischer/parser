@@ -172,6 +172,17 @@ struct DefNode {
         Pattern,
         Rule
     };
+
+    DefNode(Type t) : type(t) {}
+    template<typename ...Children> DefNode(Type t, Children&&... c) : type(t) {
+        addChildren(std::forward<Children&&>(c)...);
+    }
+    void addChildren() {}
+    template<typename ...Children> void addChildren(std::unique_ptr<DefNode>&& child, Children&&... others) {
+        children.push_back(std::move(child));
+        addChildren(std::forward<Children&&>(others)...);
+    }
+
     Type type;
     std::vector<std::unique_ptr<DefNode>> children;
     std::string string;
@@ -185,8 +196,7 @@ std::unique_ptr<DefNode> terminalDecorator(const Tokenizer::Token<StringData> &t
         case PrimaryToken::Terminal:
         case PrimaryToken::Nonterminal:
         case PrimaryToken::Literal:
-            node = std::make_unique<DefNode>();
-            node->type = DefNode::Type::Identifier;
+            node = std::make_unique<DefNode>(DefNode::Type::Identifier);
             node->string = token.data->text;
             break;
     }
@@ -200,32 +210,23 @@ std::unique_ptr<DefNode> reducer(LLParser::ParseItem<DefNode> *parseItems, unsig
     if(rule == 0) {
         node = std::move(parseItems[0].data);
     } else if(rule == 1) {
-        node = std::make_unique<DefNode>();
-        node->type = DefNode::Type::List;
+        node = std::make_unique<DefNode>(DefNode::Type::List);
         for(unsigned int i=0; i<numItems; i++) {
             if(parseItems[i].data) {
                 node->children.push_back(std::move(parseItems[i].data));
             }
         }
     } else if(rule == 3) {
-        node = std::make_unique<DefNode>();
-        node->type = DefNode::Type::Pattern;
-        node->children.push_back(std::move(parseItems[0].data));
-        node->children.push_back(std::move(parseItems[2].data));
+        node = std::make_unique<DefNode>(DefNode::Type::Pattern, std::move(parseItems[0].data), std::move(parseItems[2].data));
     } else if(rule == 4) {
-        node = std::make_unique<DefNode>();
-        node->type = DefNode::Type::Rule;
-        node->children.push_back(std::move(parseItems[0].data));
-        node->children.push_back(std::move(parseItems[2].data));
+        node = std::make_unique<DefNode>(DefNode::Type::Rule, std::move(parseItems[0].data), std::move(parseItems[2].data));
     } else if(rule == 5) {
-        node = std::make_unique<DefNode>();
-        node->type = DefNode::Type::List;
+        node = std::make_unique<DefNode>(DefNode::Type::List);
         for(unsigned int i=0; i<numItems; i+=2) {
             node->children.push_back(std::move(parseItems[i].data));
         }
     } else if(rule == 7) {
-        node = std::make_unique<DefNode>();
-        node->type = DefNode::Type::List;
+        node = std::make_unique<DefNode>(DefNode::Type::List);
         for(unsigned int i=0; i<numItems; i++) {
             node->children.push_back(std::move(parseItems[i].data));
         }
