@@ -11,16 +11,6 @@ struct NumberData
     int number;
 };
 
-unsigned int numberToken;
-std::unique_ptr<NumberData> decorateToken(unsigned int index, const std::string &text)
-{
-    if(index == numberToken) {
-        return std::make_unique<NumberData>(std::atoi(text.c_str()));
-    }
-
-    return nullptr;
-}
-
 struct AstNode
 {
     enum class Type {
@@ -52,33 +42,6 @@ struct AstNodeNumber : public AstNode
     int number;
 };
 
-std::unique_ptr<AstNode> decorateTerminal(const Tokenizer::Token<NumberData> &token)
-{
-    if(token.index == 1) {
-        return std::make_unique<AstNodeNumber>(token.data->number);
-    }
-
-    return nullptr;
-}
-
-unsigned int ERule;
-unsigned int rootRule;
-
-std::unique_ptr<AstNode> reduce(LLParser::ParseItem<AstNode> *parseItems, unsigned int numItems, unsigned int rule, unsigned int rhs)
-{
-    if(rule == ERule) {
-        std::unique_ptr<AstNode> node = std::move(parseItems[0].data);
-        for(unsigned int i=2; i<numItems; i+=2) {
-            node = std::make_unique<AstNode>(AstNode::Type::Add, std::move(node), std::move(parseItems[i].data));
-        }
-        return node;
-    } else if(rule == rootRule) {
-        return std::move(parseItems[0].data);
-    }
-
-    return nullptr;
-}
-
 int main(int argc, char *argv[])
 {
     DefReader reader("grammar.def");
@@ -93,14 +56,28 @@ int main(int argc, char *argv[])
         return 1; 
     }
     
-    numberToken = reader.tokenizer().patternIndex("NUMBER", 0);
-    ERule = parser.grammar().ruleIndex("<E>");
-    rootRule = parser.grammar().ruleIndex("<root>");
-
     std::stringstream ss("2345 + 2 + 5");
-    Tokenizer::Stream<NumberData> stream(reader.tokenizer(), ss, decorateToken);
+    Tokenizer::Stream<NumberData> stream(reader.tokenizer(), ss);
+    stream.addDecorator("NUMBER", 0, [](const std::string &text) -> std::unique_ptr<NumberData> {
+        return std::make_unique<NumberData>(std::atoi(text.c_str()));
+    });
 
-    LLParser::ParseSession<AstNode, NumberData> session(parser, decorateTerminal, reduce);
+    LLParser::ParseSession<AstNode, NumberData> session(parser);
+    session.addTerminalDecorator(reader.tokenizer().patternIndex("NUMBER", 0), [](const NumberData &numberData) -> std::unique_ptr<AstNode> {
+        return std::make_unique<AstNodeNumber>(numberData.number);
+    });
+
+    session.addReducer("<root>", 0, [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) -> std::unique_ptr<AstNode> {
+        return std::move(items[0].data);
+    });
+    session.addReducer("<E>", 0, [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) -> std::unique_ptr<AstNode> {
+        std::unique_ptr<AstNode> node = std::move(items[0].data);
+        for(unsigned int i=2; i<numItems; i+=2) {
+            node = std::make_unique<AstNode>(AstNode::Type::Add, std::move(node), std::move(items[i].data));
+        }
+        return node;
+    });
+
     try {
         std::unique_ptr<AstNode> ast = session.parse(stream);
     } catch (LLParser::ParseException e) {

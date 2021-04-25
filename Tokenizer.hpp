@@ -34,15 +34,14 @@ public:
     template<typename TokenData> class Stream
     {
     public:
-        typedef std::function<std::unique_ptr<TokenData>(unsigned int, const std::string&)> Decorator;
-        Stream(const Tokenizer &tokenizer, std::istream &input, Decorator decorator)
-        : mTokenizer(tokenizer), mInput(input), mDecorator(decorator)
+        typedef std::function<std::unique_ptr<TokenData>(const std::string&)> Decorator;
+        Stream(const Tokenizer &tokenizer, std::istream &input)
+        : mTokenizer(tokenizer), mInput(input)
         {
             mConsumed = 0;
             mLine = 0;
             mConfiguration = 0;
-
-            consumeToken();
+            mStarted = false;
         }
 
         void setConfiguration(unsigned int configuration)
@@ -55,8 +54,20 @@ public:
             return mConfiguration;
         }
 
-        const Token<TokenData> &nextToken() const
+        void addDecorator(const std::string &pattern, unsigned int configuration, Decorator decorator)
         {
+            unsigned int patternIndex = mTokenizer.patternIndex(pattern, configuration);
+            if(patternIndex != UINT_MAX) {
+                mDecorators[std::pair<unsigned int, unsigned int>(patternIndex, configuration)] = decorator;
+            }
+        }
+
+        const Token<TokenData> &nextToken()
+        {
+            if(!mStarted) {
+                consumeToken();
+                mStarted = true;
+            }
             return mNextToken;
         }
 
@@ -95,9 +106,10 @@ public:
                         mNextToken.index = pattern;
                         mNextToken.start = mConsumed;
                         mNextToken.line = mLine;
-                        if(mDecorator) {
+                        auto it = mDecorators.find(std::pair<unsigned int, unsigned int>(pattern, mConfiguration));
+                        if(it != mDecorators.end()) {
                             std::string text = mCurrentLine.substr(mConsumed, matched);
-                            mNextToken.data = mDecorator(pattern, text);
+                            mNextToken.data = it->second(text);
                         }
                         repeat = false;
                     }
@@ -115,7 +127,8 @@ public:
         Token<TokenData> mNextToken;
         unsigned int mLine;
         unsigned int mConfiguration;
-        Decorator mDecorator;
+        std::map<std::pair<unsigned int, unsigned int>, Decorator> mDecorators;
+        bool mStarted;
     };
 
 private:

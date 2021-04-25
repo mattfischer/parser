@@ -17,7 +17,7 @@ unsigned int Grammar::startRule() const
 
 unsigned int Grammar::ruleIndex(const std::string &name) const
 {
-    for(unsigned int i=0; mRules.size(); i++) {
+    for(unsigned int i=0; i<mRules.size(); i++) {
         if(mRules[i].lhs == name) {
             return i;
         }
