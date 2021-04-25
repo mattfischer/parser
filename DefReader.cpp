@@ -344,7 +344,8 @@ bool DefReader::parseFile(const std::string &filename, std::map<std::string, std
         }
     };
 
-    std::unique_ptr<DefNode> node = parser.parse<DefNode, StringData>(stream, terminalDecorator, reducer, matchListener);
+    LLParser::ParseSession<DefNode, StringData> session(parser, terminalDecorator, reducer, matchListener);
+    std::unique_ptr<DefNode> node = session.parse(stream);
 
     for(const auto &definition: node->children) {
         switch(definition->type) {

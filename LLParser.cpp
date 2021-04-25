@@ -108,3 +108,9 @@ const Grammar &LLParser::grammar() const
 {
     return mGrammar;
 }
+
+unsigned int LLParser::rhs(unsigned int rule, unsigned int symbol) const
+{
+    return mParseTable[rule*mNumSymbols + symbol];
+
+}

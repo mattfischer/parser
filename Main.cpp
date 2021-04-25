@@ -100,8 +100,9 @@ int main(int argc, char *argv[])
     std::stringstream ss("2345 + 2 + 5");
     Tokenizer::Stream<NumberData> stream(reader.tokenizer(), ss, decorateToken);
 
+    LLParser::ParseSession<AstNode, NumberData> session(parser, decorateTerminal, reduce);
     try {
-        std::unique_ptr<AstNode> ast = parser.parse<AstNode, NumberData>(stream, decorateTerminal, reduce);
+        std::unique_ptr<AstNode> ast = session.parse(stream);
     } catch (LLParser::ParseException e) {
         std::cout << "Error: Unexpected symbol " << e.symbol << std::endl;
         return 1;
