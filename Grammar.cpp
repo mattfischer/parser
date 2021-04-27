@@ -1,7 +1,7 @@
 #include "Grammar.hpp"
 
-Grammar::Grammar(std::vector<Rule> &&rules, unsigned int startRule)
-: mRules(std::move(rules)), mStartRule(startRule)
+Grammar::Grammar(std::vector<std::string> &&terminals, std::vector<Rule> &&rules, unsigned int startRule)
+: mTerminals(std::move(terminals)), mRules(std::move(rules)), mStartRule(startRule)
 {
 }
 
@@ -13,6 +13,17 @@ const std::vector<Grammar::Rule> &Grammar::rules() const
 unsigned int Grammar::startRule() const
 {
     return mStartRule;
+}
+
+unsigned int Grammar::terminalIndex(const std::string &name) const
+{
+    for(unsigned int i=0; i<mTerminals.size(); i++) {
+        if(mTerminals[i] == name) {
+            return i;
+        }
+    }
+
+    return UINT_MAX;
 }
 
 unsigned int Grammar::ruleIndex(const std::string &name) const

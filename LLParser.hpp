@@ -61,9 +61,12 @@ public:
             }
         }
     
-        void addTerminalDecorator(unsigned int index, TerminalDecorator terminalDecorator)
+        void addTerminalDecorator(const std::string &terminal, TerminalDecorator terminalDecorator)
         {
-            mTerminalDecorators[index] = terminalDecorator;
+            unsigned int terminalIndex = mParser.grammar().terminalIndex(terminal);
+            if(terminalIndex != UINT_MAX) {
+                mTerminalDecorators[terminalIndex] = terminalDecorator;
+            }
         }
 
         void addReducer(const std::string &rule, unsigned int rhs, Reducer reducer)

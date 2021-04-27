@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
     });
 
     LLParser::ParseSession<AstNode, NumberData> session(parser);
-    session.addTerminalDecorator(reader.tokenizer().patternValue("NUMBER", 0), [](const NumberData &numberData) -> std::unique_ptr<AstNode> {
+    session.addTerminalDecorator("NUMBER", [](const NumberData &numberData) -> std::unique_ptr<AstNode> {
         return std::make_unique<AstNodeNumber>(numberData.number);
     });
 
