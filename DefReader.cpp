@@ -35,7 +35,6 @@ DefReader::DefReader(const std::string &filename)
         return;
     }
 
-    unsigned int ignorePattern = UINT_MAX;
     std::map<std::string, unsigned int> terminalMap;
     std::map<std::string, unsigned int> anonymousTerminalMap;
     std::vector<std::string> terminals;
@@ -44,9 +43,6 @@ DefReader::DefReader(const std::string &filename)
         terminalNames.push_back(pair.first);
         terminals.push_back(pair.second);
         terminalMap[pair.first] = (unsigned int)(terminals.size() - 1);
-        if(pair.first == "IGNORE") {
-            ignorePattern = (unsigned int)(terminals.size() - 1);
-        }
     }
 
     std::vector<Grammar::Rule> rules;
@@ -81,6 +77,7 @@ DefReader::DefReader(const std::string &filename)
                     auto it = anonymousTerminalMap.find(text);
                     if(it == anonymousTerminalMap.end()) {
                         terminals.push_back(text);
+                        terminalNames.push_back(text);
                         symbol.index = anonymousTerminalMap[text] = (unsigned int)(terminals.size() - 1);
                     } else {
                         symbol.index = it->second;
@@ -107,6 +104,7 @@ DefReader::DefReader(const std::string &filename)
         }
     }
 
+    Tokenizer::TokenValue endValue = (Tokenizer::TokenValue)terminals.size();
     auto it = ruleMap.find("<root>");
     if(it == ruleMap.end()) {
         mParseError.message = "No <root> nonterminal defined";
@@ -114,34 +112,41 @@ DefReader::DefReader(const std::string &filename)
     } else {
         Grammar::Symbol endSymbol;
         endSymbol.type = Grammar::Symbol::Type::Terminal;
-        endSymbol.index = (unsigned int)terminals.size();
+        endSymbol.index = endValue;
         endSymbol.name = "#";
         for(auto &rhs: rules[it->second].rhs) {
             rhs.push_back(endSymbol);
         }
 
-        Regex::Matcher matcher(terminals);
-        mTokenizer = std::make_unique<Tokenizer>(std::move(matcher), ignorePattern, std::move(terminalNames));
+        Tokenizer::Configuration configuration;
+        for(unsigned int i=0; i<terminals.size(); i++) {
+            Tokenizer::Pattern pattern;
+            pattern.regex = std::move(terminals[i]);
+            pattern.name = std::move(terminalNames[i]);
+            if(pattern.name == "IGNORE") {
+                pattern.value = Tokenizer::InvalidTokenValue;
+            } else {
+                pattern.value = i;
+            }
+            configuration.patterns.push_back(std::move(pattern));
+        }
+        std::vector<Tokenizer::Configuration> configurations;
+        configurations.push_back(std::move(configuration));
+        mTokenizer = std::make_unique<Tokenizer>(std::move(configurations), endValue, Tokenizer::InvalidTokenValue);
         mGrammar = std::make_unique<Grammar>(std::move(rules), it->second);
     }
 }
 
-struct PrimaryToken {
+struct DefToken {
     enum {
         Terminal,
         Nonterminal,
         Colon,
         Pipe,
         Literal,
-        Whitespace,
-        Newline
-    };
-};
-
-struct RegexToken {
-    enum {
         Regex,
-        RegexWhitespace
+        Newline,
+        End
     };
 };
 
@@ -178,23 +183,28 @@ struct DefNode {
 
 bool DefReader::parseFile(const std::string &filename, std::map<std::string, std::string> &terminals, std::map<std::string, Rule> &rules)
 {
-    std::vector<Tokenizer::Configuration> configurations;
-    
-    std::vector<std::string> primaryPatterns{"\\w+", "<\\w+>", ":", "\\|", "'[^']+'", "\\s", "\\n" };
-    std::vector<std::string> primaryNames{"terminal", "nonterminal", "colon", "pipe", "literal", "whitespace", "newline"};
-    configurations.push_back(Tokenizer::Configuration{primaryPatterns, PrimaryToken::Whitespace, primaryNames});
+    std::vector<Tokenizer::Configuration> configurations{
+        Tokenizer::Configuration{std::vector<Tokenizer::Pattern>{
+            Tokenizer::Pattern{"\\w+", "terminal", DefToken::Terminal,},
+            Tokenizer::Pattern{"<\\w+>", "nonterminal", DefToken::Nonterminal},
+            Tokenizer::Pattern{":", "colon", DefToken::Colon},
+            Tokenizer::Pattern{"\\|", "pipe", DefToken::Pipe},
+            Tokenizer::Pattern{"'[^']+'", "literal", DefToken::Literal},
+            Tokenizer::Pattern{"\\s", "whitespace", Tokenizer::InvalidTokenValue}  
+        }},
+        Tokenizer::Configuration{std::vector<Tokenizer::Pattern>{
+            Tokenizer::Pattern{"\\S+", "regex", DefToken::Regex},
+            Tokenizer::Pattern{"\\s", "whitespace", Tokenizer::InvalidTokenValue},
+        }}
+    };
 
-    std::vector<std::string> regexPatterns{"\\S+", "\\s"};
-    std::vector<std::string> regexNames{"regex", "whitespace"};
-    configurations.push_back(Tokenizer::Configuration{regexPatterns, RegexToken::RegexWhitespace, regexNames});
-
-    Tokenizer tokenizer(std::move(configurations));
+    Tokenizer tokenizer(std::move(configurations), DefToken::End, DefToken::Newline);
 
     std::vector<Grammar::Rule> grammarRules{
         Grammar::Rule{"root", std::vector<Grammar::RHS>{
             Grammar::RHS{
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 1, "definitions"},
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, tokenizer.endToken(), "#"},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::End, "#"},
             }
         }},
         Grammar::Rule{"definitions", std::vector<Grammar::RHS>{
@@ -212,7 +222,7 @@ bool DefReader::parseFile(const std::string &filename, std::map<std::string, std
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 2, "definitionlist"}
             },
             Grammar::RHS{
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, PrimaryToken::Newline, ""},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Newline, "newline"},
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 2, "definitionlist"}
             },
             Grammar::RHS{
@@ -221,18 +231,18 @@ bool DefReader::parseFile(const std::string &filename, std::map<std::string, std
         }},
         Grammar::Rule{"pattern", std::vector<Grammar::RHS>{
             Grammar::RHS{
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, PrimaryToken::Terminal, "terminal"},
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, PrimaryToken::Colon, ":"},
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, RegexToken::Regex, "regex"},
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, PrimaryToken::Newline, ""}
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Terminal, "terminal"},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Colon, "colon"},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Regex, "regex"},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Newline, "newline"}
             }
         }},
         Grammar::Rule{"rule", std::vector<Grammar::RHS>{
             Grammar::RHS{
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, PrimaryToken::Nonterminal, "nonterminal"},
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, PrimaryToken::Colon, ":"},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Nonterminal, "nonterminal"},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Colon, "colon"},
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 5, "rhs"},
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, PrimaryToken::Newline, ""},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Newline, "newline"},
             }
         }},
         Grammar::Rule{"rhs", std::vector<Grammar::RHS>{
@@ -243,7 +253,7 @@ bool DefReader::parseFile(const std::string &filename, std::map<std::string, std
         }},
         Grammar::Rule{"rhsaltlist", std::vector<Grammar::RHS>{
             Grammar::RHS{
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, PrimaryToken::Pipe, "|"},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Pipe, "pipe"},
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 7, "rhsalt"},
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 6, "rhsaltlist"}
             },
@@ -258,15 +268,15 @@ bool DefReader::parseFile(const std::string &filename, std::map<std::string, std
         }},
         Grammar::Rule{"symbollist", std::vector<Grammar::RHS>{
             Grammar::RHS{
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, PrimaryToken::Terminal, "terminal"},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Terminal, "terminal"},
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 8, "symbollist"}
             },
             Grammar::RHS{
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, PrimaryToken::Nonterminal, "nonterminal"},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Nonterminal, "nonterminal"},
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 8, "symbollist"}
             },
             Grammar::RHS{
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, PrimaryToken::Literal, "literal"},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Literal, "literal"},
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 8, "symbollist"}
             },
             Grammar::RHS{
@@ -300,9 +310,10 @@ bool DefReader::parseFile(const std::string &filename, std::map<std::string, std
             node->string = stringData.text;  
             return node;  
     };
-    session.addTerminalDecorator(PrimaryToken::Terminal, terminalDecorator);
-    session.addTerminalDecorator(PrimaryToken::Nonterminal, terminalDecorator);
-    session.addTerminalDecorator(PrimaryToken::Literal, terminalDecorator);
+    session.addTerminalDecorator(DefToken::Terminal, terminalDecorator);
+    session.addTerminalDecorator(DefToken::Nonterminal, terminalDecorator);
+    session.addTerminalDecorator(DefToken::Literal, terminalDecorator);
+    session.addTerminalDecorator(DefToken::Regex, terminalDecorator);
 
     session.addReducer("root", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) -> std::unique_ptr<DefNode> {
         return std::move(items[0].data);

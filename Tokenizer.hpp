@@ -11,25 +11,29 @@
 class Tokenizer
 {
 public:
-    struct Configuration {
-        Regex::Matcher matcher;
-        unsigned int ignorePattern;
-        std::vector<std::string> patternNames;
+    typedef unsigned int TokenValue;
+    static const TokenValue InvalidTokenValue = UINT_MAX;
+    static const TokenValue ErrorTokenValue = InvalidTokenValue -1;
+
+    struct Pattern {
+        std::string regex;
+        std::string name;
+        TokenValue value;
     };
-    Tokenizer(std::vector<Configuration> &&configurations);
-    Tokenizer(Regex::Matcher &&matcher, unsigned int ignorePattern, std::vector<std::string> &&patternNames);
+
+    struct Configuration {
+        std::vector<Pattern> patterns;
+    };
+    Tokenizer(std::vector<Configuration> &&configurations, TokenValue endValue, TokenValue newlineValue);
 
     template<typename Data> struct Token {
-        unsigned int index;
+        TokenValue value;
         unsigned int start;
         unsigned int line;
         std::unique_ptr<Data> data;
     };
 
-    unsigned int endToken() const;
-    unsigned int errorToken() const;
-
-    unsigned int patternIndex(const std::string &name, unsigned int configuration) const;
+    unsigned int patternValue(const std::string &name, unsigned int configuration) const;
 
     template<typename TokenData> class Stream
     {
@@ -41,7 +45,6 @@ public:
             mConsumed = 0;
             mLine = 0;
             mConfiguration = 0;
-            mStarted = false;
         }
 
         void setConfiguration(unsigned int configuration)
@@ -56,57 +59,64 @@ public:
 
         void addDecorator(const std::string &pattern, unsigned int configuration, Decorator decorator)
         {
-            unsigned int patternIndex = mTokenizer.patternIndex(pattern, configuration);
-            if(patternIndex != UINT_MAX) {
-                mDecorators[std::pair<unsigned int, unsigned int>(patternIndex, configuration)] = decorator;
+            TokenValue patternValue = mTokenizer.patternValue(pattern, configuration);
+            if(patternValue != InvalidTokenValue) {
+                mDecorators[patternValue] = decorator;
             }
         }
 
         const Token<TokenData> &nextToken()
         {
-            if(!mStarted) {
+            if(mLine == 0) {
                 consumeToken();
-                mStarted = true;
             }
             return mNextToken;
         }
 
         void consumeToken()
         {
-            if(mNextToken.index == mTokenizer.mErrorToken || mNextToken.index == mTokenizer.mEndToken) {
+            if(mNextToken.value == ErrorTokenValue || mNextToken.value == mTokenizer.mEndValue) {
                 return;
             }
 
             bool repeat = true;
             while(repeat) {
                 while(mConsumed >= mCurrentLine.size()) {
+                    if(mConsumed == mCurrentLine.size() && mTokenizer.mNewlineValue != InvalidTokenValue && mLine > 0) {
+                        mNextToken.value = mTokenizer.mNewlineValue;
+                        mNextToken.start = mConsumed;
+                        mNextToken.line = mLine;
+                        mConsumed++;
+                        return;
+                    }
+
                     if(mInput.eof() || mInput.fail()) {
-                        mNextToken.index = mTokenizer.mEndToken;
+                        mNextToken.value = mTokenizer.mEndValue;
                         mNextToken.start = mConsumed;
                         mNextToken.line = mLine;
                         return;
                     }
 
                     std::getline(mInput, mCurrentLine);
-                    mCurrentLine += '\n';
                     mConsumed = 0;
                     mLine++;
                 }
 
                 unsigned int pattern;
-                unsigned int matched = mTokenizer.mConfigurations[mConfiguration].matcher.match(mCurrentLine, mConsumed, pattern);
+                unsigned int matched = mTokenizer.mMatchers[mConfiguration]->match(mCurrentLine, mConsumed, pattern);
                 if(matched == 0) {
-                    mNextToken.index = mTokenizer.mErrorToken;
+                    mNextToken.value = ErrorTokenValue;
                     mNextToken.start = mConsumed;
                     mNextToken.line = mLine;
 
                     repeat = false;
                 } else {
-                    if(pattern != mTokenizer.mConfigurations[mConfiguration].ignorePattern) {
-                        mNextToken.index = pattern;
+                    TokenValue value = mTokenizer.mConfigurations[mConfiguration].patterns[pattern].value;
+                    if(value != InvalidTokenValue) {
+                        mNextToken.value = value;
                         mNextToken.start = mConsumed;
                         mNextToken.line = mLine;
-                        auto it = mDecorators.find(std::pair<unsigned int, unsigned int>(pattern, mConfiguration));
+                        auto it = mDecorators.find(value);
                         if(it != mDecorators.end()) {
                             std::string text = mCurrentLine.substr(mConsumed, matched);
                             mNextToken.data = it->second(text);
@@ -127,18 +137,17 @@ public:
         Token<TokenData> mNextToken;
         unsigned int mLine;
         unsigned int mConfiguration;
-        std::map<std::pair<unsigned int, unsigned int>, Decorator> mDecorators;
-        bool mStarted;
+        std::map<TokenValue, Decorator> mDecorators;
     };
 
 private:
     void initialize();
 
     std::vector<Configuration> mConfigurations;
+    std::vector<std::unique_ptr<Regex::Matcher>> mMatchers;
 
-    unsigned int mEndToken;
-    unsigned int mErrorToken;
-    unsigned int mIgnorePattern;
+    TokenValue mEndValue;
+    TokenValue mNewlineValue;
 };
 
 #endif

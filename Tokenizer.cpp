@@ -2,44 +2,27 @@
 
 #include <algorithm>
 
-Tokenizer::Tokenizer(std::vector<Configuration> &&configurations)
+Tokenizer::Tokenizer(std::vector<Configuration> &&configurations, TokenValue endValue, TokenValue newlineValue)
 : mConfigurations(std::move(configurations))
 {
-    initialize();
-}
-
-Tokenizer::Tokenizer(Regex::Matcher &&matcher, unsigned int ignorePattern, std::vector<std::string> &&patternNames)
-{
-    mConfigurations.push_back(Configuration{std::move(matcher), ignorePattern, std::move(patternNames)});
-    initialize();
-}
-
-void Tokenizer::initialize()
-{
-    mEndToken = 0;
+    mEndValue = endValue;
+    mNewlineValue = newlineValue;
     for(const auto &configuration : mConfigurations) {
-        mEndToken = std::max(mEndToken, configuration.matcher.numPatterns());
+        std::vector<std::string> patterns;
+        for(const auto &pattern : configuration.patterns) {
+            patterns.push_back(pattern.regex);
+        }
+        mMatchers.push_back(std::make_unique<Regex::Matcher>(std::move(patterns)));
     }
-    mErrorToken = mEndToken+1;
 }
 
-unsigned int Tokenizer::endToken() const
+unsigned int Tokenizer::patternValue(const std::string &name, unsigned int configuration) const
 {
-    return mEndToken;
-}
-
-unsigned int Tokenizer::errorToken() const
-{
-    return mErrorToken;
-}
-
-unsigned int Tokenizer::patternIndex(const std::string &name, unsigned int configuration) const
-{
-    for(unsigned int i=0; i<mConfigurations[configuration].patternNames.size(); i++) {
-        if(mConfigurations[configuration].patternNames[i] == name) {
-            return i;
+    for(unsigned int i=0; i<mConfigurations[configuration].patterns.size(); i++) {
+        if(mConfigurations[configuration].patterns[i].name == name) {
+            return mConfigurations[configuration].patterns[i].value;
         }
     }
 
-    return UINT_MAX;
+    return InvalidTokenValue;
 }

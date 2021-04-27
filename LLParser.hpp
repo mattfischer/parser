@@ -85,10 +85,10 @@ public:
     private:
         void parseRule(unsigned int rule, Tokenizer::Stream<TokenData> &stream, std::vector<ParseItem<ParseData>> &parseStack) const
         {
-            unsigned int rhs = mParser.rhs(rule, stream.nextToken().index);
+            unsigned int rhs = mParser.rhs(rule, stream.nextToken().value);
 
             if(rhs == UINT_MAX) {
-                throw ParseException(stream.nextToken().index);
+                throw ParseException(stream.nextToken().value);
             }   
 
             unsigned int parseStackStart = (unsigned int)parseStack.size();
@@ -97,7 +97,7 @@ public:
                 const Grammar::Symbol &symbol = symbols[i];
                 switch(symbol.type) {
                     case Grammar::Symbol::Type::Terminal:
-                        if(stream.nextToken().index == symbol.index) {
+                        if(stream.nextToken().value == symbol.index) {
                             ParseItem<ParseData> parseItem;
                             parseItem.type = ParseItem<ParseData>::Type::Terminal;
                             parseItem.index = symbol.index;
@@ -112,7 +112,7 @@ public:
                             }
                             stream.consumeToken();
                         } else {
-                            throw ParseException(stream.nextToken().index);
+                            throw ParseException(stream.nextToken().value);
                         }
                         break;
 
