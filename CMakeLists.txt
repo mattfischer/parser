@@ -1,5 +1,7 @@
 project(regex)
 
+set(CMAKE_CXX_STANDARD 17)
+
 set(SOURCES
     Regex/DFA.cpp
     Regex/Encoding.cpp

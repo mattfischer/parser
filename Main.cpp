@@ -17,18 +17,11 @@ struct AstNode
         Number,
         Add
     };
-    AstNode(Type t) : type(t) {}
-    template<typename ...Children> AstNode(Type t, Children&&... c)
-    {
-        type = t;
-        addChildren(std::forward<Children&&>(c)...);
-    }
 
-    void addChildren() {}
-    template<typename ...Children> void addChildren(std::unique_ptr<AstNode> &&firstChild, Children&&... otherChildren)
+    template<typename ...Children> AstNode(Type t, Children&&... c) : type(t)
     {
-        children.push_back(std::move(firstChild));
-        addChildren(std::forward<Children&&>(otherChildren)...);
+        children.reserve(sizeof...(c));
+        (children.push_back(std::move(c)), ...);
     }
 
     Type type;

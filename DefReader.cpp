@@ -164,14 +164,9 @@ struct DefNode {
         Rule
     };
 
-    DefNode(Type t) : type(t) {}
     template<typename ...Children> DefNode(Type t, Children&&... c) : type(t) {
-        addChildren(std::forward<Children&&>(c)...);
-    }
-    void addChildren() {}
-    template<typename ...Children> void addChildren(std::unique_ptr<DefNode>&& child, Children&&... others) {
-        children.push_back(std::move(child));
-        addChildren(std::forward<Children&&>(others)...);
+        children.reserve(sizeof...(c));
+        (children.push_back(std::move(c)), ...);
     }
 
     Type type;
