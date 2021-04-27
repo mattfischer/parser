@@ -317,7 +317,7 @@ bool DefReader::parseFile(const std::string &filename, std::map<std::string, std
     std::ifstream file(filename);
     Tokenizer::Stream<StringData> stream(tokenizer, file);
 
-    auto decorateToken = [](const std::string &text) -> std::unique_ptr<StringData> {
+    auto decorateToken = [](const std::string &text) {
         return std::make_unique<StringData>(text);
     };
     stream.addDecorator("terminal", 0, decorateToken);
@@ -331,20 +331,20 @@ bool DefReader::parseFile(const std::string &filename, std::map<std::string, std
         else if(symbol == 2) stream.setConfiguration(0);
     });
 
-    auto terminalDecorator = [](const StringData &stringData) -> std::unique_ptr<DefNode> {
-            std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::Identifier);
-            node->string = stringData.text;  
-            return node;  
+    auto terminalDecorator = [](const StringData &stringData) {
+        std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::Identifier);
+        node->string = stringData.text;  
+        return node;  
     };
     session.addTerminalDecorator("terminal", terminalDecorator);
     session.addTerminalDecorator("nonterminal", terminalDecorator);
     session.addTerminalDecorator("literal", terminalDecorator);
     session.addTerminalDecorator("regex", terminalDecorator);
 
-    session.addReducer("root", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) -> std::unique_ptr<DefNode> {
+    session.addReducer("root", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
         return std::move(items[0].data);
     });
-    session.addReducer("definitions", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) -> std::unique_ptr<DefNode> {
+    session.addReducer("definitions", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
         std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::List);
         for(unsigned int i=0; i<numItems; i++) {
             if(items[i].data) {
@@ -353,20 +353,20 @@ bool DefReader::parseFile(const std::string &filename, std::map<std::string, std
         }
         return node;
     });
-    session.addReducer("pattern", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) -> std::unique_ptr<DefNode> {
+    session.addReducer("pattern", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
         return std::make_unique<DefNode>(DefNode::Type::Pattern, std::move(items[0].data), std::move(items[2].data));
     });
-    session.addReducer("rule", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) -> std::unique_ptr<DefNode> {
+    session.addReducer("rule", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
         return std::make_unique<DefNode>(DefNode::Type::Rule, std::move(items[0].data), std::move(items[2].data));
     });
-    session.addReducer("rhs", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) -> std::unique_ptr<DefNode> {
+    session.addReducer("rhs", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
         std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::List);
         for(unsigned int i=0; i<numItems; i+=2) {
             node->children.push_back(std::move(items[i].data));
         }
         return node;
     });
-    session.addReducer("rhsalt", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) -> std::unique_ptr<DefNode> {
+    session.addReducer("rhsalt", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
         std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::List);
         for(unsigned int i=0; i<numItems; i++) {
             node->children.push_back(std::move(items[i].data));

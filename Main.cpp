@@ -58,19 +58,19 @@ int main(int argc, char *argv[])
     
     std::stringstream ss("2345 + 2 + 5");
     Tokenizer::Stream<NumberData> stream(reader.tokenizer(), ss);
-    stream.addDecorator("NUMBER", 0, [](const std::string &text) -> std::unique_ptr<NumberData> {
+    stream.addDecorator("NUMBER", 0, [](const std::string &text) {
         return std::make_unique<NumberData>(std::atoi(text.c_str()));
     });
 
     LLParser::ParseSession<AstNode, NumberData> session(parser);
-    session.addTerminalDecorator("NUMBER", [](const NumberData &numberData) -> std::unique_ptr<AstNode> {
+    session.addTerminalDecorator("NUMBER", [](const NumberData &numberData) {
         return std::make_unique<AstNodeNumber>(numberData.number);
     });
 
-    session.addReducer("<root>", 0, [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) -> std::unique_ptr<AstNode> {
+    session.addReducer("<root>", 0, [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {
         return std::move(items[0].data);
     });
-    session.addReducer("<E>", 0, [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) -> std::unique_ptr<AstNode> {
+    session.addReducer("<E>", 0, [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {
         std::unique_ptr<AstNode> node = std::move(items[0].data);
         for(unsigned int i=2; i<numItems; i+=2) {
             node = std::make_unique<AstNode>(AstNode::Type::Add, std::move(node), std::move(items[i].data));
