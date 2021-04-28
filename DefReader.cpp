@@ -26,115 +26,6 @@ std::string escape(const std::string &input)
     return result;
 }
 
-DefReader::DefReader(const std::string &filename)
-{
-    std::map<std::string, std::string> terminalDef;
-    std::map<std::string, Rule> ruleDef;
-    bool success = parseFile(filename, terminalDef, ruleDef);
-    if(!success) {
-        return;
-    }
-
-    std::map<std::string, unsigned int> terminalMap;
-    std::map<std::string, unsigned int> anonymousTerminalMap;
-    std::vector<std::string> terminals;
-    std::vector<std::string> terminalNames;
-    for(const auto &pair: terminalDef) {
-        terminalNames.push_back(pair.first);
-        terminals.push_back(pair.second);
-        terminalMap[pair.first] = (unsigned int)(terminals.size() - 1);
-    }
-
-    std::vector<Grammar::Rule> rules;
-    std::map<std::string, unsigned int> ruleMap;
-    for(const auto &pair: ruleDef) {
-        rules.push_back(Grammar::Rule());
-        ruleMap[pair.first] = (unsigned int)(rules.size() - 1);
-    }
-
-    for(const auto &pair: ruleDef) {
-        Grammar::Rule &rule = rules[ruleMap[pair.first]];
-        rule.lhs = pair.first;
-        for(const auto &r : pair.second) {
-            Grammar::RHS rhs;
-            for(const auto &s : r) {
-                Grammar::Symbol symbol;
-                if(s[0] == '<') {
-                    symbol.type = Grammar::Symbol::Type::Nonterminal;
-                    auto it = ruleMap.find(s);
-                    if(it == ruleMap.end()) {
-                        mParseError.message = "Unknown nonterminal " + s;
-                        return;
-                    } else {
-                        symbol.index = it->second;
-                    }
-                } else if(s[0] == '\'') {
-                    std::string text = s.substr(1, s.size() - 2);
-                    text = escape(text);
-                    symbol.type = Grammar::Symbol::Type::Terminal;
-
-                    auto it = anonymousTerminalMap.find(text);
-                    if(it == anonymousTerminalMap.end()) {
-                        terminals.push_back(text);
-                        terminalNames.push_back(text);
-                        symbol.index = anonymousTerminalMap[text] = (unsigned int)(terminals.size() - 1);
-                    } else {
-                        symbol.index = it->second;
-                    }
-                } else if(s == "0") {
-                    symbol.type = Grammar::Symbol::Type::Epsilon;
-                    symbol.index = 0;
-                } else {
-                    symbol.type = Grammar::Symbol::Type::Terminal;
-                    auto it = terminalMap.find(s);
-                    if(it == terminalMap.end()) {
-                        mParseError.message = "Unknown terminal " + s;
-                        return;
-                    } else {
-                        symbol.index = it->second;
-                    }
-                }
-                rhs.push_back(symbol);
-            }
-            rule.rhs.push_back(rhs);
-        }
-    }
-
-    Tokenizer::TokenValue endValue = (Tokenizer::TokenValue)terminals.size();
-    terminals.push_back("");
-    terminalNames.push_back("END");
-
-    auto it = ruleMap.find("<root>");
-    if(it == ruleMap.end()) {
-        mParseError.message = "No <root> nonterminal defined";
-        return;
-    } else {
-        Grammar::Symbol endSymbol;
-        endSymbol.type = Grammar::Symbol::Type::Terminal;
-        endSymbol.index = endValue;
-        for(auto &rhs: rules[it->second].rhs) {
-            rhs.push_back(endSymbol);
-        }
-
-        Tokenizer::Configuration configuration;
-        for(unsigned int i=0; i<terminals.size(); i++) {
-            Tokenizer::Pattern pattern;
-            pattern.regex = terminals[i];
-            pattern.name = terminalNames[i];
-            if(pattern.name == "IGNORE") {
-                pattern.value = Tokenizer::InvalidTokenValue;
-            } else {
-                pattern.value = i;
-            }
-            configuration.patterns.push_back(std::move(pattern));
-        }
-        std::vector<Tokenizer::Configuration> configurations;
-        configurations.push_back(std::move(configuration));
-        mTokenizer = std::make_unique<Tokenizer>(std::move(configurations), endValue, Tokenizer::InvalidTokenValue);
-        mGrammar = std::make_unique<Grammar>(std::move(terminalNames), std::move(rules), it->second);
-    }
-}
-
 struct DefToken {
     enum {
         Terminal,
@@ -174,7 +65,7 @@ struct DefNode {
     std::string string;
 };
 
-bool DefReader::parseFile(const std::string &filename, std::map<std::string, std::string> &terminals, std::map<std::string, Rule> &rules)
+DefReader::DefReader(const std::string &filename)
 {
     std::vector<Tokenizer::Configuration> configurations{
         Tokenizer::Configuration{std::vector<Tokenizer::Pattern>{
@@ -371,31 +262,114 @@ bool DefReader::parseFile(const std::string &filename, std::map<std::string, std
     
     std::unique_ptr<DefNode> node = session.parse(stream);
 
+    std::map<std::string, unsigned int> terminalMap;
+    std::map<std::string, unsigned int> anonymousTerminalMap;
+    std::vector<std::string> terminals;
+    std::vector<std::string> terminalNames;
+
     for(const auto &definition: node->children) {
-        switch(definition->type) {
-            case DefNode::Type::Pattern:
-            {
-                terminals[definition->children[0]->string] = definition->children[1]->string;
-                break;
-            }
-
-            case DefNode::Type::Rule:
-            {
-                std::string name = definition->children[0]->string;
-                for(const auto &alt : definition->children[1]->children) {
-                    std::vector<std::string> symbols;
-                    for(const auto &symbol : alt->children) {
-                        symbols.push_back(symbol->string);
-                    }
-                    rules[name].push_back(std::move(symbols));
-                }
-                break;
-            }
-
-        } 
+        if(definition->type == DefNode::Type::Pattern) {
+            terminals.push_back(definition->children[1]->string);
+            terminalNames.push_back(definition->children[0]->string);
+            terminalMap[definition->children[0]->string] = (unsigned int)(terminals.size() - 1);
+        }
     }
 
-    return true;
+    std::vector<Grammar::Rule> rules;
+    std::map<std::string, unsigned int> ruleMap;
+    for(const auto &definition: node->children) {
+        if(definition->type == DefNode::Type::Rule) {
+            rules.push_back(Grammar::Rule());
+            ruleMap[definition->children[0]->string] = (unsigned int)(rules.size() - 1);
+        }
+    }
+
+    for(const auto &definition: node->children) {
+        if(definition->type == DefNode::Type::Rule) {
+            std::string name = definition->children[0]->string;
+            Grammar::Rule &rule = rules[ruleMap[name]];
+            rule.lhs = name;
+        
+            for(const auto &alt : definition->children[1]->children) {
+                Grammar::RHS rhs;
+                for(const auto &s : alt->children) {
+                    const std::string &symbolName = s->string;
+                    Grammar::Symbol symbol;
+                    if(symbolName[0] == '<') {
+                        symbol.type = Grammar::Symbol::Type::Nonterminal;
+                        auto it = ruleMap.find(symbolName);
+                        if(it == ruleMap.end()) {
+                            mParseError.message = "Unknown nonterminal " + symbolName;
+                            return;
+                        } else {
+                            symbol.index = it->second;
+                        }
+                    } else if(symbolName[0] == '\'') {
+                        std::string text = symbolName.substr(1, symbolName.size() - 2);
+                        text = escape(text);
+                        symbol.type = Grammar::Symbol::Type::Terminal;
+
+                        auto it = anonymousTerminalMap.find(text);
+                        if(it == anonymousTerminalMap.end()) {
+                            terminals.push_back(text);
+                            terminalNames.push_back(text);
+                            symbol.index = anonymousTerminalMap[text] = (unsigned int)(terminals.size() - 1);
+                        } else {
+                            symbol.index = it->second;
+                        }
+                    } else if(symbolName == "0") {
+                        symbol.type = Grammar::Symbol::Type::Epsilon;
+                        symbol.index = 0;
+                    } else {
+                        symbol.type = Grammar::Symbol::Type::Terminal;
+                        auto it = terminalMap.find(symbolName);
+                        if(it == terminalMap.end()) {
+                            mParseError.message = "Unknown terminal " + symbolName;
+                            return;
+                        } else {
+                            symbol.index = it->second;
+                        }
+                    }
+                    rhs.push_back(symbol);
+                }
+                rule.rhs.push_back(std::move(rhs));
+            }   
+        }
+    }
+
+    Tokenizer::TokenValue endValue = (Tokenizer::TokenValue)terminals.size();
+    terminals.push_back("");
+    terminalNames.push_back("END");
+
+    auto it = ruleMap.find("<root>");
+    if(it == ruleMap.end()) {
+        mParseError.message = "No <root> nonterminal defined";
+        return;
+    } else {
+        Grammar::Symbol endSymbol;
+        endSymbol.type = Grammar::Symbol::Type::Terminal;
+        endSymbol.index = endValue;
+        for(auto &rhs: rules[it->second].rhs) {
+            rhs.push_back(endSymbol);
+        }
+
+        Tokenizer::Configuration configuration;
+        for(unsigned int i=0; i<terminals.size(); i++) {
+            Tokenizer::Pattern pattern;
+            pattern.regex = terminals[i];
+            pattern.name = terminalNames[i];
+            if(pattern.name == "IGNORE") {
+                pattern.value = Tokenizer::InvalidTokenValue;
+            } else {
+                pattern.value = i;
+            }
+            configuration.patterns.push_back(std::move(pattern));
+        }
+        std::vector<Tokenizer::Configuration> configurations;
+        configurations.push_back(std::move(configuration));
+        mTokenizer = std::make_unique<Tokenizer>(std::move(configurations), endValue, Tokenizer::InvalidTokenValue);
+        mGrammar = std::make_unique<Grammar>(std::move(terminalNames), std::move(rules), it->second);
+    }
 }
 
 bool DefReader::valid() const
