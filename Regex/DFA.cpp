@@ -14,8 +14,8 @@ namespace Regex {
         std::vector<State> states;
         unsigned int startState = findOrAddState(stateSets, nfa, nfaStates);
 
-        std::vector<std::set<unsigned int>> acceptStates;
-        acceptStates.resize(nfa.acceptStates().size());
+        std::vector<std::set<unsigned int>> acceptSets;
+        acceptSets.resize(nfa.acceptStates().size());
     
         for(unsigned int i=0; i<stateSets.size(); i++) {
             const StateSet &stateSet = stateSets[i];
@@ -27,14 +27,27 @@ namespace Regex {
 
             for(unsigned int j=0; j<nfa.acceptStates().size(); j++) { 
                 if(stateSet.nfaStates.find(nfa.acceptStates()[j]) != stateSet.nfaStates.end()) {
-                    acceptStates[j].insert(i);
+                    acceptSets[j].insert(i);
                 }
             }
 
             states.push_back(std::move(state));
         }
 
-        //minimize(states, startState, acceptStates);
+        std::vector<unsigned int> acceptStates;
+        acceptStates.resize(states.size());
+        for(unsigned int i=0; i<acceptStates.size(); i++) {
+            const State &state = states[i];
+            acceptStates[i] = UINT_MAX;
+            for(unsigned int j=0; j<acceptSets.size(); j++) {
+                if(acceptSets[j].count(i) > 0) {
+                    acceptStates[i] = j;
+                    break;
+                }
+            }
+        }
+
+        minimize(states, startState, acceptStates);
 
         mStartState = startState;
         states.push_back(State());
@@ -42,17 +55,10 @@ namespace Regex {
         mNumCodePoints = encoding.numCodePoints();
         mRejectState = mNumStates - 1;
         mTransitions.resize(mNumStates * mNumCodePoints);
-        mAcceptStates.resize(mNumStates);
+        mAcceptStates = std::move(acceptStates);
 
         for(unsigned int i=0; i<mNumStates; i++) {
             const State &state = states[i];
-            mAcceptStates[i] = UINT_MAX;
-            for(unsigned int j=0; j<acceptStates.size(); j++) {
-                if(acceptStates[j].count(i) > 0) {
-                    mAcceptStates[i] = j;
-                    break;
-                }
-            }
 
             for(unsigned int j=0; j<mNumCodePoints; j++) {
                 auto it = state.transitions.find(j);
@@ -152,7 +158,7 @@ namespace Regex {
         return idx;
     }
 
-    void DFA::minimize(std::vector<State> &states, unsigned int &startState, std::vector<std::set<unsigned int>> &acceptStates)
+    void DFA::minimize(std::vector<State> &states, unsigned int &startState, std::vector<unsigned int> &acceptStates)
     {
         std::set<Symbol> alphabet;
 
@@ -162,22 +168,15 @@ namespace Regex {
             }
         }
 
-        std::vector<std::set<unsigned int>> partition;
-
-        std::set<unsigned int> others;
-        for(unsigned int i=0; i<states.size(); i++) {
-            others.insert(i);
-        }
+        std::map<unsigned int, std::set<unsigned int>> acceptSets;
 
         for(unsigned int i=0; i<acceptStates.size(); i++) {
-            partition.push_back(acceptStates[i]);
-            for(unsigned int s : acceptStates[i]) {
-                others.erase(s);
-            }
+            acceptSets[acceptStates[i]].insert(i);
         }
-        
-        if(others.size() > 0) {
-            partition.push_back(std::move(others));
+
+        std::vector<std::set<unsigned int>> partition;
+        for(auto &pair : acceptSets) {
+            partition.push_back(std::move(pair.second));
         }
 
         std::vector<unsigned int> queue;
@@ -252,12 +251,10 @@ namespace Regex {
             newStates.push_back(std::move(newState));
         }
         unsigned int newStartState = stateMap[startState];
-        std::vector<std::set<unsigned int>> newAcceptStates;
-        newAcceptStates.resize(acceptStates.size());
-        for(unsigned int i=0; i<acceptStates.size(); i++) {
-            for(unsigned int s : acceptStates[i]) {
-                newAcceptStates[i].insert(stateMap[s]);
-            }
+        std::vector<unsigned int> newAcceptStates;
+        newAcceptStates.resize(newStates.size());
+        for(unsigned int i=0; i<states.size(); i++) {
+            newAcceptStates[stateMap[i]] = acceptStates[i];
         }
 
         states = std::move(newStates);

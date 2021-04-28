@@ -33,7 +33,7 @@ namespace Regex {
         };
 
         unsigned int findOrAddState(std::vector<StateSet> &stateSets, const NFA &nfa, const std::set<unsigned int> &nfaStates);
-        void minimize(std::vector<State> &states, unsigned int &startState, std::vector<std::set<unsigned int>> &acceptStates);
+        void minimize(std::vector<State> &states, unsigned int &startState, std::vector<unsigned int> &acceptStates);
 
         unsigned int mNumCodePoints;
         unsigned int mNumStates;
