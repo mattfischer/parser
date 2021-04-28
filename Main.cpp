@@ -60,10 +60,10 @@ int main(int argc, char *argv[])
         return std::make_unique<AstNodeNumber>(numberData.number);
     });
 
-    session.addReducer("<root>", 0, [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("root", 0, [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {
         return std::move(items[0].data);
     });
-    session.addReducer("<E>", 0, [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("E", 0, [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {
         std::unique_ptr<AstNode> node = std::move(items[0].data);
         for(unsigned int i=2; i<numItems; i+=2) {
             node = std::make_unique<AstNode>(AstNode::Type::Add, std::move(node), std::move(items[i].data));
