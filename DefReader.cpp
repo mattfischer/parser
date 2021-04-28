@@ -26,20 +26,6 @@ std::string escape(const std::string &input)
     return result;
 }
 
-struct DefToken {
-    enum {
-        Epsilon,
-        Terminal,
-        Nonterminal,
-        Colon,
-        Pipe,
-        Literal,
-        Regex,
-        Newline,
-        End
-    };
-};
-
 struct StringData
 {
     StringData(const std::string &t) : text(t) {}
@@ -72,42 +58,42 @@ struct DefNode {
 
 DefReader::DefReader(const std::string &filename)
 {
+    std::vector<std::string> grammarTerminals{
+        /* 0 */ "epsilon",
+        /* 1 */ "terminal",
+        /* 2 */ "nonterminal",
+        /* 3 */ "colon",
+        /* 4 */ "pipe",
+        /* 5 */ "literal",
+        /* 6 */ "regex",
+        /* 7 */ "newline",
+        /* 8 */ "end"
+    };
+
     std::vector<Tokenizer::Configuration> configurations{
         Tokenizer::Configuration{std::vector<Tokenizer::Pattern>{
-            Tokenizer::Pattern{"0", "epsilon", DefToken::Epsilon},
-            Tokenizer::Pattern{"\\w+", "terminal", DefToken::Terminal},
-            Tokenizer::Pattern{"<\\w+>", "nonterminal", DefToken::Nonterminal},
-            Tokenizer::Pattern{":", "colon", DefToken::Colon},
-            Tokenizer::Pattern{"\\|", "pipe", DefToken::Pipe},
-            Tokenizer::Pattern{"'[^']+'", "literal", DefToken::Literal},
+            Tokenizer::Pattern{"0", "epsilon", 0},
+            Tokenizer::Pattern{"\\w+", "terminal", 1},
+            Tokenizer::Pattern{"<\\w+>", "nonterminal", 2},
+            Tokenizer::Pattern{":", "colon", 3},
+            Tokenizer::Pattern{"\\|", "pipe", 4},
+            Tokenizer::Pattern{"'[^']+'", "literal", 5},
             Tokenizer::Pattern{"\\s", "whitespace", Tokenizer::InvalidTokenValue}  
         }},
         Tokenizer::Configuration{std::vector<Tokenizer::Pattern>{
-            Tokenizer::Pattern{"\\S+", "regex", DefToken::Regex},
+            Tokenizer::Pattern{"\\S+", "regex", 6},
             Tokenizer::Pattern{"\\s", "whitespace", Tokenizer::InvalidTokenValue},
         }}
     };
 
-    Tokenizer tokenizer(std::move(configurations), DefToken::End, DefToken::Newline);
-
-    std::vector<std::string> grammarTerminals{
-        "epsilon",
-        "terminal",
-        "nonterminal",
-        "colon",
-        "pipe",
-        "literal",
-        "regex",
-        "newline",
-        "end"
-    };
+    Tokenizer tokenizer(std::move(configurations), 8, 7);
 
     std::vector<Grammar::Rule> grammarRules{
         // 0:
         Grammar::Rule{"root", std::vector<Grammar::RHS>{
             Grammar::RHS{
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 1},
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::End},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, 8},
             }
         }},
 
@@ -129,7 +115,7 @@ DefReader::DefReader(const std::string &filename)
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 2}
             },
             Grammar::RHS{
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Newline},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, 7},
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 2}
             },
             Grammar::RHS{
@@ -140,20 +126,20 @@ DefReader::DefReader(const std::string &filename)
         // 3:
         Grammar::Rule{"pattern", std::vector<Grammar::RHS>{
             Grammar::RHS{
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Terminal},
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Colon},
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Regex},
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Newline}
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, 1},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, 3},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, 6},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, 7}
             }
         }},
 
         // 4:
         Grammar::Rule{"rule", std::vector<Grammar::RHS>{
             Grammar::RHS{
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Nonterminal},
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Colon},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, 2},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, 3},
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 5},
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Newline},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, 7},
             }
         }},
 
@@ -168,7 +154,7 @@ DefReader::DefReader(const std::string &filename)
         // 6:
         Grammar::Rule{"rhsaltlist", std::vector<Grammar::RHS>{
             Grammar::RHS{
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Pipe},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, 4},
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 7},
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 6}
             },
@@ -187,19 +173,19 @@ DefReader::DefReader(const std::string &filename)
         // 8:
         Grammar::Rule{"symbollist", std::vector<Grammar::RHS>{
             Grammar::RHS{
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Terminal},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, 1},
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 8}
             },
             Grammar::RHS{
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Nonterminal},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, 2},
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 8}
             },
             Grammar::RHS{
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Literal},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, 5},
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 8}
             },
             Grammar::RHS{
-                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Epsilon},
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, 0},
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 8}
             },
             Grammar::RHS{
