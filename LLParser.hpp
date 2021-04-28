@@ -79,67 +79,121 @@ public:
 
         std::unique_ptr<ParseData> parse(Tokenizer::Stream<TokenData> &stream) const
         {
+            struct SymbolItem {
+                enum class Type {
+                    Terminal,
+                    Nonterminal,
+                    Reduce
+                };
+                Type type;
+                unsigned int index;
+            };
+
+            struct RuleItem {
+                unsigned int rule;
+                unsigned int rhs;
+                unsigned int parseStackStart;
+            };
+
             std::vector<ParseItem<ParseData>> parseStack;
-            parseRule(mParser.mGrammar.startRule(), stream, parseStack);
-        
-            return std::move(parseStack[0].data);
-        }
+            std::vector<SymbolItem> symbolStack;
+            std::vector<RuleItem> ruleStack;
 
-    private:
-        void parseRule(unsigned int rule, Tokenizer::Stream<TokenData> &stream, std::vector<ParseItem<ParseData>> &parseStack) const
-        {
-            unsigned int rhs = mParser.rhs(rule, stream.nextToken().value);
+            symbolStack.push_back(SymbolItem{SymbolItem::Type::Nonterminal, mParser.mGrammar.startRule()});
 
-            if(rhs == UINT_MAX) {
-                throw ParseException(stream.nextToken().value);
-            }   
+            while(symbolStack.size() > 0) {
+                SymbolItem symbolItem = symbolStack.back();
+                symbolStack.pop_back();
 
-            unsigned int parseStackStart = (unsigned int)parseStack.size();
-            const std::vector<Grammar::Symbol> &symbols = mParser.grammar().rules()[rule].rhs[rhs];
-            for(unsigned int i=0; i<symbols.size(); i++) {
-                const Grammar::Symbol &symbol = symbols[i];
-                switch(symbol.type) {
-                    case Grammar::Symbol::Type::Terminal:
-                        if(stream.nextToken().value == symbol.index) {
+                switch(symbolItem.type) {
+                    case SymbolItem::Type::Terminal:
+                    {
+                        unsigned int currentRule = ruleStack.back().rule;
+                        unsigned int currentRhs = ruleStack.back().rhs;
+                        unsigned int parseStackStart = ruleStack.back().parseStackStart;
+                        unsigned int currentSymbol = (unsigned int)(parseStack.size() - parseStackStart);
+
+                        if(stream.nextToken().value == symbolItem.index) {
                             ParseItem<ParseData> parseItem;
                             parseItem.type = ParseItem<ParseData>::Type::Terminal;
-                            parseItem.index = symbol.index;
-                            auto it = mTerminalDecorators.find(symbol.index);
+                            parseItem.index = symbolItem.index;
+                            auto it = mTerminalDecorators.find(symbolItem.index);
                             if(it != mTerminalDecorators.end()) {
                                 parseItem.data = it->second(*stream.nextToken().data);
                             }
                             parseStack.push_back(std::move(parseItem));
-                            auto it2 = mMatchListeners.find(std::pair<unsigned int, unsigned int>(rule, rhs));
+                            auto it2 = mMatchListeners.find(std::pair<unsigned int, unsigned int>(currentRule, currentRhs));
                             if(it2 != mMatchListeners.end()) {
-                                it2->second(i);
+                                it2->second(currentSymbol);
                             }
                             stream.consumeToken();
                         } else {
                             throw ParseException(stream.nextToken().value);
                         }
                         break;
+                    }
 
-                    case Grammar::Symbol::Type::Nonterminal:
-                        parseRule(symbol.index, stream, parseStack);
+                    case SymbolItem::Type::Nonterminal:
+                    {
+                        unsigned int nextRule = symbolItem.index;
+                        unsigned int nextRhs = mParser.rhs(nextRule, stream.nextToken().value);
+
+                        if(nextRhs == UINT_MAX) {
+                            throw ParseException(stream.nextToken().value);
+                        }   
+
+                        if(mReducers.find(std::pair<unsigned int, unsigned int>(nextRule, nextRhs)) != mReducers.end()) {
+                            ruleStack.push_back(RuleItem{nextRule, nextRhs, (unsigned int)parseStack.size()});
+                            symbolStack.push_back(SymbolItem{SymbolItem::Type::Reduce, nextRule});
+                        }
+
+                        const std::vector<Grammar::Symbol> &symbols = mParser.grammar().rules()[nextRule].rhs[nextRhs];
+                        for(auto it = symbols.rbegin(); it != symbols.rend(); it++) {
+                            const Grammar::Symbol &s = *it;
+                            switch(s.type) {
+                                case Grammar::Symbol::Type::Terminal:
+                                    symbolStack.push_back(SymbolItem{SymbolItem::Type::Terminal, s.index});
+                                    break;
+                                
+                                case Grammar::Symbol::Type::Nonterminal:
+                                    symbolStack.push_back(SymbolItem{SymbolItem::Type::Nonterminal, s.index});
+                                    break;
+                                
+                                case Grammar::Symbol::Type::Epsilon:
+                                    break;
+                            }
+                        }
                         break;
+                    }
+
+                    case SymbolItem::Type::Reduce:
+                    {
+                        unsigned int currentRule = ruleStack.back().rule;
+                        unsigned int currentRhs = ruleStack.back().rhs;
+                        unsigned int parseStackStart = ruleStack.back().parseStackStart;
+
+                        auto it = mReducers.find(std::pair<unsigned int, unsigned int>(currentRule, currentRhs));
+                        if(it != mReducers.end()) {
+                            std::unique_ptr<ParseData> data = it->second(&parseStack[parseStackStart], (unsigned int)(parseStack.size() - parseStackStart));
+                            parseStack.erase(parseStack.begin() + parseStackStart, parseStack.end());
+
+                            ParseItem<ParseData> parseItem;
+                            parseItem.type = ParseItem<ParseData>::Type::Nonterminal;
+                            parseItem.index = currentRule;
+                            parseItem.data = std::move(data);
+                            parseStack.push_back(std::move(parseItem));
+
+                            ruleStack.pop_back();
+                        }
+                        break;
+                    }
                 }
             }
-
-            if(parseStackStart < parseStack.size()) {
-                auto it = mReducers.find(std::pair<unsigned int, unsigned int>(rule, rhs));
-                if(it != mReducers.end()) {
-                    std::unique_ptr<ParseData> data = it->second(&parseStack[parseStackStart], (unsigned int)(parseStack.size() - parseStackStart));
-                    parseStack.erase(parseStack.begin() + parseStackStart, parseStack.end());
-
-                    ParseItem<ParseData> parseItem;
-                    parseItem.type = ParseItem<ParseData>::Type::Nonterminal;
-                    parseItem.index = rule;
-                    parseItem.data = std::move(data);
-                    parseStack.push_back(std::move(parseItem));
-                }
-            }
+        
+            return std::move(parseStack[0].data);
         }
 
+    private:
         const LLParser &mParser;
         std::map<std::pair<unsigned int, unsigned int>, MatchListener> mMatchListeners;
         std::map<unsigned int, TerminalDecorator> mTerminalDecorators;
