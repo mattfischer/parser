@@ -34,7 +34,7 @@ namespace Regex {
             states.push_back(std::move(state));
         }
 
-        minimize(states, startState, acceptStates);
+        //minimize(states, startState, acceptStates);
 
         mStartState = startState;
         states.push_back(State());

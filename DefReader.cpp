@@ -28,6 +28,7 @@ std::string escape(const std::string &input)
 
 struct DefToken {
     enum {
+        Epsilon,
         Terminal,
         Nonterminal,
         Colon,
@@ -49,8 +50,11 @@ struct StringData
 struct DefNode {
     enum class Type {
         List,
-        Identifier,
+        Terminal,
+        Nonterminal,
         Literal,
+        Epsilon,
+        Regex,
         Pattern,
         Rule
     };
@@ -59,6 +63,7 @@ struct DefNode {
         children.reserve(sizeof...(c));
         (children.push_back(std::move(c)), ...);
     }
+    DefNode(Type t, const std::string &s) : type(t), string(s) {}
 
     Type type;
     std::vector<std::unique_ptr<DefNode>> children;
@@ -69,7 +74,8 @@ DefReader::DefReader(const std::string &filename)
 {
     std::vector<Tokenizer::Configuration> configurations{
         Tokenizer::Configuration{std::vector<Tokenizer::Pattern>{
-            Tokenizer::Pattern{"\\w+", "terminal", DefToken::Terminal,},
+            Tokenizer::Pattern{"0", "epsilon", DefToken::Epsilon},
+            Tokenizer::Pattern{"\\w+", "terminal", DefToken::Terminal},
             Tokenizer::Pattern{"<\\w+>", "nonterminal", DefToken::Nonterminal},
             Tokenizer::Pattern{":", "colon", DefToken::Colon},
             Tokenizer::Pattern{"\\|", "pipe", DefToken::Pipe},
@@ -85,6 +91,7 @@ DefReader::DefReader(const std::string &filename)
     Tokenizer tokenizer(std::move(configurations), DefToken::End, DefToken::Newline);
 
     std::vector<std::string> grammarTerminals{
+        "epsilon",
         "terminal",
         "nonterminal",
         "colon",
@@ -192,6 +199,10 @@ DefReader::DefReader(const std::string &filename)
                 Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 8}
             },
             Grammar::RHS{
+                Grammar::Symbol{Grammar::Symbol::Type::Terminal, DefToken::Epsilon},
+                Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, 8}
+            },
+            Grammar::RHS{
                 Grammar::Symbol{Grammar::Symbol::Type::Epsilon, 0}
             }
         }},
@@ -203,13 +214,18 @@ DefReader::DefReader(const std::string &filename)
     std::ifstream file(filename);
     Tokenizer::Stream<StringData> stream(tokenizer, file);
 
-    auto decorateToken = [](const std::string &text) {
+    stream.addDecorator("terminal", 0, [](const std::string &text) {
         return std::make_unique<StringData>(text);
-    };
-    stream.addDecorator("terminal", 0, decorateToken);
-    stream.addDecorator("nonterminal", 0, decorateToken);
-    stream.addDecorator("literal", 0, decorateToken);
-    stream.addDecorator("regex", 1, decorateToken);
+    });
+    stream.addDecorator("nonterminal", 0, [](const std::string &text) {
+        return std::make_unique<StringData>(text.substr(1, text.size() - 2));
+    });
+    stream.addDecorator("literal", 0, [](const std::string &text) {
+        return std::make_unique<StringData>(text.substr(1, text.size() - 2));
+    });
+    stream.addDecorator("regex", 1, [](const std::string &text) {
+        return std::make_unique<StringData>(text);
+    });
 
     LLParser::ParseSession<DefNode, StringData> session(parser);
     session.addMatchListener("pattern", 0, [&](unsigned int symbol) {
@@ -217,15 +233,21 @@ DefReader::DefReader(const std::string &filename)
         else if(symbol == 2) stream.setConfiguration(0);
     });
 
-    auto terminalDecorator = [](const StringData &stringData) {
-        std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::Identifier);
-        node->string = stringData.text;  
-        return node;  
-    };
-    session.addTerminalDecorator("terminal", terminalDecorator);
-    session.addTerminalDecorator("nonterminal", terminalDecorator);
-    session.addTerminalDecorator("literal", terminalDecorator);
-    session.addTerminalDecorator("regex", terminalDecorator);
+    session.addTerminalDecorator("epsilon", [](const StringData &stringData) {
+        return std::make_unique<DefNode>(DefNode::Type::Epsilon);
+    });
+    session.addTerminalDecorator("terminal", [](const StringData &stringData) {
+        return std::make_unique<DefNode>(DefNode::Type::Terminal, stringData.text);
+    });
+    session.addTerminalDecorator("nonterminal", [](const StringData &stringData) {
+        return std::make_unique<DefNode>(DefNode::Type::Nonterminal, stringData.text);
+    });
+    session.addTerminalDecorator("literal", [](const StringData &stringData) {
+        return std::make_unique<DefNode>(DefNode::Type::Literal, stringData.text);
+    });
+    session.addTerminalDecorator("regex", [](const StringData &stringData) {
+        return std::make_unique<DefNode>(DefNode::Type::Regex, stringData.text);
+    });
 
     session.addReducer("root", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
         return std::move(items[0].data);
@@ -292,42 +314,56 @@ DefReader::DefReader(const std::string &filename)
         
             for(const auto &alt : definition->children[1]->children) {
                 Grammar::RHS rhs;
-                for(const auto &s : alt->children) {
-                    const std::string &symbolName = s->string;
+                for(const auto &sym : alt->children) {
                     Grammar::Symbol symbol;
-                    if(symbolName[0] == '<') {
-                        symbol.type = Grammar::Symbol::Type::Nonterminal;
-                        auto it = ruleMap.find(symbolName);
-                        if(it == ruleMap.end()) {
-                            mParseError.message = "Unknown nonterminal " + symbolName;
-                            return;
-                        } else {
-                            symbol.index = it->second;
+                    switch(sym->type) {
+                        case DefNode::Type::Terminal:
+                        {
+                            symbol.type = Grammar::Symbol::Type::Terminal;
+                            auto it = terminalMap.find(sym->string);
+                            if(it == terminalMap.end()) {
+                                mParseError.message = "Unknown terminal " + sym->string;
+                                return;
+                            } else {
+                                symbol.index = it->second;
+                            }
+                            break;
                         }
-                    } else if(symbolName[0] == '\'') {
-                        std::string text = symbolName.substr(1, symbolName.size() - 2);
-                        text = escape(text);
-                        symbol.type = Grammar::Symbol::Type::Terminal;
 
-                        auto it = anonymousTerminalMap.find(text);
-                        if(it == anonymousTerminalMap.end()) {
-                            terminals.push_back(text);
-                            terminalNames.push_back(text);
-                            symbol.index = anonymousTerminalMap[text] = (unsigned int)(terminals.size() - 1);
-                        } else {
-                            symbol.index = it->second;
+                        case DefNode::Type::Nonterminal:
+                        {
+                            symbol.type = Grammar::Symbol::Type::Nonterminal;
+                            auto it = ruleMap.find(sym->string);
+                            if(it == ruleMap.end()) {
+                                mParseError.message = "Unknown nonterminal " + sym->string;
+                                return;
+                            } else {
+                                symbol.index = it->second;
+                            }
+                            break;
                         }
-                    } else if(symbolName == "0") {
-                        symbol.type = Grammar::Symbol::Type::Epsilon;
-                        symbol.index = 0;
-                    } else {
-                        symbol.type = Grammar::Symbol::Type::Terminal;
-                        auto it = terminalMap.find(symbolName);
-                        if(it == terminalMap.end()) {
-                            mParseError.message = "Unknown terminal " + symbolName;
-                            return;
-                        } else {
-                            symbol.index = it->second;
+
+                        case DefNode::Type::Literal:
+                        {
+                            std::string text = escape(sym->string);
+                            symbol.type = Grammar::Symbol::Type::Terminal;
+
+                            auto it = anonymousTerminalMap.find(text);
+                            if(it == anonymousTerminalMap.end()) {
+                                terminals.push_back(text);
+                                terminalNames.push_back(text);
+                                symbol.index = anonymousTerminalMap[text] = (unsigned int)(terminals.size() - 1);
+                            } else {
+                                symbol.index = it->second;
+                            }
+                            break;
+                        }
+
+                        case DefNode::Type::Epsilon:
+                        {
+                            symbol.type = Grammar::Symbol::Type::Epsilon;
+                            symbol.index = 0;
+                            break;
                         }
                     }
                     rhs.push_back(symbol);
@@ -341,7 +377,7 @@ DefReader::DefReader(const std::string &filename)
     terminals.push_back("");
     terminalNames.push_back("END");
 
-    auto it = ruleMap.find("<root>");
+    auto it = ruleMap.find("root");
     if(it == ruleMap.end()) {
         mParseError.message = "No <root> nonterminal defined";
         return;
