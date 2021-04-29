@@ -1,5 +1,6 @@
 #include "DefReader.hpp"
 #include "LLParser.hpp"
+#include "ExtendedGrammar.hpp"
 
 #include <fstream>
 #include <vector>
@@ -56,6 +57,26 @@ struct DefNode {
     std::string string;
 };
 
+std::unique_ptr<ExtendedGrammar::RhsNode> ZeroOrMore(std::unique_ptr<ExtendedGrammar::RhsNode> &&node) {
+    return std::make_unique<ExtendedGrammar::RhsNodeChild>(ExtendedGrammar::RhsNode::Type::ZeroOrMore, std::move(node));
+};
+
+std::unique_ptr<ExtendedGrammar::RhsNode> OneOrMore(std::unique_ptr<ExtendedGrammar::RhsNode> &&node) {
+    return std::make_unique<ExtendedGrammar::RhsNodeChild>(ExtendedGrammar::RhsNode::Type::OneOrMore, std::move(node));
+};
+
+std::unique_ptr<ExtendedGrammar::RhsNode> ZeroOrOne(std::unique_ptr<ExtendedGrammar::RhsNode> &&node) {
+    return std::make_unique<ExtendedGrammar::RhsNodeChild>(ExtendedGrammar::RhsNode::Type::ZeroOrOne, std::move(node));
+};
+
+template<typename...Args> std::unique_ptr<ExtendedGrammar::RhsNode> OneOf(Args&&... nodes) {
+    return std::make_unique<ExtendedGrammar::RhsNodeChildren>(ExtendedGrammar::RhsNode::Type::OneOf, std::forward<Args>(nodes)...);
+};
+
+template<typename...Args> std::unique_ptr<ExtendedGrammar::RhsNode> Sequence(Args&&... nodes) {
+    return std::make_unique<ExtendedGrammar::RhsNodeChildren>(ExtendedGrammar::RhsNode::Type::Sequence, std::forward<Args>(nodes)...);
+};
+
 DefReader::DefReader(const std::string &filename)
 {
     std::vector<std::string> grammarTerminals{
@@ -101,16 +122,12 @@ DefReader::DefReader(const std::string &filename)
 
     Tokenizer tokenizer(std::move(configurations), tokenIndex("end"), tokenIndex("newline"));
 
-    std::vector<Grammar::Rule> grammarRules;
-    grammarRules.push_back(Grammar::Rule{"root"});
-    grammarRules.push_back(Grammar::Rule{"definitions"});
-    grammarRules.push_back(Grammar::Rule{"definitionlist"});
-    grammarRules.push_back(Grammar::Rule{"pattern"});
-    grammarRules.push_back(Grammar::Rule{"rule"});
-    grammarRules.push_back(Grammar::Rule{"rhs"});
-    grammarRules.push_back(Grammar::Rule{"rhsaltlist"});
-    grammarRules.push_back(Grammar::Rule{"rhsalt"});
-    grammarRules.push_back(Grammar::Rule{"symbollist"});
+    std::vector<ExtendedGrammar::Rule> grammarRules;
+    grammarRules.push_back(ExtendedGrammar::Rule{"root"});
+    grammarRules.push_back(ExtendedGrammar::Rule{"definitions"});
+    grammarRules.push_back(ExtendedGrammar::Rule{"pattern"});
+    grammarRules.push_back(ExtendedGrammar::Rule{"rule"});
+    grammarRules.push_back(ExtendedGrammar::Rule{"rhs"});
 
     auto ruleIndex = [&](const std::string &name) {
         for(unsigned int i=0; i<grammarRules.size(); i++) {
@@ -121,50 +138,27 @@ DefReader::DefReader(const std::string &filename)
         return UINT_MAX;
     };
 
-    auto &addRule = [&](const std::string &name, Grammar::RHS &&rhs) {
-        return grammarRules[ruleIndex(name)].rhs.push_back(std::move(rhs));
+    auto T = [&](const std::string &name) -> std::unique_ptr<ExtendedGrammar::RhsNode>  {
+        return std::make_unique<ExtendedGrammar::RhsNodeSymbol>(ExtendedGrammar::RhsNodeSymbol::SymbolType::Terminal, tokenIndex(name));
     };
 
-    auto T = [&](const std::string &name) {
-        return Grammar::Symbol{Grammar::Symbol::Type::Terminal, tokenIndex(name)};
+    auto N = [&](const std::string &name) -> std::unique_ptr<ExtendedGrammar::RhsNode>  {
+        return std::make_unique<ExtendedGrammar::RhsNodeSymbol>(ExtendedGrammar::RhsNodeSymbol::SymbolType::Nonterminal, ruleIndex(name));
     };
 
-    auto N = [&](const std::string &name) {
-        return Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, ruleIndex(name)};
+    auto SetRule = [&](const std::string &name, std::unique_ptr<ExtendedGrammar::RhsNode> &&node) {
+        grammarRules[ruleIndex(name)].rhs = std::move(node);
     };
 
-    auto E = []() {
-        return Grammar::Symbol{Grammar::Symbol::Type::Epsilon, 0};
-    };
+    SetRule("root", Sequence(N("definitions"), T("end")));
+    SetRule("definitions", ZeroOrMore(OneOf(N("pattern"), N("rule"), T("newline"))));
+    SetRule("pattern", Sequence(T("terminal"), T("colon"), T("regex"), T("newline")));
+    SetRule("rule", Sequence(T("nonterminal"), T("colon"), N("rhs"), ZeroOrMore(Sequence(T("pipe"), N("rhs"))), T("newline")));
+    SetRule("rhs", OneOrMore(OneOf(T("terminal"), T("nonterminal"), T("literal"), T("epsilon"))));
 
-    addRule("root", Grammar::RHS{ N("definitions"), T("end") });
-
-    addRule("definitions",  Grammar::RHS{ N("definitionlist") });
-
-    addRule("definitionlist", Grammar::RHS{ N("pattern"), N("definitionlist") });
-    addRule("definitionlist", Grammar::RHS{ N("rule"), N("definitionlist") });
-    addRule("definitionlist", Grammar::RHS{ T("newline"), N("definitionlist") });
-    addRule("definitionlist", Grammar::RHS{ E() });
-
-    addRule("pattern", Grammar::RHS{ T("terminal"), T("colon"), T("regex"), T("newline") });
-
-    addRule("rule", Grammar::RHS{ T("nonterminal"), T("colon"), N("rhs"), T("newline") });
-
-    addRule("rhs", Grammar::RHS{ N("rhsalt"), N("rhsaltlist") });
-
-    addRule("rhsaltlist", Grammar::RHS{ T("pipe"), N("rhsalt"), N("rhsaltlist") });
-    addRule("rhsaltlist", Grammar::RHS{ E() });
-
-    addRule("rhsalt", Grammar::RHS{ N("symbollist") });
-
-    addRule("symbollist", Grammar::RHS{ T("terminal"), N("symbollist") });
-    addRule("symbollist", Grammar::RHS{ T("nonterminal"), N("symbollist") });
-    addRule("symbollist", Grammar::RHS{ T("literal"), N("symbollist") });
-    addRule("symbollist", Grammar::RHS{ T("epsilon"), N("symbollist") });
-    addRule("symbollist", Grammar::RHS{ E() });
-
-    Grammar grammar(std::move(grammarTerminals), std::move(grammarRules), 0);
-    LLParser parser(grammar);
+    ExtendedGrammar extendedGrammar(std::move(grammarTerminals), std::move(grammarRules), 0);
+    std::unique_ptr<Grammar> grammar = extendedGrammar.makeGrammar();
+    LLParser parser(*grammar);
     
     std::ifstream file(filename);
     Tokenizer::Stream<StringData> stream(tokenizer, file);
@@ -220,16 +214,14 @@ DefReader::DefReader(const std::string &filename)
         return std::make_unique<DefNode>(DefNode::Type::Pattern, std::move(items[0].data), std::move(items[2].data));
     });
     session.addReducer("rule", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
-        return std::make_unique<DefNode>(DefNode::Type::Rule, std::move(items[0].data), std::move(items[2].data));
+        std::unique_ptr<DefNode> list = std::make_unique<DefNode>(DefNode::Type::List);
+        for(unsigned int i=2; i<numItems; i+=2) {
+            list->children.push_back(std::move(items[i].data));
+        }
+
+        return std::make_unique<DefNode>(DefNode::Type::Rule, std::move(items[0].data), std::move(list));
     });
     session.addReducer("rhs", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
-        std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::List);
-        for(unsigned int i=0; i<numItems; i+=2) {
-            node->children.push_back(std::move(items[i].data));
-        }
-        return node;
-    });
-    session.addReducer("rhsalt", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
         std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::List);
         for(unsigned int i=0; i<numItems; i++) {
             node->children.push_back(std::move(items[i].data));

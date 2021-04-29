@@ -1,0 +1,129 @@
+#include "ExtendedGrammar.hpp"
+
+ExtendedGrammar::ExtendedGrammar(std::vector<std::string> &&terminals, std::vector<Rule> &&rules, unsigned int startRule)
+: mTerminals(std::move(terminals)), mRules(std::move(rules)), mStartRule(startRule)
+{
+}
+
+std::unique_ptr<Grammar> ExtendedGrammar::makeGrammar() const
+{
+    std::vector<std::string> grammarTerminals = mTerminals;
+
+    std::vector<Grammar::Rule> grammarRules;
+    for(const auto &rule : mRules) {
+        grammarRules.push_back(Grammar::Rule{rule.lhs});
+    }
+
+    for(unsigned int i=0; i<mRules.size(); i++) {
+        populateRule(grammarRules, i, *mRules[i].rhs);
+    }
+
+    return std::make_unique<Grammar>(std::move(grammarTerminals), std::move(grammarRules), mStartRule);
+}
+
+void ExtendedGrammar::populateRule(std::vector<Grammar::Rule> &grammarRules, unsigned int index, const RhsNode &rhsNode) const
+{
+    if(rhsNode.type == RhsNode::Type::OneOf) {
+        const RhsNodeChildren &rhsNodeChildren = static_cast<const RhsNodeChildren&>(rhsNode);
+        for(const auto &child : rhsNodeChildren.children) {
+            Grammar::RHS grammarRhs;
+            populateRhs(grammarRhs, *child, grammarRules);
+            grammarRules[index].rhs.push_back(std::move(grammarRhs));
+        }
+    } else {
+        Grammar::RHS grammarRhs;
+        populateRhs(grammarRhs, rhsNode, grammarRules);
+        grammarRules[index].rhs.push_back(std::move(grammarRhs));
+    }
+}
+
+void ExtendedGrammar::populateRhs(Grammar::RHS &grammarRhs, const RhsNode &rhsNode, std::vector<Grammar::Rule> &grammarRules) const
+{
+    if(rhsNode.type == RhsNode::Type::Sequence) {
+        const RhsNodeChildren &rhsNodeChildren = static_cast<const RhsNodeChildren&>(rhsNode);
+        for(const auto &child : rhsNodeChildren.children) {
+            Grammar::Symbol grammarSymbol;
+            populateSymbol(grammarSymbol, *child, grammarRules);
+            grammarRhs.push_back(std::move(grammarSymbol));
+        }
+    } else {
+        Grammar::Symbol grammarSymbol;
+        populateSymbol(grammarSymbol, rhsNode, grammarRules);
+        grammarRhs.push_back(std::move(grammarSymbol));
+    }
+}
+
+void ExtendedGrammar::populateSymbol(Grammar::Symbol &grammarSymbol, const RhsNode &rhsNode, std::vector<Grammar::Rule> &grammarRules) const
+{
+    switch(rhsNode.type) {
+        case RhsNode::Type::Symbol:
+        {
+            const RhsNodeSymbol &rhsNodeSymbol = static_cast<const RhsNodeSymbol&>(rhsNode);
+            switch(rhsNodeSymbol.symbolType) {
+                case RhsNodeSymbol::SymbolType::Terminal: grammarSymbol.type = Grammar::Symbol::Type::Terminal; break;
+                case RhsNodeSymbol::SymbolType::Nonterminal: grammarSymbol.type = Grammar::Symbol::Type::Nonterminal; break;
+            }
+            grammarSymbol.index = rhsNodeSymbol.index;
+            break;
+        }
+
+        case RhsNode::Type::ZeroOrOne:
+        {
+            const RhsNodeChild &rhsNodeChild = static_cast<const RhsNodeChild&>(rhsNode);
+            grammarSymbol.type = Grammar::Symbol::Type::Nonterminal;
+            grammarSymbol.index = (unsigned int)grammarRules.size();
+            
+            grammarRules.push_back(Grammar::Rule());
+            Grammar::Rule &grammarRule = grammarRules[grammarSymbol.index];
+            populateRule(grammarRules, grammarSymbol.index, *rhsNodeChild.child);
+            
+            Grammar::RHS rhs;
+            rhs.push_back(Grammar::Symbol{Grammar::Symbol::Type::Epsilon, 0});
+            grammarRules[grammarSymbol.index].rhs.push_back(std::move(rhs));
+            break;
+        }
+
+        case RhsNode::Type::ZeroOrMore:
+        {
+            const RhsNodeChild &rhsNodeChild = static_cast<const RhsNodeChild&>(rhsNode);
+            grammarSymbol.type = Grammar::Symbol::Type::Nonterminal;
+            grammarSymbol.index = (unsigned int)grammarRules.size();
+            
+            grammarRules.push_back(Grammar::Rule());
+            populateRule(grammarRules, grammarSymbol.index, *rhsNodeChild.child);
+            for(auto &rhs : grammarRules[grammarSymbol.index].rhs) {
+                rhs.push_back(Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, grammarSymbol.index});
+            }
+
+            Grammar::RHS rhs;
+            rhs.push_back(Grammar::Symbol{Grammar::Symbol::Type::Epsilon, 0});
+            grammarRules[grammarSymbol.index].rhs.push_back(std::move(rhs));
+            break;
+        }
+
+        case RhsNode::Type::OneOrMore:
+        {
+            const RhsNodeChild &rhsNodeChild = static_cast<const RhsNodeChild&>(rhsNode);
+            grammarSymbol.type = Grammar::Symbol::Type::Nonterminal;
+            grammarSymbol.index = (unsigned int)grammarRules.size();
+            
+            grammarRules.push_back(Grammar::Rule());
+            
+            unsigned int nextRuleIndex = (unsigned int)grammarRules.size();
+            grammarRules.push_back(Grammar::Rule());
+            
+            populateRule(grammarRules, grammarSymbol.index, *rhsNodeChild.child);
+            for(auto &rhs : grammarRules[grammarSymbol.index].rhs) {
+                rhs.push_back(Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, nextRuleIndex});
+            }
+            
+            Grammar::Rule &nextRule = grammarRules[nextRuleIndex];
+            nextRule.rhs = grammarRules[grammarSymbol.index].rhs;
+
+            Grammar::RHS rhs;
+            rhs.push_back(Grammar::Symbol{Grammar::Symbol::Type::Epsilon, 0});
+            nextRule.rhs.push_back(std::move(rhs));
+            break;
+        }
+    }
+}
