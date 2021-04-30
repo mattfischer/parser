@@ -45,6 +45,7 @@ public:
             mConsumed = 0;
             mLine = 0;
             mConfiguration = 0;
+            mNextToken = {0, 0, 0};
         }
 
         void setConfiguration(unsigned int configuration)
