@@ -15,7 +15,10 @@ struct AstNode
 {
     enum class Type {
         Number,
-        Add
+        Add,
+        Subtract,
+        Multiply,
+        Divide
     };
 
     template<typename ...Children> AstNode(Type t, Children&&... c) : type(t)
@@ -63,12 +66,36 @@ int main(int argc, char *argv[])
     session.addReducer("root", [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {
         return std::move(items[0].data);
     });
-    session.addReducer("E", [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {
+    unsigned int minus = reader.grammar().terminalIndex("-");
+    session.addReducer("E", [&](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {
         std::unique_ptr<AstNode> node = std::move(items[0].data);
-        for(unsigned int i=2; i<numItems; i+=2) {
-            node = std::make_unique<AstNode>(AstNode::Type::Add, std::move(node), std::move(items[i].data));
+        for(unsigned int i=1; i<numItems; i+=2) {
+            AstNode::Type type = AstNode::Type::Add;
+            if(items[i].index == minus) {
+                type = AstNode::Type::Subtract;
+            }
+            node = std::make_unique<AstNode>(type, std::move(node), std::move(items[i+1].data));
         }
         return node;
+    });
+    unsigned int divide = reader.grammar().terminalIndex("/");
+    session.addReducer("T", [&](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {
+        std::unique_ptr<AstNode> node = std::move(items[0].data);
+        for(unsigned int i=1; i<numItems; i+=2) {
+            AstNode::Type type = AstNode::Type::Multiply;
+            if(items[i].index == minus) {
+                type = AstNode::Type::Divide;
+            }
+            node = std::make_unique<AstNode>(type, std::move(node), std::move(items[i+1].data));
+        }
+        return node;
+    });
+    session.addReducer("F", [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {
+        if(numItems == 1) {
+            return std::move(items[0].data);
+        } else {
+            return std::move(items[1].data);
+        }
     });
 
     try {

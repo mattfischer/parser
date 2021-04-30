@@ -200,7 +200,15 @@ void DefReader::createDefGrammar()
     SetRule("root", Sequence(N("definitions"), T("end")));
     SetRule("definitions", ZeroOrMore(OneOf(N("pattern"), N("rule"), T("newline"))));
     SetRule("pattern", Sequence(T("terminal"), T("colon"), T("regex"), T("newline")));
-    SetRule("rule", Sequence(T("nonterminal"), T("colon"), N("rhs"), T("newline")));
+    SetRule("rule",
+        Sequence(
+            T("nonterminal"),
+            T("colon"),
+            N("rhs"),
+            ZeroOrMore(Sequence(T("pipe"), N("rhs"))),
+            T("newline")
+        )
+    );
     SetRule("rhs", OneOrMore(N("rhsSuffix")));
     SetRule("rhsSuffix", 
         Sequence(
@@ -288,7 +296,16 @@ std::unique_ptr<DefReader::DefNode> DefReader::parseFile(const std::string &file
         return std::make_unique<DefNode>(DefNode::Type::Pattern, std::move(items[0].data), std::move(items[2].data));
     });
     session.addReducer("rule", [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
-        return std::make_unique<DefNode>(DefNode::Type::Rule, std::move(items[0].data), std::move(items[2].data));
+        std::unique_ptr<DefNode> rhs;
+        if(numItems == 4) {
+            rhs = std::move(items[2].data);
+        } else {
+            rhs = std::make_unique<DefNode>(DefNode::Type::RhsOneOf);
+            for(unsigned int i=2; i<numItems; i+=2) {
+                rhs->children.push_back(std::move(items[i].data));
+            }
+        }
+        return std::make_unique<DefNode>(DefNode::Type::Rule, std::move(items[0].data), std::move(rhs));
     });
     session.addReducer("rhs", [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
         std::unique_ptr<DefNode> node;
@@ -326,7 +343,7 @@ std::unique_ptr<DefReader::DefNode> DefReader::parseFile(const std::string &file
         } else if(numItems == 3) {
             node = std::move(items[1].data);
         } else {
-            std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::RhsOneOf);
+            node = std::make_unique<DefNode>(DefNode::Type::RhsOneOf);
             for(unsigned int i=1; i<numItems; i+=2) {
                 node->children.push_back(std::move(items[i].data));
             }
@@ -383,12 +400,13 @@ std::unique_ptr<ExtendedGrammar::RhsNode> DefReader::createRhsNode(const DefNode
 
         case DefNode::Type::Literal:
         {
-            std::string text = escape(defNode.string);
+            const std::string &text = defNode.string;
+            std::string escapedText = escape(text);
             unsigned int index;
 
             auto it = mAnonymousTerminalMap.find(text);
             if(it == mAnonymousTerminalMap.end()) {
-                mTerminals.push_back(text);
+                mTerminals.push_back(escapedText);
                 mTerminalNames.push_back(text);
                 index = mAnonymousTerminalMap[text] = (unsigned int)(mTerminals.size() - 1);
             } else {

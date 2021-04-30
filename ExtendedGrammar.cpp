@@ -151,5 +151,16 @@ void ExtendedGrammar::populateSymbol(Grammar::Symbol &grammarSymbol, const RhsNo
             nextRule.rhs.push_back(std::move(rhs));
             break;
         }
+
+        case RhsNode::Type::OneOf:
+        {
+            grammarSymbol.type = Grammar::Symbol::Type::Nonterminal;
+            grammarSymbol.index = (unsigned int)grammarRules.size();
+            
+            grammarRules.push_back(Grammar::Rule{createSubRuleName(ruleName, grammarRules)});
+            Grammar::Rule &grammarRule = grammarRules[grammarSymbol.index];
+            populateRule(grammarRules, grammarSymbol.index, rhsNode);
+            break;
+        }
     }
 }
