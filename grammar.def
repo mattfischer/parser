@@ -2,5 +2,4 @@ NUMBER: [0-9]+
 IGNORE: \s
 
 <root> : <E>
-<E>: NUMBER <Ee>
-<Ee>: '+' NUMBER <Ee> | 0
+<E>: NUMBER ( '+' NUMBER )*

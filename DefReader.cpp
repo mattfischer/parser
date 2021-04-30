@@ -40,10 +40,14 @@ struct DefNode {
         Terminal,
         Nonterminal,
         Literal,
-        Epsilon,
         Regex,
         Pattern,
-        Rule
+        Rule,
+        RhsSequence,
+        RhsOneOf,
+        RhsZeroOrMore,
+        RhsOneOrMore,
+        RhsZeroOrOne
     };
 
     template<typename ...Children> DefNode(Type t, Children&&... c) : type(t) {
@@ -77,6 +81,92 @@ template<typename...Args> std::unique_ptr<ExtendedGrammar::RhsNode> Sequence(Arg
     return std::make_unique<ExtendedGrammar::RhsNodeChildren>(ExtendedGrammar::RhsNode::Type::Sequence, std::forward<Args>(nodes)...);
 };
 
+std::unique_ptr<ExtendedGrammar::RhsNode> createRhsNode(
+    const DefNode &defNode,
+    std::map<std::string, unsigned int> &ruleMap,
+    std::map<std::string, unsigned int> &terminalMap,
+    std::map<std::string, unsigned int> &anonymousTerminalMap,
+    std::vector<std::string> &terminals,
+    std::vector<std::string> &terminalNames)
+{
+    switch(defNode.type) {
+        case DefNode::Type::Terminal:
+        {
+            unsigned int index = UINT_MAX;
+            auto it = terminalMap.find(defNode.string);
+            if(it != terminalMap.end()) {
+                index = it->second;
+            }
+            return std::make_unique<ExtendedGrammar::RhsNodeSymbol>(ExtendedGrammar::RhsNodeSymbol::SymbolType::Terminal, index);
+        }
+
+        case DefNode::Type::Nonterminal:
+        {
+            unsigned int index = UINT_MAX;
+            auto it = ruleMap.find(defNode.string);
+            if(it != ruleMap.end()) {
+                index = it->second;
+            }
+            return std::make_unique<ExtendedGrammar::RhsNodeSymbol>(ExtendedGrammar::RhsNodeSymbol::SymbolType::Nonterminal, index);
+        }
+
+        case DefNode::Type::Literal:
+        {
+            std::string text = escape(defNode.string);
+            unsigned int index;
+
+            auto it = anonymousTerminalMap.find(text);
+            if(it == anonymousTerminalMap.end()) {
+                terminals.push_back(text);
+                terminalNames.push_back(text);
+                index = anonymousTerminalMap[text] = (unsigned int)(terminals.size() - 1);
+            } else {
+                index = it->second;
+            }
+            return std::make_unique<ExtendedGrammar::RhsNodeSymbol>(ExtendedGrammar::RhsNodeSymbol::SymbolType::Terminal, index);
+        }
+
+        case DefNode::Type::RhsSequence:
+        {
+            std::unique_ptr<ExtendedGrammar::RhsNodeChildren> node = std::make_unique<ExtendedGrammar::RhsNodeChildren>(ExtendedGrammar::RhsNode::Type::Sequence);
+            for(auto &child : defNode.children) {
+                std::unique_ptr<ExtendedGrammar::RhsNode> childRhsNode = createRhsNode(*child, ruleMap, terminalMap, anonymousTerminalMap, terminals, terminalNames);
+                node->children.push_back(std::move(childRhsNode));
+            }
+            return node;
+        }
+
+        case DefNode::Type::RhsOneOf:
+        {
+            std::unique_ptr<ExtendedGrammar::RhsNodeChildren> node = std::make_unique<ExtendedGrammar::RhsNodeChildren>(ExtendedGrammar::RhsNode::Type::OneOf);
+            for(auto &child : defNode.children) {
+                std::unique_ptr<ExtendedGrammar::RhsNode> childRhsNode = createRhsNode(*child, ruleMap, terminalMap, anonymousTerminalMap, terminals, terminalNames);
+                node->children.push_back(std::move(childRhsNode));
+            }
+            return node;
+        }
+
+        case DefNode::Type::RhsZeroOrMore:
+        {
+            std::unique_ptr<ExtendedGrammar::RhsNode> child = createRhsNode(*defNode.children[0], ruleMap, terminalMap, anonymousTerminalMap, terminals, terminalNames);
+            return std::make_unique<ExtendedGrammar::RhsNodeChild>(ExtendedGrammar::RhsNode::Type::ZeroOrMore, std::move(child));
+        }
+
+        case DefNode::Type::RhsOneOrMore:
+        {
+            std::unique_ptr<ExtendedGrammar::RhsNode> child = createRhsNode(*defNode.children[0], ruleMap, terminalMap, anonymousTerminalMap, terminals, terminalNames);
+            return std::make_unique<ExtendedGrammar::RhsNodeChild>(ExtendedGrammar::RhsNode::Type::OneOrMore, std::move(child));
+        }
+
+        case DefNode::Type::RhsZeroOrOne:
+        {
+            std::unique_ptr<ExtendedGrammar::RhsNode> child = createRhsNode(*defNode.children[0], ruleMap, terminalMap, anonymousTerminalMap, terminals, terminalNames);
+            return std::make_unique<ExtendedGrammar::RhsNodeChild>(ExtendedGrammar::RhsNode::Type::ZeroOrOne, std::move(child));
+        }
+    }
+    return std::unique_ptr<ExtendedGrammar::RhsNode>();
+};
+
 DefReader::DefReader(const std::string &filename)
 {
     std::vector<std::string> grammarTerminals{
@@ -85,6 +175,11 @@ DefReader::DefReader(const std::string &filename)
         "nonterminal",
         "colon",
         "pipe",
+        "lparen",
+        "rparen",
+        "star",
+        "plus",
+        "question",
         "literal",
         "regex",
         "newline",
@@ -111,6 +206,11 @@ DefReader::DefReader(const std::string &filename)
             pattern("<\\w+>", "nonterminal"),
             pattern(":", "colon"),
             pattern("\\|", "pipe"),
+            pattern("\\(", "lparen"),
+            pattern("\\)", "rparen"),
+            pattern("\\+", "plus"),
+            pattern("\\*", "star"),
+            pattern("\\?", "question"),
             pattern("'[^']+'", "literal"),
             pattern("\\s", "whitespace")  
         }},
@@ -128,6 +228,8 @@ DefReader::DefReader(const std::string &filename)
     grammarRules.push_back(ExtendedGrammar::Rule{"pattern"});
     grammarRules.push_back(ExtendedGrammar::Rule{"rule"});
     grammarRules.push_back(ExtendedGrammar::Rule{"rhs"});
+    grammarRules.push_back(ExtendedGrammar::Rule{"rhsSuffix"});
+    grammarRules.push_back(ExtendedGrammar::Rule{"rhsSymbol"});
 
     auto ruleIndex = [&](const std::string &name) {
         for(unsigned int i=0; i<grammarRules.size(); i++) {
@@ -153,8 +255,26 @@ DefReader::DefReader(const std::string &filename)
     SetRule("root", Sequence(N("definitions"), T("end")));
     SetRule("definitions", ZeroOrMore(OneOf(N("pattern"), N("rule"), T("newline"))));
     SetRule("pattern", Sequence(T("terminal"), T("colon"), T("regex"), T("newline")));
-    SetRule("rule", Sequence(T("nonterminal"), T("colon"), N("rhs"), ZeroOrMore(Sequence(T("pipe"), N("rhs"))), T("newline")));
-    SetRule("rhs", OneOrMore(OneOf(T("terminal"), T("nonterminal"), T("literal"), T("epsilon"))));
+    SetRule("rule", Sequence(T("nonterminal"), T("colon"), N("rhs"), T("newline")));
+    SetRule("rhs", OneOrMore(N("rhsSuffix")));
+    SetRule("rhsSuffix", 
+        Sequence(
+            N("rhsSymbol"),
+            ZeroOrMore(
+                OneOf(T("star"), T("plus"), T("question"))
+            )
+        )
+    );
+    SetRule("rhsSymbol",
+        OneOf(
+            T("terminal"),
+            T("nonterminal"),
+            T("literal"),
+            Sequence(
+                T("lparen"), N("rhs"), ZeroOrMore(Sequence(T("pipe"), N("rhs"))), T("rparen")
+            )
+        )
+    );
 
     ExtendedGrammar extendedGrammar(std::move(grammarTerminals), std::move(grammarRules), 0);
     std::unique_ptr<Grammar> grammar = extendedGrammar.makeGrammar();
@@ -177,14 +297,11 @@ DefReader::DefReader(const std::string &filename)
     });
 
     LLParser::ParseSession<DefNode, StringData> session(parser);
-    session.addMatchListener("pattern", 0, [&](unsigned int symbol) {
+    session.addMatchListener("pattern", [&](unsigned int symbol) {
         if(symbol == 1) stream.setConfiguration(1);
         else if(symbol == 2) stream.setConfiguration(0);
     });
 
-    session.addTerminalDecorator("epsilon", [](const StringData &stringData) {
-        return std::make_unique<DefNode>(DefNode::Type::Epsilon);
-    });
     session.addTerminalDecorator("terminal", [](const StringData &stringData) {
         return std::make_unique<DefNode>(DefNode::Type::Terminal, stringData.text);
     });
@@ -198,10 +315,10 @@ DefReader::DefReader(const std::string &filename)
         return std::make_unique<DefNode>(DefNode::Type::Regex, stringData.text);
     });
 
-    session.addReducer("root", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
+    session.addReducer("root", [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
         return std::move(items[0].data);
     });
-    session.addReducer("definitions", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
+    session.addReducer("definitions", [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
         std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::List);
         for(unsigned int i=0; i<numItems; i++) {
             if(items[i].data) {
@@ -210,25 +327,56 @@ DefReader::DefReader(const std::string &filename)
         }
         return node;
     });
-    session.addReducer("pattern", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
+    session.addReducer("pattern", [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
         return std::make_unique<DefNode>(DefNode::Type::Pattern, std::move(items[0].data), std::move(items[2].data));
     });
-    session.addReducer("rule", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
-        std::unique_ptr<DefNode> list = std::make_unique<DefNode>(DefNode::Type::List);
-        for(unsigned int i=2; i<numItems; i+=2) {
-            list->children.push_back(std::move(items[i].data));
-        }
-
-        return std::make_unique<DefNode>(DefNode::Type::Rule, std::move(items[0].data), std::move(list));
+    session.addReducer("rule", [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
+        return std::make_unique<DefNode>(DefNode::Type::Rule, std::move(items[0].data), std::move(items[2].data));
     });
-    session.addReducer("rhs", 0, [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
-        std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::List);
-        for(unsigned int i=0; i<numItems; i++) {
-            node->children.push_back(std::move(items[i].data));
+    session.addReducer("rhs", [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
+        if(numItems == 1) {
+            return std::move(items[0].data);
+        } else {
+            std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::RhsSequence);
+            for(unsigned int i=0; i<numItems; i++) {
+                node->children.push_back(std::move(items[i].data));
+            }
+            return node;
+        }
+    });
+    unsigned int star = grammar->terminalIndex("star");
+    unsigned int plus = grammar->terminalIndex("plus");
+    unsigned int question = grammar->terminalIndex("question");
+    session.addReducer("rhsSuffix", [&](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
+        std::unique_ptr<DefNode> node = std::move(items[0].data);
+        for(unsigned int i=1; i<numItems; i++) {
+            if(items[i].index == star) {
+                node = std::make_unique<DefNode>(DefNode::Type::RhsZeroOrMore, std::move(node));
+            } else if(items[i].index == plus) {
+                node = std::make_unique<DefNode>(DefNode::Type::RhsOneOrMore, std::move(node));
+            } else if(items[i].index == question) {
+                node = std::make_unique<DefNode>(DefNode::Type::RhsZeroOrOne, std::move(node));
+            }
         }
         return node;
     });
-    
+    unsigned int lparen = grammar->terminalIndex("lparen");
+    session.addReducer("rhsSymbol", [&](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
+        if(numItems == 1) {
+            return std::move(items[0].data);        
+        } else if(numItems == 3) {
+            return std::move(items[1].data);
+        } else {
+            std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::RhsOneOf);
+            for(unsigned int i=1; i<numItems; i+=2) {
+                node->children.push_back(std::move(items[i].data));
+            }
+            return node;
+        }
+
+        return std::unique_ptr<DefNode>();
+    });
+
     std::unique_ptr<DefNode> node = session.parse(stream);
 
     std::map<std::string, unsigned int> terminalMap;
@@ -244,11 +392,11 @@ DefReader::DefReader(const std::string &filename)
         }
     }
 
-    std::vector<Grammar::Rule> rules;
+    std::vector<ExtendedGrammar::Rule> rules;
     std::map<std::string, unsigned int> ruleMap;
     for(const auto &definition: node->children) {
         if(definition->type == DefNode::Type::Rule) {
-            rules.push_back(Grammar::Rule());
+            rules.push_back(ExtendedGrammar::Rule());
             ruleMap[definition->children[0]->string] = (unsigned int)(rules.size() - 1);
         }
     }
@@ -256,67 +404,9 @@ DefReader::DefReader(const std::string &filename)
     for(const auto &definition: node->children) {
         if(definition->type == DefNode::Type::Rule) {
             std::string name = definition->children[0]->string;
-            Grammar::Rule &rule = rules[ruleMap[name]];
+            ExtendedGrammar::Rule &rule = rules[ruleMap[name]];
             rule.lhs = name;
-        
-            for(const auto &alt : definition->children[1]->children) {
-                Grammar::RHS rhs;
-                for(const auto &sym : alt->children) {
-                    Grammar::Symbol symbol;
-                    switch(sym->type) {
-                        case DefNode::Type::Terminal:
-                        {
-                            symbol.type = Grammar::Symbol::Type::Terminal;
-                            auto it = terminalMap.find(sym->string);
-                            if(it == terminalMap.end()) {
-                                mParseError.message = "Unknown terminal " + sym->string;
-                                return;
-                            } else {
-                                symbol.index = it->second;
-                            }
-                            break;
-                        }
-
-                        case DefNode::Type::Nonterminal:
-                        {
-                            symbol.type = Grammar::Symbol::Type::Nonterminal;
-                            auto it = ruleMap.find(sym->string);
-                            if(it == ruleMap.end()) {
-                                mParseError.message = "Unknown nonterminal " + sym->string;
-                                return;
-                            } else {
-                                symbol.index = it->second;
-                            }
-                            break;
-                        }
-
-                        case DefNode::Type::Literal:
-                        {
-                            std::string text = escape(sym->string);
-                            symbol.type = Grammar::Symbol::Type::Terminal;
-
-                            auto it = anonymousTerminalMap.find(text);
-                            if(it == anonymousTerminalMap.end()) {
-                                terminals.push_back(text);
-                                terminalNames.push_back(text);
-                                symbol.index = anonymousTerminalMap[text] = (unsigned int)(terminals.size() - 1);
-                            } else {
-                                symbol.index = it->second;
-                            }
-                            break;
-                        }
-
-                        case DefNode::Type::Epsilon:
-                        {
-                            symbol.type = Grammar::Symbol::Type::Epsilon;
-                            symbol.index = 0;
-                            break;
-                        }
-                    }
-                    rhs.push_back(symbol);
-                }
-                rule.rhs.push_back(std::move(rhs));
-            }   
+            rule.rhs = createRhsNode(*definition->children[1], ruleMap, terminalMap, anonymousTerminalMap, terminals, terminalNames);
         }
     }
 
@@ -329,11 +419,13 @@ DefReader::DefReader(const std::string &filename)
         mParseError.message = "No <root> nonterminal defined";
         return;
     } else {
-        Grammar::Symbol endSymbol;
-        endSymbol.type = Grammar::Symbol::Type::Terminal;
-        endSymbol.index = endValue;
-        for(auto &rhs: rules[it->second].rhs) {
-            rhs.push_back(endSymbol);
+        ExtendedGrammar::Rule &rule = rules[it->second];
+        std::unique_ptr<ExtendedGrammar::RhsNode> endNode = std::make_unique<ExtendedGrammar::RhsNodeSymbol>(ExtendedGrammar::RhsNodeSymbol::SymbolType::Terminal, endValue);
+        if(rule.rhs->type == ExtendedGrammar::RhsNode::Type::Sequence) {
+            static_cast<ExtendedGrammar::RhsNodeChildren&>(*rule.rhs).children.push_back(std::move(endNode));
+        } else {
+            std::unique_ptr<ExtendedGrammar::RhsNode> newNode = std::make_unique<ExtendedGrammar::RhsNodeChildren>(ExtendedGrammar::RhsNode::Type::Sequence, std::move(rule.rhs), std::move(endNode));
+            rule.rhs = std::move(newNode);
         }
 
         Tokenizer::Configuration configuration;
@@ -351,7 +443,8 @@ DefReader::DefReader(const std::string &filename)
         std::vector<Tokenizer::Configuration> configurations;
         configurations.push_back(std::move(configuration));
         mTokenizer = std::make_unique<Tokenizer>(std::move(configurations), endValue, Tokenizer::InvalidTokenValue);
-        mGrammar = std::make_unique<Grammar>(std::move(terminalNames), std::move(rules), it->second);
+        ExtendedGrammar extendedGrammar(std::move(terminalNames), std::move(rules), it->second);
+        mGrammar = extendedGrammar.makeGrammar();
     }
 }
 

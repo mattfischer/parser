@@ -53,11 +53,11 @@ public:
         {
         }
     
-        void addMatchListener(const std::string &rule, unsigned int rhs, MatchListener matchListener)
+        void addMatchListener(const std::string &rule, MatchListener matchListener)
         {
             unsigned int ruleIndex = mParser.grammar().ruleIndex(rule);
             if(ruleIndex != UINT_MAX) {
-                mMatchListeners[std::pair<unsigned int, unsigned int>(ruleIndex, rhs)] = matchListener;
+                mMatchListeners[ruleIndex] = matchListener;
             }
         }
     
@@ -69,11 +69,11 @@ public:
             }
         }
 
-        void addReducer(const std::string &rule, unsigned int rhs, Reducer reducer)
+        void addReducer(const std::string &rule, Reducer reducer)
         {
             unsigned int ruleIndex = mParser.grammar().ruleIndex(rule);
             if(ruleIndex != UINT_MAX) {
-                mReducers[std::pair<unsigned int, unsigned int>(ruleIndex, rhs)] = reducer;
+                mReducers[ruleIndex] = reducer;
             }
         }
 
@@ -91,7 +91,6 @@ public:
 
             struct RuleItem {
                 unsigned int rule;
-                unsigned int rhs;
                 unsigned int parseStackStart;
             };
 
@@ -109,7 +108,6 @@ public:
                     case SymbolItem::Type::Terminal:
                     {
                         unsigned int currentRule = ruleStack.back().rule;
-                        unsigned int currentRhs = ruleStack.back().rhs;
                         unsigned int parseStackStart = ruleStack.back().parseStackStart;
                         unsigned int currentSymbol = (unsigned int)(parseStack.size() - parseStackStart);
 
@@ -122,7 +120,7 @@ public:
                                 parseItem.data = it->second(*stream.nextToken().data);
                             }
                             parseStack.push_back(std::move(parseItem));
-                            auto it2 = mMatchListeners.find(std::pair<unsigned int, unsigned int>(currentRule, currentRhs));
+                            auto it2 = mMatchListeners.find(currentRule);
                             if(it2 != mMatchListeners.end()) {
                                 it2->second(currentSymbol);
                             }
@@ -142,8 +140,8 @@ public:
                             throw ParseException(stream.nextToken().value);
                         }   
 
-                        if(mReducers.find(std::pair<unsigned int, unsigned int>(nextRule, nextRhs)) != mReducers.end()) {
-                            ruleStack.push_back(RuleItem{nextRule, nextRhs, (unsigned int)parseStack.size()});
+                        if(mReducers.find(nextRule) != mReducers.end()) {
+                            ruleStack.push_back(RuleItem{nextRule, (unsigned int)parseStack.size()});
                             symbolStack.push_back(SymbolItem{SymbolItem::Type::Reduce, nextRule});
                         }
 
@@ -169,10 +167,9 @@ public:
                     case SymbolItem::Type::Reduce:
                     {
                         unsigned int currentRule = ruleStack.back().rule;
-                        unsigned int currentRhs = ruleStack.back().rhs;
                         unsigned int parseStackStart = ruleStack.back().parseStackStart;
 
-                        auto it = mReducers.find(std::pair<unsigned int, unsigned int>(currentRule, currentRhs));
+                        auto it = mReducers.find(currentRule);
                         if(it != mReducers.end()) {
                             std::unique_ptr<ParseData> data = it->second(&parseStack[parseStackStart], (unsigned int)(parseStack.size() - parseStackStart));
                             parseStack.erase(parseStack.begin() + parseStackStart, parseStack.end());
@@ -195,9 +192,9 @@ public:
 
     private:
         const LLParser &mParser;
-        std::map<std::pair<unsigned int, unsigned int>, MatchListener> mMatchListeners;
+        std::map<unsigned int, MatchListener> mMatchListeners;
         std::map<unsigned int, TerminalDecorator> mTerminalDecorators;
-        std::map<std::pair<unsigned int, unsigned int>, Reducer> mReducers;
+        std::map<unsigned int, Reducer> mReducers;
     };
 
 private:
