@@ -1,5 +1,7 @@
 #include "ExtendedGrammar.hpp"
 
+#include <sstream>
+
 ExtendedGrammar::ExtendedGrammar(std::vector<std::string> &&terminals, std::vector<Rule> &&rules, unsigned int startRule)
 : mTerminals(std::move(terminals)), mRules(std::move(rules)), mStartRule(startRule)
 {
@@ -27,33 +29,57 @@ void ExtendedGrammar::populateRule(std::vector<Grammar::Rule> &grammarRules, uns
         const RhsNodeChildren &rhsNodeChildren = static_cast<const RhsNodeChildren&>(rhsNode);
         for(const auto &child : rhsNodeChildren.children) {
             Grammar::RHS grammarRhs;
-            populateRhs(grammarRhs, *child, grammarRules);
+            populateRhs(grammarRhs, *child, grammarRules, grammarRules[index].lhs);
             grammarRules[index].rhs.push_back(std::move(grammarRhs));
         }
     } else {
         Grammar::RHS grammarRhs;
-        populateRhs(grammarRhs, rhsNode, grammarRules);
+        populateRhs(grammarRhs, rhsNode, grammarRules, grammarRules[index].lhs);
         grammarRules[index].rhs.push_back(std::move(grammarRhs));
     }
 }
 
-void ExtendedGrammar::populateRhs(Grammar::RHS &grammarRhs, const RhsNode &rhsNode, std::vector<Grammar::Rule> &grammarRules) const
+void ExtendedGrammar::populateRhs(Grammar::RHS &grammarRhs, const RhsNode &rhsNode, std::vector<Grammar::Rule> &grammarRules, const std::string &ruleName) const
 {
     if(rhsNode.type == RhsNode::Type::Sequence) {
         const RhsNodeChildren &rhsNodeChildren = static_cast<const RhsNodeChildren&>(rhsNode);
         for(const auto &child : rhsNodeChildren.children) {
             Grammar::Symbol grammarSymbol;
-            populateSymbol(grammarSymbol, *child, grammarRules);
+            populateSymbol(grammarSymbol, *child, grammarRules, ruleName);
             grammarRhs.push_back(std::move(grammarSymbol));
         }
     } else {
         Grammar::Symbol grammarSymbol;
-        populateSymbol(grammarSymbol, rhsNode, grammarRules);
+        populateSymbol(grammarSymbol, rhsNode, grammarRules, ruleName);
         grammarRhs.push_back(std::move(grammarSymbol));
     }
 }
 
-void ExtendedGrammar::populateSymbol(Grammar::Symbol &grammarSymbol, const RhsNode &rhsNode, std::vector<Grammar::Rule> &grammarRules) const
+std::string createSubRuleName(const std::string &ruleName, std::vector<Grammar::Rule> &grammarRules)
+{
+    unsigned int n = 1;
+    while(true) {
+        std::stringstream ss;
+        ss << ruleName << "." << n;
+        std::string subRuleName = ss.str();
+        
+        bool found = false;
+        for(const auto &rule : grammarRules) {
+            if(rule.lhs == subRuleName) {
+                found = true;
+                break;
+            }
+        }
+
+        if(found) {
+            n++;
+        } else {
+            return subRuleName;
+        }
+    }
+}
+
+void ExtendedGrammar::populateSymbol(Grammar::Symbol &grammarSymbol, const RhsNode &rhsNode, std::vector<Grammar::Rule> &grammarRules, const std::string &ruleName) const
 {
     switch(rhsNode.type) {
         case RhsNode::Type::Symbol:
@@ -73,7 +99,7 @@ void ExtendedGrammar::populateSymbol(Grammar::Symbol &grammarSymbol, const RhsNo
             grammarSymbol.type = Grammar::Symbol::Type::Nonterminal;
             grammarSymbol.index = (unsigned int)grammarRules.size();
             
-            grammarRules.push_back(Grammar::Rule());
+            grammarRules.push_back(Grammar::Rule{createSubRuleName(ruleName, grammarRules)});
             Grammar::Rule &grammarRule = grammarRules[grammarSymbol.index];
             populateRule(grammarRules, grammarSymbol.index, *rhsNodeChild.child);
             
@@ -89,7 +115,7 @@ void ExtendedGrammar::populateSymbol(Grammar::Symbol &grammarSymbol, const RhsNo
             grammarSymbol.type = Grammar::Symbol::Type::Nonterminal;
             grammarSymbol.index = (unsigned int)grammarRules.size();
             
-            grammarRules.push_back(Grammar::Rule());
+            grammarRules.push_back(Grammar::Rule{createSubRuleName(ruleName, grammarRules)});
             populateRule(grammarRules, grammarSymbol.index, *rhsNodeChild.child);
             for(auto &rhs : grammarRules[grammarSymbol.index].rhs) {
                 rhs.push_back(Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, grammarSymbol.index});
@@ -107,10 +133,10 @@ void ExtendedGrammar::populateSymbol(Grammar::Symbol &grammarSymbol, const RhsNo
             grammarSymbol.type = Grammar::Symbol::Type::Nonterminal;
             grammarSymbol.index = (unsigned int)grammarRules.size();
             
-            grammarRules.push_back(Grammar::Rule());
+            grammarRules.push_back(Grammar::Rule{createSubRuleName(ruleName, grammarRules)});
             
             unsigned int nextRuleIndex = (unsigned int)grammarRules.size();
-            grammarRules.push_back(Grammar::Rule());
+            grammarRules.push_back(Grammar::Rule{createSubRuleName(ruleName, grammarRules)});
             
             populateRule(grammarRules, grammarSymbol.index, *rhsNodeChild.child);
             for(auto &rhs : grammarRules[grammarSymbol.index].rhs) {
