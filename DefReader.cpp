@@ -9,6 +9,9 @@
 DefReader::DefReader(const std::string &filename)
 {
     std::unique_ptr<DefNode> node = parseFile(filename);
+    if(!node) {
+        return;
+    }
 
     for(const auto &definition: node->children) {
         if(definition->type == DefNode::Type::Pattern) {
@@ -31,6 +34,9 @@ DefReader::DefReader(const std::string &filename)
             ExtendedGrammar::Rule &rule = mRules[mRuleMap[name]];
             rule.lhs = name;
             rule.rhs = createRhsNode(*definition->children[1]);
+            if(!rule.rhs) {
+                return;
+            }
         }
     }
 
@@ -351,7 +357,12 @@ std::unique_ptr<DefReader::DefNode> DefReader::parseFile(const std::string &file
        return node;
     });
 
-    return session.parse(stream);
+    std::unique_ptr<DefNode> node = session.parse(stream);
+    if(!node) {
+        mParseError.line = stream.nextToken().line;
+        mParseError.message =  "Unexpected symbol " + stream.nextToken().text;
+    }
+    return node;
 }
 
 std::string escape(const std::string &input)
@@ -382,7 +393,10 @@ std::unique_ptr<ExtendedGrammar::RhsNode> DefReader::createRhsNode(const DefNode
         {
             unsigned int index = UINT_MAX;
             auto it = mTerminalMap.find(defNode.string);
-            if(it != mTerminalMap.end()) {
+            if(it == mTerminalMap.end()) {
+                mParseError.message = "Unknown terminal " + defNode.string;
+                return nullptr;
+            } else {
                 index = it->second;
             }
             return std::make_unique<ExtendedGrammar::RhsNodeSymbol>(ExtendedGrammar::RhsNodeSymbol::SymbolType::Terminal, index);
@@ -392,7 +406,10 @@ std::unique_ptr<ExtendedGrammar::RhsNode> DefReader::createRhsNode(const DefNode
         {
             unsigned int index = UINT_MAX;
             auto it = mRuleMap.find(defNode.string);
-            if(it != mRuleMap.end()) {
+            if(it == mRuleMap.end()) {
+                mParseError.message = "Unknown nonterminal " + defNode.string;
+                return nullptr;
+            } else {
                 index = it->second;
             }
             return std::make_unique<ExtendedGrammar::RhsNodeSymbol>(ExtendedGrammar::RhsNodeSymbol::SymbolType::Nonterminal, index);
@@ -420,6 +437,9 @@ std::unique_ptr<ExtendedGrammar::RhsNode> DefReader::createRhsNode(const DefNode
             std::unique_ptr<ExtendedGrammar::RhsNodeChildren> node = std::make_unique<ExtendedGrammar::RhsNodeChildren>(ExtendedGrammar::RhsNode::Type::Sequence);
             for(auto &child : defNode.children) {
                 std::unique_ptr<ExtendedGrammar::RhsNode> childRhsNode = createRhsNode(*child);
+                if(!childRhsNode) {
+                    return nullptr;
+                }
                 node->children.push_back(std::move(childRhsNode));
             }
             return node;
@@ -430,6 +450,9 @@ std::unique_ptr<ExtendedGrammar::RhsNode> DefReader::createRhsNode(const DefNode
             std::unique_ptr<ExtendedGrammar::RhsNodeChildren> node = std::make_unique<ExtendedGrammar::RhsNodeChildren>(ExtendedGrammar::RhsNode::Type::OneOf);
             for(auto &child : defNode.children) {
                 std::unique_ptr<ExtendedGrammar::RhsNode> childRhsNode = createRhsNode(*child);
+                if(!childRhsNode) {
+                    return nullptr;
+                }
                 node->children.push_back(std::move(childRhsNode));
             }
             return node;
@@ -438,20 +461,30 @@ std::unique_ptr<ExtendedGrammar::RhsNode> DefReader::createRhsNode(const DefNode
         case DefNode::Type::RhsZeroOrMore:
         {
             std::unique_ptr<ExtendedGrammar::RhsNode> child = createRhsNode(*defNode.children[0]);
+            if(!child) {
+                return nullptr;
+            }
             return std::make_unique<ExtendedGrammar::RhsNodeChild>(ExtendedGrammar::RhsNode::Type::ZeroOrMore, std::move(child));
         }
 
         case DefNode::Type::RhsOneOrMore:
         {
             std::unique_ptr<ExtendedGrammar::RhsNode> child = createRhsNode(*defNode.children[0]);
+            if(!child) {
+                return nullptr;
+            }
             return std::make_unique<ExtendedGrammar::RhsNodeChild>(ExtendedGrammar::RhsNode::Type::OneOrMore, std::move(child));
         }
 
         case DefNode::Type::RhsZeroOrOne:
         {
             std::unique_ptr<ExtendedGrammar::RhsNode> child = createRhsNode(*defNode.children[0]);
+            if(!child) {
+                return nullptr;
+            }
             return std::make_unique<ExtendedGrammar::RhsNodeChild>(ExtendedGrammar::RhsNode::Type::ZeroOrOne, std::move(child));
         }
     }
-    return std::unique_ptr<ExtendedGrammar::RhsNode>();
+
+    return nullptr;
 };

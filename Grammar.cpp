@@ -15,6 +15,11 @@ unsigned int Grammar::startRule() const
     return mStartRule;
 }
 
+const std::vector<std::string> &Grammar::terminals() const
+{
+    return mTerminals;
+}
+
 unsigned int Grammar::terminalIndex(const std::string &name) const
 {
     for(unsigned int i=0; i<mTerminals.size(); i++) {

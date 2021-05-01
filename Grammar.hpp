@@ -28,6 +28,7 @@ public:
 
     const std::vector<Rule> &rules() const;
     unsigned int startRule() const;
+    const std::vector<std::string> &terminals() const;
 
     unsigned int terminalIndex(const std::string &name) const;
     unsigned int ruleIndex(const std::string &name) const;

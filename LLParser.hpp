@@ -9,13 +9,6 @@
 
 class LLParser {
 public:
-    class ParseException : public std::exception {
-    public:
-        ParseException(unsigned int s) { symbol = s; }
-
-        unsigned int symbol;
-    };
-
     LLParser(const Grammar &grammar);
 
     bool valid() const;
@@ -126,7 +119,7 @@ public:
                             }
                             stream.consumeToken();
                         } else {
-                            throw ParseException(stream.nextToken().value);
+                            return std::unique_ptr<ParseData>();
                         }
                         break;
                     }
@@ -137,7 +130,7 @@ public:
                         unsigned int nextRhs = mParser.rhs(nextRule, stream.nextToken().value);
 
                         if(nextRhs == UINT_MAX) {
-                            throw ParseException(stream.nextToken().value);
+                            return std::unique_ptr<ParseData>();
                         }   
 
                         if(mReducers.find(nextRule) != mReducers.end()) {
@@ -204,7 +197,6 @@ private:
    
     const Grammar &mGrammar;
     std::vector<unsigned int> mParseTable;  
-    unsigned int mNumSymbols;
     bool mValid;
     Conflict mConflict;
 };

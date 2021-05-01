@@ -30,6 +30,7 @@ public:
         TokenValue value;
         unsigned int start;
         unsigned int line;
+        std::string text;
         std::unique_ptr<Data> data;
     };
 
@@ -50,7 +51,9 @@ public:
 
         void setConfiguration(unsigned int configuration)
         {
-            mConfiguration = configuration;
+            if(configuration < mTokenizer.mConfigurations.size()) {
+                mConfiguration = configuration;
+            }
         }
 
         unsigned int configuration() const
@@ -87,6 +90,7 @@ public:
                         mNextToken.value = mTokenizer.mNewlineValue;
                         mNextToken.start = mConsumed;
                         mNextToken.line = mLine;
+                        mNextToken.text = "<newline>";
                         mConsumed++;
                         return;
                     }
@@ -95,6 +99,7 @@ public:
                         mNextToken.value = mTokenizer.mEndValue;
                         mNextToken.start = mConsumed;
                         mNextToken.line = mLine;
+                        mNextToken.text = "<end>";
                         return;
                     }
 
@@ -109,6 +114,7 @@ public:
                     mNextToken.value = ErrorTokenValue;
                     mNextToken.start = mConsumed;
                     mNextToken.line = mLine;
+                    mNextToken.text = mCurrentLine.substr(mConsumed, 5);
 
                     repeat = false;
                 } else {
@@ -117,10 +123,11 @@ public:
                         mNextToken.value = value;
                         mNextToken.start = mConsumed;
                         mNextToken.line = mLine;
+                        mNextToken.text = mCurrentLine.substr(mConsumed, matched);
+
                         auto it = mDecorators.find(value);
                         if(it != mDecorators.end()) {
-                            std::string text = mCurrentLine.substr(mConsumed, matched);
-                            mNextToken.data = it->second(text);
+                            mNextToken.data = it->second(mNextToken.text);
                         }
                         repeat = false;
                     }

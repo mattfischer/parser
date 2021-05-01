@@ -52,6 +52,7 @@ int evaluate(const AstNode &node)
         case AstNode::Type::Divide:
             return evaluate(*node.children[0]) / evaluate(*node.children[1]);
     }
+    return 0;
 }
 
 int main(int argc, char *argv[])
@@ -122,13 +123,12 @@ int main(int argc, char *argv[])
             }
         });
 
-        try {
-            std::unique_ptr<AstNode> ast = session.parse(stream);
+        std::unique_ptr<AstNode> ast = session.parse(stream);
+        if(ast) {
             int result = evaluate(*ast);
             std::cout << result << std::endl;
-        } catch (LLParser::ParseException e) {
-            std::cout << "Error: Unexpected symbol " << e.symbol << std::endl;
-            return 1;
+        } else {
+            std::cout << "Error: Unexpected symbol " << stream.nextToken().text << std::endl;
         }
     }
 
