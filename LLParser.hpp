@@ -34,10 +34,10 @@ public:
         std::unique_ptr<Data> data;
     };
 
-    template<typename ParseData, typename TokenData> class ParseSession
+    template<typename ParseData> class ParseSession
     {
     public:
-        typedef std::function<std::unique_ptr<ParseData>(const TokenData&)> TerminalDecorator;
+        typedef std::function<std::unique_ptr<ParseData>(const std::string&)> TerminalDecorator;
         typedef std::function<std::unique_ptr<ParseData>(ParseItem<ParseData>*, unsigned int)> Reducer;
         typedef std::function<void(unsigned int)> MatchListener;
 
@@ -70,7 +70,7 @@ public:
             }
         }
 
-        std::unique_ptr<ParseData> parse(Tokenizer::Stream<TokenData> &stream) const
+        std::unique_ptr<ParseData> parse(Tokenizer::Stream &stream) const
         {
             struct SymbolItem {
                 enum class Type {
@@ -110,7 +110,7 @@ public:
                             parseItem.index = symbolItem.index;
                             auto it = mTerminalDecorators.find(symbolItem.index);
                             if(it != mTerminalDecorators.end()) {
-                                parseItem.data = it->second(*stream.nextToken().data);
+                                parseItem.data = it->second(stream.nextToken().text);
                             }
                             parseStack.push_back(std::move(parseItem));
                             auto it2 = mMatchListeners.find(currentRule);

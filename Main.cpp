@@ -4,13 +4,6 @@
 #include "DefReader.hpp"
 #include "LLParser.hpp"
 
-struct NumberData
-{
-    NumberData(int n) : number(n) {}
-
-    int number;
-};
-
 struct AstNode
 {
     enum class Type {
@@ -78,14 +71,11 @@ int main(int argc, char *argv[])
         }
 
         std::stringstream ss(input);
-        Tokenizer::Stream<NumberData> stream(reader.tokenizer(), ss);
-        stream.addDecorator("NUMBER", 0, [](const std::string &text) {
-            return std::make_unique<NumberData>(std::atoi(text.c_str()));
-        });
+        Tokenizer::Stream stream(reader.tokenizer(), ss);
 
-        LLParser::ParseSession<AstNode, NumberData> session(parser);
-        session.addTerminalDecorator("NUMBER", [](const NumberData &numberData) {
-            return std::make_unique<AstNodeNumber>(numberData.number);
+        LLParser::ParseSession<AstNode> session(parser);
+        session.addTerminalDecorator("NUMBER", [](const std::string &text) {
+            return std::make_unique<AstNodeNumber>(std::atoi(text.c_str()));
         });
 
         session.addReducer("root", [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {

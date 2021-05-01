@@ -239,51 +239,33 @@ void DefReader::createDefGrammar()
     mDefGrammar = extendedGrammar.makeGrammar();
 }
 
-struct StringData
-{
-    StringData(const std::string &t) : text(t) {}
-
-    std::string text;
-};
-
 std::unique_ptr<DefReader::DefNode> DefReader::parseFile(const std::string &filename)
 {
     createDefGrammar();
     LLParser parser(*mDefGrammar);
     
     std::ifstream file(filename);
-    Tokenizer::Stream<StringData> stream(*mDefTokenizer, file);
+    Tokenizer::Stream stream(*mDefTokenizer, file);
 
-    stream.addDecorator("terminal", 0, [](const std::string &text) {
-        return std::make_unique<StringData>(text);
-    });
-    stream.addDecorator("nonterminal", 0, [](const std::string &text) {
-        return std::make_unique<StringData>(text.substr(1, text.size() - 2));
-    });
-    stream.addDecorator("literal", 0, [](const std::string &text) {
-        return std::make_unique<StringData>(text.substr(1, text.size() - 2));
-    });
-    stream.addDecorator("regex", 1, [](const std::string &text) {
-        return std::make_unique<StringData>(text);
-    });
-
-    LLParser::ParseSession<DefNode, StringData> session(parser);
+    LLParser::ParseSession<DefNode> session(parser);
     session.addMatchListener("pattern", [&](unsigned int symbol) {
         if(symbol == 1) stream.setConfiguration(1);
         else if(symbol == 2) stream.setConfiguration(0);
     });
 
-    session.addTerminalDecorator("terminal", [](const StringData &stringData) {
-        return std::make_unique<DefNode>(DefNode::Type::Terminal, stringData.text);
+    session.addTerminalDecorator("terminal", [](const std::string &text) {
+        return std::make_unique<DefNode>(DefNode::Type::Terminal, text);
     });
-    session.addTerminalDecorator("nonterminal", [](const StringData &stringData) {
-        return std::make_unique<DefNode>(DefNode::Type::Nonterminal, stringData.text);
+    session.addTerminalDecorator("nonterminal", [](const std::string &text) {
+        const std::string t = text.substr(1, text.size() - 2);
+        return std::make_unique<DefNode>(DefNode::Type::Nonterminal, t);
     });
-    session.addTerminalDecorator("literal", [](const StringData &stringData) {
-        return std::make_unique<DefNode>(DefNode::Type::Literal, stringData.text);
+    session.addTerminalDecorator("literal", [](const std::string &text) {
+        const std::string t = text.substr(1, text.size() - 2);
+        return std::make_unique<DefNode>(DefNode::Type::Literal, t);
     });
-    session.addTerminalDecorator("regex", [](const StringData &stringData) {
-        return std::make_unique<DefNode>(DefNode::Type::Regex, stringData.text);
+    session.addTerminalDecorator("regex", [](const std::string &text) {
+        return std::make_unique<DefNode>(DefNode::Type::Regex, text);
     });
 
     session.addReducer("root", [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {

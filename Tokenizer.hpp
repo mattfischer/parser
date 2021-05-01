@@ -26,20 +26,18 @@ public:
     };
     Tokenizer(std::vector<Configuration> &&configurations, TokenValue endValue, TokenValue newlineValue);
 
-    template<typename Data> struct Token {
+    struct Token {
         TokenValue value;
         unsigned int start;
         unsigned int line;
         std::string text;
-        std::unique_ptr<Data> data;
     };
 
     unsigned int patternValue(const std::string &name, unsigned int configuration) const;
 
-    template<typename TokenData> class Stream
+    class Stream
     {
     public:
-        typedef std::function<std::unique_ptr<TokenData>(const std::string&)> Decorator;
         Stream(const Tokenizer &tokenizer, std::istream &input)
         : mTokenizer(tokenizer), mInput(input)
         {
@@ -61,15 +59,7 @@ public:
             return mConfiguration;
         }
 
-        void addDecorator(const std::string &pattern, unsigned int configuration, Decorator decorator)
-        {
-            TokenValue patternValue = mTokenizer.patternValue(pattern, configuration);
-            if(patternValue != InvalidTokenValue) {
-                mDecorators[patternValue] = decorator;
-            }
-        }
-
-        const Token<TokenData> &nextToken()
+        const Token &nextToken()
         {
             if(mLine == 0) {
                 consumeToken();
@@ -125,10 +115,6 @@ public:
                         mNextToken.line = mLine;
                         mNextToken.text = mCurrentLine.substr(mConsumed, matched);
 
-                        auto it = mDecorators.find(value);
-                        if(it != mDecorators.end()) {
-                            mNextToken.data = it->second(mNextToken.text);
-                        }
                         repeat = false;
                     }
 
@@ -142,10 +128,9 @@ public:
         std::istream &mInput;
         std::string mCurrentLine;
         unsigned int mConsumed;
-        Token<TokenData> mNextToken;
+        Token mNextToken;
         unsigned int mLine;
         unsigned int mConfiguration;
-        std::map<TokenValue, Decorator> mDecorators;
     };
 
 private:
