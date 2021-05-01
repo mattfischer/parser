@@ -2,7 +2,7 @@
 #include <sstream>
 
 #include "DefReader.hpp"
-#include "LLParser.hpp"
+#include "Parser/LL1.hpp"
 
 struct AstNode
 {
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    LLParser parser(reader.grammar());
+    Parser::LL1 parser(reader.grammar());
     if(!parser.valid()) {
         std::cout << "Conflict on rule " << parser.conflict().rule << ": " << parser.conflict().rhs1 << " vs " << parser.conflict().rhs2 << std::endl;
         return 1; 
@@ -73,16 +73,16 @@ int main(int argc, char *argv[])
         std::stringstream ss(input);
         Tokenizer::Stream stream(reader.tokenizer(), ss);
 
-        LLParser::ParseSession<AstNode> session(parser);
+        Parser::LL1::ParseSession<AstNode> session(parser);
         session.addTerminalDecorator("NUMBER", [](const Tokenizer::Token &token) {
             return std::make_unique<AstNodeNumber>(std::atoi(token.text.c_str()));
         });
 
-        session.addReducer("root", [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {
+        session.addReducer("root", [](Parser::LL1::ParseItem<AstNode> *items, unsigned int numItems) {
             return std::move(items[0].data);
         });
         unsigned int minus = reader.grammar().terminalIndex("-");
-        session.addReducer("E", [&](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {
+        session.addReducer("E", [&](Parser::LL1::ParseItem<AstNode> *items, unsigned int numItems) {
             std::unique_ptr<AstNode> node = std::move(items[0].data);
             for(unsigned int i=1; i<numItems; i+=2) {
                 AstNode::Type type = AstNode::Type::Add;
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
             return node;
         });
         unsigned int divide = reader.grammar().terminalIndex("/");
-        session.addReducer("T", [&](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {
+        session.addReducer("T", [&](Parser::LL1::ParseItem<AstNode> *items, unsigned int numItems) {
             std::unique_ptr<AstNode> node = std::move(items[0].data);
             for(unsigned int i=1; i<numItems; i+=2) {
                 AstNode::Type type = AstNode::Type::Multiply;
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
             }
             return node;
         });
-        session.addReducer("F", [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {
+        session.addReducer("F", [](Parser::LL1::ParseItem<AstNode> *items, unsigned int numItems) {
             if(numItems == 1) {
                 return std::move(items[0].data);
             } else {

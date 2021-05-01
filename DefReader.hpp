@@ -2,9 +2,9 @@
 #define DEFREADER_HPP
 
 #include "Regex/Matcher.hpp"
+#include "Parser/Grammar.hpp"
+#include "Parser/ExtendedGrammar.hpp"
 #include "Tokenizer.hpp"
-#include "Grammar.hpp"
-#include "ExtendedGrammar.hpp"
 
 #include <string>
 #include <vector>
@@ -18,7 +18,7 @@ public:
     bool valid() const;
 
     const Tokenizer &tokenizer() const;
-    const Grammar &grammar() const;
+    const Parser::Grammar &grammar() const;
 
     struct ParseError {
         unsigned int line;
@@ -59,21 +59,21 @@ private:
 
     std::unique_ptr<DefNode> parseFile(const std::string &filename);
     void createDefGrammar();
-    std::unique_ptr<ExtendedGrammar::RhsNode> createRhsNode(const DefNode &defNode);
+    std::unique_ptr<Parser::ExtendedGrammar::RhsNode> createRhsNode(const DefNode &defNode);
 
     std::unique_ptr<Tokenizer> mDefTokenizer;
-    std::unique_ptr<Grammar> mDefGrammar;
+    std::unique_ptr<Parser::Grammar> mDefGrammar;
     
     std::vector<std::string> mTerminals;
     std::map<std::string, unsigned int> mTerminalMap;
     std::map<std::string, unsigned int> mAnonymousTerminalMap;
     std::vector<std::string> mTerminalNames;
 
-    std::vector<ExtendedGrammar::Rule> mRules;
+    std::vector<Parser::ExtendedGrammar::Rule> mRules;
     std::map<std::string, unsigned int> mRuleMap;
 
     std::unique_ptr<Tokenizer> mTokenizer;
-    std::unique_ptr<Grammar> mGrammar;
+    std::unique_ptr<Parser::Grammar> mGrammar;
     ParseError mParseError;
 };
 #endif

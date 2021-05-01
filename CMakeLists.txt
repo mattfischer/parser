@@ -8,12 +8,13 @@ set(SOURCES
     Regex/Matcher.cpp
     Regex/NFA.cpp
     Regex/Parser.cpp
+    Parser/Grammar.cpp
+    Parser/ExtendedGrammar.cpp
+    Parser/LL1.cpp
     DefReader.cpp
-    Grammar.cpp
-    ExtendedGrammar.cpp
-    LLParser.cpp
     Tokenizer.cpp
     Main.cpp
 )
 
+include_directories(${CMAKE_SOURCE_DIR})
 add_executable(regex ${SOURCES})

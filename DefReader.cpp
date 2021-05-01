@@ -1,10 +1,13 @@
 #include "DefReader.hpp"
-#include "LLParser.hpp"
-#include "ExtendedGrammar.hpp"
+#include "Parser/LL1.hpp"
+#include "Parser/ExtendedGrammar.hpp"
 
 #include <fstream>
 #include <vector>
 #include <iostream>
+
+using Parser::ExtendedGrammar;
+using Parser::LL1;
 
 DefReader::DefReader(const std::string &filename)
 {
@@ -93,7 +96,7 @@ const Tokenizer &DefReader::tokenizer() const
     return *mTokenizer;
 }
 
-const Grammar &DefReader::grammar() const
+const Parser::Grammar &DefReader::grammar() const
 {
     return *mGrammar;
 }
@@ -242,12 +245,12 @@ void DefReader::createDefGrammar()
 std::unique_ptr<DefReader::DefNode> DefReader::parseFile(const std::string &filename)
 {
     createDefGrammar();
-    LLParser parser(*mDefGrammar);
+    LL1 parser(*mDefGrammar);
     
     std::ifstream file(filename);
     Tokenizer::Stream stream(*mDefTokenizer, file);
 
-    LLParser::ParseSession<DefNode> session(parser);
+    LL1::ParseSession<DefNode> session(parser);
     session.addMatchListener("pattern", [&](unsigned int symbol) {
         if(symbol == 1) stream.setConfiguration(1);
         else if(symbol == 2) stream.setConfiguration(0);
@@ -266,10 +269,10 @@ std::unique_ptr<DefReader::DefNode> DefReader::parseFile(const std::string &file
         return std::make_unique<DefNode>(DefNode::Type::Regex, token.text, token.line);
     });
 
-    session.addReducer("root", [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
+    session.addReducer("root", [](LL1::ParseItem<DefNode> *items, unsigned int numItems) {
         return std::move(items[0].data);
     });
-    session.addReducer("definitions", [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
+    session.addReducer("definitions", [](LL1::ParseItem<DefNode> *items, unsigned int numItems) {
         std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::List);
         for(unsigned int i=0; i<numItems; i++) {
             if(items[i].data) {
@@ -278,10 +281,10 @@ std::unique_ptr<DefReader::DefNode> DefReader::parseFile(const std::string &file
         }
         return node;
     });
-    session.addReducer("pattern", [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
+    session.addReducer("pattern", [](LL1::ParseItem<DefNode> *items, unsigned int numItems) {
         return std::make_unique<DefNode>(DefNode::Type::Pattern, std::move(items[0].data), std::move(items[2].data));
     });
-    session.addReducer("rule", [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
+    session.addReducer("rule", [](LL1::ParseItem<DefNode> *items, unsigned int numItems) {
         std::unique_ptr<DefNode> rhs;
         if(numItems == 4) {
             rhs = std::move(items[2].data);
@@ -293,7 +296,7 @@ std::unique_ptr<DefReader::DefNode> DefReader::parseFile(const std::string &file
         }
         return std::make_unique<DefNode>(DefNode::Type::Rule, std::move(items[0].data), std::move(rhs));
     });
-    session.addReducer("rhs", [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
+    session.addReducer("rhs", [](LL1::ParseItem<DefNode> *items, unsigned int numItems) {
         std::unique_ptr<DefNode> node;
         if(numItems == 1) {
             node = std::move(items[0].data);
@@ -308,7 +311,7 @@ std::unique_ptr<DefReader::DefNode> DefReader::parseFile(const std::string &file
     unsigned int star = mDefGrammar->terminalIndex("star");
     unsigned int plus = mDefGrammar->terminalIndex("plus");
     unsigned int question = mDefGrammar->terminalIndex("question");
-    session.addReducer("rhsSuffix", [&](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
+    session.addReducer("rhsSuffix", [&](LL1::ParseItem<DefNode> *items, unsigned int numItems) {
         std::unique_ptr<DefNode> node = std::move(items[0].data);
         for(unsigned int i=1; i<numItems; i++) {
             if(items[i].index == star) {
@@ -322,7 +325,7 @@ std::unique_ptr<DefReader::DefNode> DefReader::parseFile(const std::string &file
         return node;
     });
     unsigned int lparen = mDefGrammar->terminalIndex("lparen");
-    session.addReducer("rhsSymbol", [&](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
+    session.addReducer("rhsSymbol", [&](LL1::ParseItem<DefNode> *items, unsigned int numItems) {
         std::unique_ptr<DefNode> node;
         if(numItems == 1) {
             node = std::move(items[0].data);        
