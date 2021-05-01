@@ -254,18 +254,16 @@ std::unique_ptr<DefReader::DefNode> DefReader::parseFile(const std::string &file
     });
 
     session.addTerminalDecorator("terminal", [](const Tokenizer::Token &token) {
-        return std::make_unique<DefNode>(DefNode::Type::Terminal, token.text);
+        return std::make_unique<DefNode>(DefNode::Type::Terminal, token.text, token.line);
     });
     session.addTerminalDecorator("nonterminal", [](const Tokenizer::Token &token) {
-        const std::string t = token.text.substr(1, token.text.size() - 2);
-        return std::make_unique<DefNode>(DefNode::Type::Nonterminal, t);
+        return std::make_unique<DefNode>(DefNode::Type::Nonterminal, token.text.substr(1, token.text.size() - 2), token.line);
     });
     session.addTerminalDecorator("literal", [](const Tokenizer::Token &token) {
-        const std::string t = token.text.substr(1, token.text.size() - 2);
-        return std::make_unique<DefNode>(DefNode::Type::Literal, t);
+        return std::make_unique<DefNode>(DefNode::Type::Literal, token.text.substr(1, token.text.size() - 2), token.line);
     });
     session.addTerminalDecorator("regex", [](const Tokenizer::Token &token) {
-        return std::make_unique<DefNode>(DefNode::Type::Regex, token.text);
+        return std::make_unique<DefNode>(DefNode::Type::Regex, token.text, token.line);
     });
 
     session.addReducer("root", [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
@@ -376,6 +374,7 @@ std::unique_ptr<ExtendedGrammar::RhsNode> DefReader::createRhsNode(const DefNode
             unsigned int index = UINT_MAX;
             auto it = mTerminalMap.find(defNode.string);
             if(it == mTerminalMap.end()) {
+                mParseError.line = defNode.line;
                 mParseError.message = "Unknown terminal " + defNode.string;
                 return nullptr;
             } else {
@@ -389,6 +388,7 @@ std::unique_ptr<ExtendedGrammar::RhsNode> DefReader::createRhsNode(const DefNode
             unsigned int index = UINT_MAX;
             auto it = mRuleMap.find(defNode.string);
             if(it == mRuleMap.end()) {
+                mParseError.line = defNode.line;
                 mParseError.message = "Unknown nonterminal " + defNode.string;
                 return nullptr;
             } else {

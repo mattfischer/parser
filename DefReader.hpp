@@ -45,15 +45,16 @@ private:
             RhsZeroOrOne
         };
 
-        template<typename ...Children> DefNode(Type t, Children&&... c) : type(t) {
+        template<typename ...Children> DefNode(Type t, std::unique_ptr<Children>&&... c) : type(t) {
             children.reserve(sizeof...(c));
             (children.push_back(std::move(c)), ...);
         }
-        DefNode(Type t, const std::string &s) : type(t), string(s) {}
+        DefNode(Type t, const std::string &s, unsigned int l) : type(t), string(s), line(l) {}
 
         Type type;
         std::vector<std::unique_ptr<DefNode>> children;
         std::string string;
+        unsigned int line;
     };
 
     std::unique_ptr<DefNode> parseFile(const std::string &filename);
