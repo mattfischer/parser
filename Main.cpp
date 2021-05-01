@@ -74,8 +74,8 @@ int main(int argc, char *argv[])
         Tokenizer::Stream stream(reader.tokenizer(), ss);
 
         LLParser::ParseSession<AstNode> session(parser);
-        session.addTerminalDecorator("NUMBER", [](const std::string &text) {
-            return std::make_unique<AstNodeNumber>(std::atoi(text.c_str()));
+        session.addTerminalDecorator("NUMBER", [](const Tokenizer::Token &token) {
+            return std::make_unique<AstNodeNumber>(std::atoi(token.text.c_str()));
         });
 
         session.addReducer("root", [](LLParser::ParseItem<AstNode> *items, unsigned int numItems) {

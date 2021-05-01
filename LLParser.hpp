@@ -37,7 +37,7 @@ public:
     template<typename ParseData> class ParseSession
     {
     public:
-        typedef std::function<std::unique_ptr<ParseData>(const std::string&)> TerminalDecorator;
+        typedef std::function<std::unique_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
         typedef std::function<std::unique_ptr<ParseData>(ParseItem<ParseData>*, unsigned int)> Reducer;
         typedef std::function<void(unsigned int)> MatchListener;
 
@@ -110,7 +110,7 @@ public:
                             parseItem.index = symbolItem.index;
                             auto it = mTerminalDecorators.find(symbolItem.index);
                             if(it != mTerminalDecorators.end()) {
-                                parseItem.data = it->second(stream.nextToken().text);
+                                parseItem.data = it->second(stream.nextToken());
                             }
                             parseStack.push_back(std::move(parseItem));
                             auto it2 = mMatchListeners.find(currentRule);

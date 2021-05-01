@@ -253,19 +253,19 @@ std::unique_ptr<DefReader::DefNode> DefReader::parseFile(const std::string &file
         else if(symbol == 2) stream.setConfiguration(0);
     });
 
-    session.addTerminalDecorator("terminal", [](const std::string &text) {
-        return std::make_unique<DefNode>(DefNode::Type::Terminal, text);
+    session.addTerminalDecorator("terminal", [](const Tokenizer::Token &token) {
+        return std::make_unique<DefNode>(DefNode::Type::Terminal, token.text);
     });
-    session.addTerminalDecorator("nonterminal", [](const std::string &text) {
-        const std::string t = text.substr(1, text.size() - 2);
+    session.addTerminalDecorator("nonterminal", [](const Tokenizer::Token &token) {
+        const std::string t = token.text.substr(1, token.text.size() - 2);
         return std::make_unique<DefNode>(DefNode::Type::Nonterminal, t);
     });
-    session.addTerminalDecorator("literal", [](const std::string &text) {
-        const std::string t = text.substr(1, text.size() - 2);
+    session.addTerminalDecorator("literal", [](const Tokenizer::Token &token) {
+        const std::string t = token.text.substr(1, token.text.size() - 2);
         return std::make_unique<DefNode>(DefNode::Type::Literal, t);
     });
-    session.addTerminalDecorator("regex", [](const std::string &text) {
-        return std::make_unique<DefNode>(DefNode::Type::Regex, text);
+    session.addTerminalDecorator("regex", [](const Tokenizer::Token &token) {
+        return std::make_unique<DefNode>(DefNode::Type::Regex, token.text);
     });
 
     session.addReducer("root", [](LLParser::ParseItem<DefNode> *items, unsigned int numItems) {
