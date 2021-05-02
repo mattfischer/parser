@@ -2,6 +2,7 @@
 #define PARSER_LL1_HPP
 
 #include "Parser/Grammar.hpp"
+#include "Util/Table.hpp"
 
 #include "Tokenizer.hpp"
 
@@ -199,7 +200,7 @@ namespace Parser {
         bool computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals);
     
         const Grammar &mGrammar;
-        std::vector<unsigned int> mParseTable;  
+        Util::Table<unsigned int> mParseTable;  
         bool mValid;
         Conflict mConflict;
     };

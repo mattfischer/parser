@@ -54,7 +54,7 @@ namespace Regex {
         mNumStates = (unsigned int)states.size();
         mNumCodePoints = encoding.numCodePoints();
         mRejectState = mNumStates - 1;
-        mTransitions.resize(mNumStates * mNumCodePoints);
+        mTransitions.resize(mNumStates, mNumCodePoints);
         mAcceptStates = std::move(acceptStates);
 
         for(unsigned int i=0; i<mNumStates; i++) {
@@ -63,9 +63,9 @@ namespace Regex {
             for(unsigned int j=0; j<mNumCodePoints; j++) {
                 auto it = state.transitions.find(j);
                 if(it == state.transitions.end()) {
-                    mTransitions[i*mNumCodePoints + j] = mRejectState;
+                    mTransitions.at(i, j) = mRejectState;
                 } else {
-                    mTransitions[i*mNumCodePoints + j] = it->second;
+                    mTransitions.at(i, j) = it->second;
                 }
             }
         }
@@ -83,7 +83,7 @@ namespace Regex {
 
     unsigned int DFA::transition(unsigned int state, Encoding::CodePoint codePoint) const
     {
-        return mTransitions[state * mNumCodePoints + codePoint];
+        return mTransitions.at(state, codePoint);
     }
 
     bool DFA::accept(unsigned int state, unsigned int &index) const

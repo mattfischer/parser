@@ -6,7 +6,7 @@ namespace Regex {
 
     Matcher::Matcher(const std::vector<std::string> &patterns)
     {
-        mNumPatterns = patterns.size();
+        mNumPatterns = (unsigned int)patterns.size();
 
         std::vector<std::unique_ptr<Parser::Node>> nodes;
         

@@ -3,6 +3,7 @@
 
 #include "NFA.hpp"
 #include "Encoding.hpp"
+#include "Util/Table.hpp"
 
 #include <map>
 #include <set>
@@ -39,7 +40,7 @@ namespace Regex {
         unsigned int mNumStates;
         unsigned int mStartState;
         unsigned int mRejectState;
-        std::vector<unsigned int> mTransitions;
+        Util::Table<unsigned int> mTransitions;
         std::vector<unsigned int> mAcceptStates;
     };
 }

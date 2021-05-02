@@ -17,13 +17,13 @@ namespace Parser {
 
     bool LL1::addParseTableEntry(unsigned int rule, unsigned int symbol, unsigned int rhs)
     {
-        if(mParseTable[rule*mGrammar.terminals().size()+symbol] == UINT_MAX) {
-            mParseTable[rule*mGrammar.terminals().size()+symbol] = rhs;
+        if(mParseTable.at(rule, symbol) == UINT_MAX) {
+            mParseTable.at(rule, symbol) = rhs;
             return true;
         } else {
             mConflict.rule = rule;
             mConflict.symbol = symbol;
-            mConflict.rhs1 = mParseTable[rule*mGrammar.terminals().size()+symbol];
+            mConflict.rhs1 = mParseTable.at(rule, symbol);
             mConflict.rhs2 = rhs;
             return false;
         }
@@ -42,7 +42,7 @@ namespace Parser {
 
     bool LL1::computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals)
     {
-        mParseTable.resize(mGrammar.rules().size() * mGrammar.terminals().size(), UINT_MAX);
+        mParseTable.resize(mGrammar.rules().size(), mGrammar.terminals().size(), UINT_MAX);
 
         for(unsigned int i=0; i<mGrammar.rules().size(); i++) {
             const Grammar::Rule &rule = mGrammar.rules()[i];
@@ -97,7 +97,7 @@ namespace Parser {
 
     unsigned int LL1::rhs(unsigned int rule, unsigned int symbol) const
     {
-        return mParseTable[rule*mGrammar.terminals().size() + symbol];
+        return mParseTable.at(rule, symbol);
 
     }
 }
