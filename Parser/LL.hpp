@@ -1,5 +1,5 @@
-#ifndef PARSER_LL1_HPP
-#define PARSER_LL1_HPP
+#ifndef PARSER_LL_HPP
+#define PARSER_LL_HPP
 
 #include "Parser/Grammar.hpp"
 #include "Util/Table.hpp"
@@ -11,9 +11,9 @@
 
 namespace Parser {
 
-    class LL1 {
+    class LL {
     public:
-        LL1(const Grammar &grammar);
+        LL(const Grammar &grammar);
 
         bool valid() const;
 
@@ -45,7 +45,7 @@ namespace Parser {
             typedef std::function<std::unique_ptr<ParseData>(ParseItem<ParseData>*, unsigned int)> Reducer;
             typedef std::function<void(unsigned int)> MatchListener;
 
-            ParseSession(const LL1 &parser)
+            ParseSession(const LL &parser)
             : mParser(parser)
             {
             }
@@ -188,7 +188,7 @@ namespace Parser {
             }
 
         private:
-            const LL1 &mParser;
+            const LL &mParser;
             std::map<unsigned int, MatchListener> mMatchListeners;
             std::map<unsigned int, TerminalDecorator> mTerminalDecorators;
             std::map<unsigned int, Reducer> mReducers;

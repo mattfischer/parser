@@ -1,10 +1,10 @@
-#include "LL1.hpp"
+#include "LL.hpp"
 
 #include <algorithm>
 
 namespace Parser {
 
-    LL1::LL1(const Grammar &grammar)
+    LL::LL(const Grammar &grammar)
     : mGrammar(grammar)
     {
         std::vector<std::set<unsigned int>> firstSets;
@@ -15,7 +15,7 @@ namespace Parser {
         mValid = computeParseTable(firstSets, followSets, nullableNonterminals);
     }
 
-    bool LL1::addParseTableEntry(unsigned int rule, unsigned int symbol, unsigned int rhs)
+    bool LL::addParseTableEntry(unsigned int rule, unsigned int symbol, unsigned int rhs)
     {
         if(mParseTable.at(rule, symbol) == UINT_MAX) {
             mParseTable.at(rule, symbol) = rhs;
@@ -29,7 +29,7 @@ namespace Parser {
         }
     }
 
-    bool LL1::addParseTableEntries(unsigned int rule, const std::set<unsigned int> &symbols, unsigned int rhs)
+    bool LL::addParseTableEntries(unsigned int rule, const std::set<unsigned int> &symbols, unsigned int rhs)
     {
         for(unsigned int s : symbols) {
             if(!addParseTableEntry(rule, s, rhs)) {
@@ -40,7 +40,7 @@ namespace Parser {
         return true;
     }
 
-    bool LL1::computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals)
+    bool LL::computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals)
     {
         mParseTable.resize(mGrammar.rules().size(), mGrammar.terminals().size(), UINT_MAX);
 
@@ -80,22 +80,22 @@ namespace Parser {
         return true;
     }
 
-    bool LL1::valid() const
+    bool LL::valid() const
     {
         return mValid;
     }
 
-    const LL1::Conflict &LL1::conflict() const
+    const LL::Conflict &LL::conflict() const
     {
         return mConflict;
     }
 
-    const Grammar &LL1::grammar() const
+    const Grammar &LL::grammar() const
     {
         return mGrammar;
     }
 
-    unsigned int LL1::rhs(unsigned int rule, unsigned int symbol) const
+    unsigned int LL::rhs(unsigned int rule, unsigned int symbol) const
     {
         return mParseTable.at(rule, symbol);
 
