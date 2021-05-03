@@ -3,6 +3,7 @@
 
 #include "DefReader.hpp"
 #include "Parser/LL.hpp"
+#include "Parser/SLR.hpp"
 
 struct AstNode
 {
@@ -56,6 +57,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    Parser::SLR slr(reader.grammar());
+    
     Parser::LL parser(reader.grammar());
     if(!parser.valid()) {
         std::cout << "Conflict on rule " << parser.conflict().rule << ": " << parser.conflict().rhs1 << " vs " << parser.conflict().rhs2 << std::endl;

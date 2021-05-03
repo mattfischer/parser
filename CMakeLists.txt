@@ -11,6 +11,7 @@ set(SOURCES
     Parser/Grammar.cpp
     Parser/ExtendedGrammar.cpp
     Parser/LL.cpp
+    Parser/SLR.cpp
     DefReader.cpp
     Tokenizer.cpp
     Main.cpp
