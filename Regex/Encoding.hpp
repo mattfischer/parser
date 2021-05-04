@@ -13,7 +13,8 @@ namespace Regex {
     {
     public:
         typedef char InputSymbol;
-        typedef int CodePoint;
+        typedef unsigned int CodePoint;
+        static const CodePoint kInvalidCodePoint = UINT_MAX;
 
         typedef std::pair<InputSymbol, InputSymbol> InputSymbolRange;
 
@@ -28,7 +29,6 @@ namespace Regex {
     private:
         std::vector<InputSymbolRange> mInputSymbolRanges;
         InputSymbolRange mTotalRange;
-        CodePoint mInvalidCodePoint;
         std::vector<CodePoint> mSymbolMap;
     };
 }

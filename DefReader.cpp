@@ -66,7 +66,7 @@ DefReader::DefReader(const std::string &filename)
             pattern.regex = mTerminals[i];
             pattern.name = mTerminalNames[i];
             if(pattern.name == "IGNORE") {
-                pattern.value = Tokenizer::InvalidTokenValue;
+                pattern.value = Tokenizer::kInvalidTokenValue;
             } else {
                 pattern.value = i;
             }
@@ -74,7 +74,7 @@ DefReader::DefReader(const std::string &filename)
         }
         std::vector<Tokenizer::Configuration> configurations;
         configurations.push_back(std::move(configuration));
-        mTokenizer = std::make_unique<Tokenizer>(std::move(configurations), endValue, Tokenizer::InvalidTokenValue);
+        mTokenizer = std::make_unique<Tokenizer>(std::move(configurations), endValue, Tokenizer::kInvalidTokenValue);
         ExtendedGrammar extendedGrammar(std::move(mTerminalNames), std::move(mRules), it->second);
         mGrammar = extendedGrammar.makeGrammar();
     }
@@ -145,7 +145,7 @@ void DefReader::createDefGrammar()
                 return i;
             }
         }
-        return Tokenizer::InvalidTokenValue;
+        return Tokenizer::kInvalidTokenValue;
     };
 
     auto pattern = [&](const std::string &regex, const std::string &name) {

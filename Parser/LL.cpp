@@ -97,7 +97,10 @@ namespace Parser {
 
     unsigned int LL::rhs(unsigned int rule, unsigned int symbol) const
     {
-        return mParseTable.at(rule, symbol);
-
+        if(symbol == Tokenizer::kErrorTokenValue) {
+            return UINT_MAX;
+        } else {
+            return mParseTable.at(rule, symbol);
+        }
     }
 }

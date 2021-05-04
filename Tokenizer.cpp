@@ -24,5 +24,5 @@ unsigned int Tokenizer::patternValue(const std::string &name, unsigned int confi
         }
     }
 
-    return InvalidTokenValue;
+    return kInvalidTokenValue;
 }

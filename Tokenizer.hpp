@@ -12,8 +12,8 @@ class Tokenizer
 {
 public:
     typedef unsigned int TokenValue;
-    static const TokenValue InvalidTokenValue = UINT_MAX;
-    static const TokenValue ErrorTokenValue = InvalidTokenValue -1;
+    static const TokenValue kInvalidTokenValue = UINT_MAX;
+    static const TokenValue kErrorTokenValue = kInvalidTokenValue -1;
 
     struct Pattern {
         std::string regex;
@@ -44,7 +44,7 @@ public:
             mConsumed = 0;
             mLine = 0;
             mConfiguration = 0;
-            mNextToken = {0, 0, 0};
+            mNextToken = {kInvalidTokenValue, 0, 0};
         }
 
         void setConfiguration(unsigned int configuration)
@@ -69,14 +69,14 @@ public:
 
         void consumeToken()
         {
-            if(mNextToken.value == ErrorTokenValue || mNextToken.value == mTokenizer.mEndValue) {
+            if(mNextToken.value == kErrorTokenValue || mNextToken.value == mTokenizer.mEndValue) {
                 return;
             }
 
             bool repeat = true;
             while(repeat) {
                 while(mConsumed >= mCurrentLine.size()) {
-                    if(mConsumed == mCurrentLine.size() && mTokenizer.mNewlineValue != InvalidTokenValue && mLine > 0) {
+                    if(mConsumed == mCurrentLine.size() && mTokenizer.mNewlineValue != kInvalidTokenValue && mLine > 0) {
                         mNextToken.value = mTokenizer.mNewlineValue;
                         mNextToken.start = mConsumed;
                         mNextToken.line = mLine;
@@ -101,15 +101,15 @@ public:
                 unsigned int pattern;
                 unsigned int matched = mTokenizer.mMatchers[mConfiguration]->match(mCurrentLine, mConsumed, pattern);
                 if(matched == 0) {
-                    mNextToken.value = ErrorTokenValue;
+                    mNextToken.value = kErrorTokenValue;
                     mNextToken.start = mConsumed;
                     mNextToken.line = mLine;
-                    mNextToken.text = mCurrentLine.substr(mConsumed, 5);
+                    mNextToken.text = mCurrentLine.substr(mConsumed, 1);
 
                     repeat = false;
                 } else {
                     TokenValue value = mTokenizer.mConfigurations[mConfiguration].patterns[pattern].value;
-                    if(value != InvalidTokenValue) {
+                    if(value != kInvalidTokenValue) {
                         mNextToken.value = value;
                         mNextToken.start = mConsumed;
                         mNextToken.line = mLine;

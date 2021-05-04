@@ -102,11 +102,10 @@ namespace Regex {
         }
 
         mInputSymbolRanges.push_back(current);
-        mInvalidCodePoint = mInputSymbolRanges.size();
         mTotalRange.first = mInputSymbolRanges[0].first;
         mTotalRange.second = mInputSymbolRanges[mInputSymbolRanges.size() - 1].second;
 
-        mSymbolMap.resize(mTotalRange.second - mTotalRange.first + 1, mInvalidCodePoint);
+        mSymbolMap.resize(mTotalRange.second - mTotalRange.first + 1, kInvalidCodePoint);
         for(unsigned int i = 0; i<mInputSymbolRanges.size(); i++) {
             const auto &range = mInputSymbolRanges[i];
             for(InputSymbol j = range.first; j>=0 && j <= range.second; j++) {
@@ -131,7 +130,7 @@ namespace Regex {
     Encoding::CodePoint Encoding::codePoint(InputSymbol symbol) const
     {
         if(symbol < mTotalRange.first || symbol > mTotalRange.second) {
-            return mInvalidCodePoint;
+            return kInvalidCodePoint;
         }
 
         return mSymbolMap[symbol - mTotalRange.first];

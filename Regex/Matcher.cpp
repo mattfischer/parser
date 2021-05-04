@@ -47,6 +47,9 @@ namespace Regex {
         
         for(unsigned int i=start; i<string.size(); i++) {    
             Encoding::CodePoint codePoint = mEncoding->codePoint(string[i]);
+            if(codePoint == Encoding::kInvalidCodePoint) {
+                break;
+            }
             unsigned int nextState = mDFA->transition(state, codePoint);
             
             if(nextState == mDFA->rejectState()) {
