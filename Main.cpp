@@ -58,6 +58,10 @@ int main(int argc, char *argv[])
     }
 
     Parser::SLR slr(reader.grammar());
+    std::stringstream ss("2+2");
+    Tokenizer::Stream stream(reader.tokenizer(), ss);
+    Parser::SLR::Session slrSession(slr);
+    slrSession.parse(stream);
 
     Parser::LL parser(reader.grammar());
     if(!parser.valid()) {

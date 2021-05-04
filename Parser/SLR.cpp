@@ -35,12 +35,22 @@ namespace Parser
     {
         switch(symbol.type) {
             case Grammar::Symbol::Type::Terminal:
-                return symbol.index;
+                return terminalIndex(symbol.index);
             case Grammar::Symbol::Type::Nonterminal:
-                return (unsigned int)mGrammar.terminals().size() + symbol.index;
+                return ruleIndex(symbol.index);
             default:
                 return UINT_MAX;
         }
+    }
+
+    unsigned int SLR::terminalIndex(unsigned int terminal) const
+    {
+        return terminal;
+    }
+
+    unsigned int SLR::ruleIndex(unsigned int rule) const
+    {
+        return (unsigned int)mGrammar.terminals().size() + rule;
     }
 
     void SLR::computeClosure(std::set<Item> &items) const
@@ -143,6 +153,10 @@ namespace Parser
         std::set<unsigned int> nullableNonterminals;
         mGrammar.computeSets(firstSets, followSets, nullableNonterminals);
 
+        for(unsigned int i=0; i<mGrammar.terminals().size(); i++) {
+            followSets[mGrammar.startRule()].insert(i);
+        }
+
         mParseTable.resize(states.size(), mGrammar.terminals().size() + mGrammar.rules().size(), ParseTableEntry{ParseTableEntry::Type::Error, 0});
         for(unsigned int i=0; i<states.size(); i++) {
             for(const auto &item : states[i].items) {
@@ -156,7 +170,19 @@ namespace Parser
                             mConflict.item2 = item.rule;
                             return false;
                         }
-                        mParseTable.at(i, terminal) = ParseTableEntry{ParseTableEntry::Type::Reduce, item.rule};
+
+                        Reduction reduction{item.rule, item.rhs};
+                        unsigned int index = (unsigned int)mReductions.size();
+                        for(unsigned int j=0; j<mReductions.size(); j++) {
+                            if(mReductions[j] == reduction) {
+                                index = j;
+                                break;
+                            }
+                        }
+                        if(index == mReductions.size()) {
+                            mReductions.push_back(reduction);
+                        }
+                        mParseTable.at(i, terminal) = ParseTableEntry{ParseTableEntry::Type::Reduce, index};
                     }
                 }
             }
