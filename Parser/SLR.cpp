@@ -5,51 +5,13 @@
 namespace Parser
 {
     SLR::SLR(const Grammar &grammar)
-    : mGrammar(grammar)
+    : LR(grammar)
     {
-        mValid = false;
         std::vector<State> states = computeStates();
 
         if(computeParseTable(states)) {
             mValid = true;
         }
-    }
-
-    bool SLR::valid() const
-    {
-        return mValid;
-    }
-
-    const Grammar &SLR::grammar() const
-    {
-        return mGrammar;
-    }
-
-    const SLR::Conflict &SLR::conflict() const
-    {
-        return mConflict;
-    }
-
-    unsigned int SLR::symbolIndex(const Grammar::Symbol &symbol) const
-    {
-        switch(symbol.type) {
-            case Grammar::Symbol::Type::Terminal:
-                return terminalIndex(symbol.index);
-            case Grammar::Symbol::Type::Nonterminal:
-                return ruleIndex(symbol.index);
-            default:
-                return UINT_MAX;
-        }
-    }
-
-    unsigned int SLR::terminalIndex(unsigned int terminal) const
-    {
-        return terminal;
-    }
-
-    unsigned int SLR::ruleIndex(unsigned int rule) const
-    {
-        return (unsigned int)mGrammar.terminals().size() + rule;
     }
 
     void SLR::computeClosure(std::set<Item> &items) const

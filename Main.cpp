@@ -69,17 +69,17 @@ int main(int argc, char *argv[])
         return 1; 
     }
     
-    Parser::SLR::ParseSession<AstNode> session(parser);
+    Parser::LR::ParseSession<AstNode> session(parser);
     
     session.addTerminalDecorator("NUMBER", [](const Tokenizer::Token &token) {
         return std::make_unique<AstNodeNumber>(std::atoi(token.text.c_str()));
     });
 
-    session.addReducer("root", [](Parser::SLR::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("root", [](Parser::LR::ParseItem<AstNode> *items, unsigned int numItems) {
         return std::move(items[0].data);
     });
     unsigned int minus = reader.grammar().terminalIndex("-");
-    session.addReducer("E", [&](Parser::SLR::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("E", [&](Parser::LR::ParseItem<AstNode> *items, unsigned int numItems) {
         std::unique_ptr<AstNode> node = std::move(items[0].data);
         for(unsigned int i=1; i<numItems; i+=2) {
             AstNode::Type type = AstNode::Type::Add;
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
         return node;
     });
     unsigned int divide = reader.grammar().terminalIndex("/");
-    session.addReducer("T", [&](Parser::SLR::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("T", [&](Parser::LR::ParseItem<AstNode> *items, unsigned int numItems) {
         std::unique_ptr<AstNode> node = std::move(items[0].data);
         for(unsigned int i=1; i<numItems; i+=2) {
             AstNode::Type type = AstNode::Type::Multiply;
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
         }
         return node;
     });
-    session.addReducer("F", [](Parser::SLR::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("F", [](Parser::LR::ParseItem<AstNode> *items, unsigned int numItems) {
         if(numItems == 1) {
             return std::move(items[0].data);
         } else {
