@@ -37,6 +37,8 @@ namespace Parser {
 
         void computeSets(std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals) const;
 
+        void print() const;
+
     private:
         std::vector<std::string> mTerminals;
         std::vector<Rule> mRules;

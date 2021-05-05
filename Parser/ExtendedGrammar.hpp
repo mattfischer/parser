@@ -63,10 +63,13 @@ namespace Parser {
 
         std::unique_ptr<Grammar> makeGrammar() const;
 
+        void print() const;
+
     private:
         void populateRule(std::vector<Grammar::Rule> &grammarRules, unsigned int index, const RhsNode &rhsNode) const;
         void populateRhs(Grammar::RHS &grammarRhs, const RhsNode &rhsNode, std::vector<Grammar::Rule> &grammarRules, const std::string &ruleName) const;
         void populateSymbol(Grammar::Symbol &grammarSymbol, const RhsNode &rhsNode, std::vector<Grammar::Rule> &grammarRules, const std::string &ruleName) const;
+        void printRhsNode(const RhsNode &node) const;
 
         std::vector<std::string> mTerminals;
         std::vector<Rule> mRules;

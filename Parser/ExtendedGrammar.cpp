@@ -1,6 +1,7 @@
 #include "ExtendedGrammar.hpp"
 
 #include <sstream>
+#include <iostream>
 
 namespace Parser {
 
@@ -23,6 +24,99 @@ namespace Parser {
         }
 
         return std::make_unique<Grammar>(std::move(grammarTerminals), std::move(grammarRules), mStartRule);
+    }
+
+    void ExtendedGrammar::printRhsNode(const RhsNode &node) const {
+        switch(node.type) {
+            case RhsNode::Type::Symbol:
+            {
+                const RhsNodeSymbol &rhsNodeSymbol = static_cast<const RhsNodeSymbol&>(node);
+                switch(rhsNodeSymbol.symbolType) {
+                    case RhsNodeSymbol::SymbolType::Nonterminal:
+                        std::cout << "<" << mRules[rhsNodeSymbol.index].lhs << ">";
+                        break;
+                    case RhsNodeSymbol::SymbolType::Terminal:
+                        std::cout << mTerminals[rhsNodeSymbol.index];
+                        break;
+                }
+                break;
+            }
+
+            case RhsNode::Type::Sequence:
+            {
+                const RhsNodeChildren &rhsNodeChildren = static_cast<const RhsNodeChildren&>(node);
+                for(unsigned int i=0; i<rhsNodeChildren.children.size(); i++) {
+                    printRhsNode(*rhsNodeChildren.children[i]);
+                    if(i != rhsNodeChildren.children.size() - 1) {
+                        std::cout << " ";
+                    }
+                }
+                break;
+            }
+
+            case RhsNode::Type::OneOf:
+            {
+                const RhsNodeChildren &rhsNodeChildren = static_cast<const RhsNodeChildren&>(node);
+                std::cout << "( ";
+                for(unsigned int i=0; i<rhsNodeChildren.children.size(); i++) {
+                    printRhsNode(*rhsNodeChildren.children[i]);
+                    if(i != rhsNodeChildren.children.size() - 1) {
+                        std::cout << " | ";
+                    }
+                }
+                std::cout << " )";
+                break;
+            }
+
+            case RhsNode::Type::ZeroOrOne:
+            {
+                const RhsNodeChild &rhsNodeChild = static_cast<const RhsNodeChild&>(node);
+                if(rhsNodeChild.child->type == RhsNode::Type::Symbol) {
+                    printRhsNode(*rhsNodeChild.child);
+                    std::cout << " ?";
+                } else {
+                    std::cout << "( ";
+                    printRhsNode(*rhsNodeChild.child);
+                    std::cout << " ) ?";
+                }
+                break;
+            }
+            case RhsNode::Type::ZeroOrMore:
+            {
+                const RhsNodeChild &rhsNodeChild = static_cast<const RhsNodeChild&>(node);
+                if(rhsNodeChild.child->type == RhsNode::Type::Symbol) {
+                    printRhsNode(*rhsNodeChild.child);
+                    std::cout << " *";
+                } else {
+                    std::cout << "( ";
+                    printRhsNode(*rhsNodeChild.child);
+                    std::cout << " ) *";
+                }
+                break;
+            }
+            case RhsNode::Type::OneOrMore:
+            {
+                const RhsNodeChild &rhsNodeChild = static_cast<const RhsNodeChild&>(node);
+                if(rhsNodeChild.child->type == RhsNode::Type::Symbol) {
+                    printRhsNode(*rhsNodeChild.child);
+                    std::cout << " +";
+                } else {
+                    std::cout << "( ";
+                    printRhsNode(*rhsNodeChild.child);
+                    std::cout << " ) +";
+                }
+                break;
+            }
+        }
+    }
+
+    void ExtendedGrammar::print() const
+    {
+        for(const auto &rule : mRules) {
+            std::cout << "<" << rule.lhs << ">: ";
+            printRhsNode(*rule.rhs);
+            std::cout << std::endl;
+        }
     }
 
     void ExtendedGrammar::populateRule(std::vector<Grammar::Rule> &grammarRules, unsigned int index, const RhsNode &rhsNode) const

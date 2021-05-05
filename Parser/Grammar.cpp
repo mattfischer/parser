@@ -1,5 +1,7 @@
 #include "Grammar.hpp"
 
+#include <iostream>
+
 namespace Parser {
 
     Grammar::Grammar(std::vector<std::string> &&terminals, std::vector<Rule> &&rules, unsigned int startRule)
@@ -131,6 +133,33 @@ namespace Parser {
                     }
                 }
             }       
+        }
+    }
+
+    void Grammar::print() const
+    {
+        for(const auto &rule : mRules) {
+            std::cout << "<" << rule.lhs << ">: ";
+            for(unsigned int i=0; i<rule.rhs.size(); i++) {
+                for(const auto &symbol : rule.rhs[i]) {
+                    switch(symbol.type) {
+                        case Symbol::Type::Terminal:
+                            std::cout << mTerminals[symbol.index];
+                            break;
+                        case Symbol::Type::Nonterminal:
+                            std::cout << "<" << mRules[symbol.index].lhs << ">";
+                            break;
+                        case Symbol::Type::Epsilon:
+                            std::cout << "0";
+                            break;
+                    }
+                    std::cout << " ";
+                }
+                if(i != rule.rhs.size() - 1) {
+                    std::cout << "| ";
+                }
+            }
+            std::cout << std::endl;
         }
     }
 }
