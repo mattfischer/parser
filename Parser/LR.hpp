@@ -149,6 +149,24 @@ namespace Parser
         };
 
     protected:
+        struct Item {
+            bool operator<(const Item &other) const;
+            bool operator==(const Item &other) const;
+
+            unsigned int rule;
+            unsigned int rhs;
+            unsigned int pos;
+        };
+
+        struct State {
+            std::set<Item> items;
+            std::map<unsigned int, unsigned int> transitions;
+        };
+
+        void computeClosure(std::set<Item> &items) const;
+        std::vector<State> computeStates() const;
+        void printStates(const std::vector<State> &states) const;
+
         unsigned int symbolIndex(const Grammar::Symbol &symbol) const;
         unsigned int terminalIndex(unsigned int terminal) const;
         unsigned int ruleIndex(unsigned int rule) const;
