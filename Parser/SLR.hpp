@@ -15,7 +15,6 @@ namespace Parser {
         SLR(const Grammar &grammar);
 
     private:
-        virtual bool computeParseTable(const std::vector<State> &states);
     };
 }
 #endif

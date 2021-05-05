@@ -167,6 +167,10 @@ namespace Parser
         std::vector<State> computeStates() const;
         void printStates(const std::vector<State> &states) const;
 
+        typedef std::function<std::set<unsigned int>(unsigned int, unsigned int)> GetReduceLookahead;
+
+        bool computeParseTable(const std::vector<State> &states, GetReduceLookahead getReduceLookahead);
+
         unsigned int symbolIndex(const Grammar::Symbol &symbol) const;
         unsigned int terminalIndex(unsigned int terminal) const;
         unsigned int ruleIndex(unsigned int rule) const;
