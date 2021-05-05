@@ -78,8 +78,7 @@ namespace Parser
                 std::vector<ParseItem<ParseData>> parseStack;
                 unsigned int state = 0;
 
-                bool done = false;
-                while(!done) {
+                while(mParser.mAcceptStates.count(state) == 0) {
                     stateStack.push_back(StateItem{state, (unsigned int)parseStack.size()});
                     const ParseTableEntry &entry = mParser.mParseTable.at(state, mParser.terminalIndex(stream.nextToken().value));
                     switch(entry.type) {
@@ -124,12 +123,8 @@ namespace Parser
                                 parseStack.push_back(std::move(parseItem));
                             }
                             
-                            if(reduction.rule == mParser.mGrammar.startRule()) {
-                                done = true;
-                            } else {    
-                                const ParseTableEntry &newEntry = mParser.mParseTable.at(state, mParser.ruleIndex(reduction.rule));
-                                state = newEntry.index;
-                            }
+                            const ParseTableEntry &newEntry = mParser.mParseTable.at(state, mParser.ruleIndex(reduction.rule));
+                            state = newEntry.index;
                             break;
                         }
 
@@ -138,7 +133,13 @@ namespace Parser
                     }
                 }
 
-                return std::move(parseStack[0].data);
+                std::unique_ptr<ParseData> result;
+                auto it = mReducers.find(mParser.mGrammar.startRule());
+                if(it != mReducers.end()) {
+                    result = it->second(&parseStack[0], (unsigned int)parseStack.size());
+                }
+
+                return std::move(result);
             }
 
         private:
@@ -174,6 +175,7 @@ namespace Parser
         const Grammar &mGrammar;
         Util::Table<ParseTableEntry> mParseTable;
         std::vector<Reduction> mReductions;
+        std::set<unsigned int> mAcceptStates;
         bool mValid;
         Conflict mConflict;
     };

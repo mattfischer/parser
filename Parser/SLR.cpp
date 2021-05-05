@@ -114,10 +114,6 @@ namespace Parser
         std::set<unsigned int> nullableNonterminals;
         mGrammar.computeSets(firstSets, followSets, nullableNonterminals);
 
-        for(unsigned int i=0; i<mGrammar.terminals().size(); i++) {
-            followSets[mGrammar.startRule()].insert(i);
-        }
-
         mParseTable.resize(states.size(), mGrammar.terminals().size() + mGrammar.rules().size(), ParseTableEntry{ParseTableEntry::Type::Error, 0});
         for(unsigned int i=0; i<states.size(); i++) {
             for(const auto &item : states[i].items) {
@@ -144,6 +140,10 @@ namespace Parser
                             mReductions.push_back(reduction);
                         }
                         mParseTable.at(i, terminal) = ParseTableEntry{ParseTableEntry::Type::Reduce, index};
+                    }
+
+                    if(item.rule == mGrammar.startRule()) {
+                        mAcceptStates.insert(i);
                     }
                 }
             }
