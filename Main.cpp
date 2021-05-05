@@ -57,28 +57,29 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    Parser::SLR slr(reader.grammar());
-    std::stringstream ss("2+2");
-    Tokenizer::Stream stream(reader.tokenizer(), ss);
-    Parser::SLR::Session slrSession(slr);
-    slrSession.parse(stream);
-
-    Parser::LL parser(reader.grammar());
+    Parser::SLR parser(reader.grammar());
+    
     if(!parser.valid()) {
-        std::cout << "Conflict on rule " << parser.conflict().rule << ": " << parser.conflict().rhs1 << " vs " << parser.conflict().rhs2 << std::endl;
+        if(parser.conflict().type == Parser::SLR::Conflict::Type::ShiftReduce) {
+            std::cout << "Shift/reduce";
+        } else {
+            std::cout << "Reduce/reduce";
+        }
+        std::cout << " conflict on symbol " << parser.conflict().symbol << std::endl;
         return 1; 
     }
     
-    Parser::LL::ParseSession<AstNode> session(parser);
+    Parser::SLR::ParseSession<AstNode> session(parser);
+    
     session.addTerminalDecorator("NUMBER", [](const Tokenizer::Token &token) {
         return std::make_unique<AstNodeNumber>(std::atoi(token.text.c_str()));
     });
 
-    session.addReducer("root", [](Parser::LL::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("root", [](Parser::SLR::ParseItem<AstNode> *items, unsigned int numItems) {
         return std::move(items[0].data);
     });
     unsigned int minus = reader.grammar().terminalIndex("-");
-    session.addReducer("E", [&](Parser::LL::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("E", [&](Parser::SLR::ParseItem<AstNode> *items, unsigned int numItems) {
         std::unique_ptr<AstNode> node = std::move(items[0].data);
         for(unsigned int i=1; i<numItems; i+=2) {
             AstNode::Type type = AstNode::Type::Add;
@@ -90,7 +91,7 @@ int main(int argc, char *argv[])
         return node;
     });
     unsigned int divide = reader.grammar().terminalIndex("/");
-    session.addReducer("T", [&](Parser::LL::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("T", [&](Parser::SLR::ParseItem<AstNode> *items, unsigned int numItems) {
         std::unique_ptr<AstNode> node = std::move(items[0].data);
         for(unsigned int i=1; i<numItems; i+=2) {
             AstNode::Type type = AstNode::Type::Multiply;
@@ -101,7 +102,7 @@ int main(int argc, char *argv[])
         }
         return node;
     });
-    session.addReducer("F", [](Parser::LL::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("F", [](Parser::SLR::ParseItem<AstNode> *items, unsigned int numItems) {
         if(numItems == 1) {
             return std::move(items[0].data);
         } else {

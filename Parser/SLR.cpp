@@ -9,7 +9,6 @@ namespace Parser
     {
         mValid = false;
         std::vector<State> states = computeStates();
-        printStates(states);
 
         if(computeParseTable(states)) {
             mValid = true;
