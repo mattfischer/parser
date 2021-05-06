@@ -39,13 +39,13 @@ namespace Parser {
         };
 
         struct RhsNodeChild : public RhsNode {
-            RhsNodeChild(Type t, std::unique_ptr<RhsNode> &&c) : RhsNode(t), child(std::move(c)) {}
+            RhsNodeChild(Type t, std::unique_ptr<RhsNode> c) : RhsNode(t), child(std::move(c)) {}
 
             std::unique_ptr<RhsNode> child;
         };
 
         struct RhsNodeChildren : public RhsNode {
-            template<typename...Children> RhsNodeChildren(Type t, Children&&... c) : RhsNode(t)
+            template<typename...Children> RhsNodeChildren(Type t, Children... c) : RhsNode(t)
             {
                 children.reserve(sizeof...(c));
                 (children.push_back(std::move(c)), ...);
@@ -59,7 +59,7 @@ namespace Parser {
             std::unique_ptr<RhsNode> rhs;
         };
 
-        ExtendedGrammar(std::vector<std::string> &&terminals, std::vector<Rule> &&rules, unsigned int startRule);
+        ExtendedGrammar(std::vector<std::string> terminals, std::vector<Rule> rules, unsigned int startRule);
 
         std::unique_ptr<Grammar> makeGrammar() const;
 

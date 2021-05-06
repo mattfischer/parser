@@ -16,7 +16,7 @@ struct AstNode
         Divide
     };
 
-    template<typename ...Children> AstNode(Type t, Children&&... c) : type(t)
+    template<typename ...Children> AstNode(Type t, Children... c) : type(t)
     {
         children.reserve(sizeof...(c));
         (children.push_back(std::move(c)), ...);

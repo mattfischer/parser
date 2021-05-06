@@ -73,8 +73,7 @@ namespace Parser
             }
         }
 
-        std::vector<std::string> terminals = grammar.terminals();
-        Grammar newGrammar(std::move(terminals), std::move(newRules), grammar.startRule());
+        Grammar newGrammar(grammar.terminals(), std::move(newRules), grammar.startRule());
 
         std::vector<std::set<unsigned int>> firstSets;
         std::vector<std::set<unsigned int>> followSets;

@@ -26,7 +26,7 @@ namespace Parser {
             std::vector<RHS> rhs;
         };
 
-        Grammar(std::vector<std::string> &&terminals, std::vector<Rule> &&rules, unsigned int startRule);
+        Grammar(std::vector<std::string> terminals, std::vector<Rule> rules, unsigned int startRule);
 
         const std::vector<Rule> &rules() const;
         unsigned int startRule() const;

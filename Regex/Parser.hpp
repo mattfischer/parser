@@ -45,37 +45,37 @@ namespace Regex {
         struct CharacterClassNode : public Node {
             typedef std::pair<Symbol, Symbol> Range;
 
-            CharacterClassNode(std::vector<Range> &&r) { type = Type::CharacterClass; ranges = std::move(r); }
+            CharacterClassNode(std::vector<Range> r) { type = Type::CharacterClass; ranges = std::move(r); }
 
             std::vector<Range> ranges;
         };
 
         struct SequenceNode : public Node {
-            SequenceNode(std::vector<std::unique_ptr<Node>> &n) { type = Type::Sequence; nodes = std::move(n); }
+            SequenceNode(std::vector<std::unique_ptr<Node>> n) { type = Type::Sequence; nodes = std::move(n); }
         
             std::vector<std::unique_ptr<Node>> nodes;
         };
 
         struct ZeroOrOneNode : public Node {
-            ZeroOrOneNode(std::unique_ptr<Node> &n) { type = Type::ZeroOrOne; node = std::move(n); }
+            ZeroOrOneNode(std::unique_ptr<Node> n) { type = Type::ZeroOrOne; node = std::move(n); }
 
             std::unique_ptr<Node> node;
         };
 
         struct ZeroOrMoreNode : public Node {
-            ZeroOrMoreNode(std::unique_ptr<Node> &n) { type = Type::ZeroOrMore; node = std::move(n); }
+            ZeroOrMoreNode(std::unique_ptr<Node> n) { type = Type::ZeroOrMore; node = std::move(n); }
         
             std::unique_ptr<Node> node;
         };
 
         struct OneOrMoreNode : public Node {
-            OneOrMoreNode(std::unique_ptr<Node> &n) { type = Type::OneOrMore; node = std::move(n); }
+            OneOrMoreNode(std::unique_ptr<Node> n) { type = Type::OneOrMore; node = std::move(n); }
         
             std::unique_ptr<Node> node;
         };
 
         struct OneOfNode : public Node {
-            OneOfNode(std::vector<std::unique_ptr<Node>> &&n) { type = Type::OneOf; nodes = std::move(n); }
+            OneOfNode(std::vector<std::unique_ptr<Node>> n) { type = Type::OneOf; nodes = std::move(n); }
         
             std::vector<std::unique_ptr<Node>> nodes;
         };

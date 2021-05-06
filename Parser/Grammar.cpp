@@ -4,7 +4,7 @@
 
 namespace Parser {
 
-    Grammar::Grammar(std::vector<std::string> &&terminals, std::vector<Rule> &&rules, unsigned int startRule)
+    Grammar::Grammar(std::vector<std::string> terminals, std::vector<Rule> rules, unsigned int startRule)
     : mTerminals(std::move(terminals)), mRules(std::move(rules)), mStartRule(startRule)
     {
     }

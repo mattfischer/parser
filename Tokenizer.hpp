@@ -24,7 +24,7 @@ public:
     struct Configuration {
         std::vector<Pattern> patterns;
     };
-    Tokenizer(std::vector<Configuration> &&configurations, TokenValue endValue, TokenValue newlineValue);
+    Tokenizer(std::vector<Configuration> configurations, TokenValue endValue, TokenValue newlineValue);
 
     struct Token {
         TokenValue value;

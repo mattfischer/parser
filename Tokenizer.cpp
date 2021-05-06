@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-Tokenizer::Tokenizer(std::vector<Configuration> &&configurations, TokenValue endValue, TokenValue newlineValue)
+Tokenizer::Tokenizer(std::vector<Configuration> configurations, TokenValue endValue, TokenValue newlineValue)
 : mConfigurations(std::move(configurations))
 {
     mEndValue = endValue;

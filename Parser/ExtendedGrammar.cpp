@@ -5,15 +5,13 @@
 
 namespace Parser {
 
-    ExtendedGrammar::ExtendedGrammar(std::vector<std::string> &&terminals, std::vector<Rule> &&rules, unsigned int startRule)
+    ExtendedGrammar::ExtendedGrammar(std::vector<std::string> terminals, std::vector<Rule> rules, unsigned int startRule)
     : mTerminals(std::move(terminals)), mRules(std::move(rules)), mStartRule(startRule)
     {
     }
 
     std::unique_ptr<Grammar> ExtendedGrammar::makeGrammar() const
     {
-        std::vector<std::string> grammarTerminals = mTerminals;
-
         std::vector<Grammar::Rule> grammarRules;
         for(const auto &rule : mRules) {
             grammarRules.push_back(Grammar::Rule{rule.lhs});
@@ -23,7 +21,7 @@ namespace Parser {
             populateRule(grammarRules, i, *mRules[i].rhs);
         }
 
-        return std::make_unique<Grammar>(std::move(grammarTerminals), std::move(grammarRules), mStartRule);
+        return std::make_unique<Grammar>(mTerminals, std::move(grammarRules), mStartRule);
     }
 
     void ExtendedGrammar::printRhsNode(const RhsNode &node) const {

@@ -100,23 +100,23 @@ const Parser::Grammar &DefReader::grammar() const
     return *mGrammar;
 }
 
-std::unique_ptr<ExtendedGrammar::RhsNode> ZeroOrMore(std::unique_ptr<ExtendedGrammar::RhsNode> &&node) {
+std::unique_ptr<ExtendedGrammar::RhsNode> ZeroOrMore(std::unique_ptr<ExtendedGrammar::RhsNode> node) {
     return std::make_unique<ExtendedGrammar::RhsNodeChild>(ExtendedGrammar::RhsNode::Type::ZeroOrMore, std::move(node));
 };
 
-std::unique_ptr<ExtendedGrammar::RhsNode> OneOrMore(std::unique_ptr<ExtendedGrammar::RhsNode> &&node) {
+std::unique_ptr<ExtendedGrammar::RhsNode> OneOrMore(std::unique_ptr<ExtendedGrammar::RhsNode> node) {
     return std::make_unique<ExtendedGrammar::RhsNodeChild>(ExtendedGrammar::RhsNode::Type::OneOrMore, std::move(node));
 };
 
-std::unique_ptr<ExtendedGrammar::RhsNode> ZeroOrOne(std::unique_ptr<ExtendedGrammar::RhsNode> &&node) {
+std::unique_ptr<ExtendedGrammar::RhsNode> ZeroOrOne(std::unique_ptr<ExtendedGrammar::RhsNode> node) {
     return std::make_unique<ExtendedGrammar::RhsNodeChild>(ExtendedGrammar::RhsNode::Type::ZeroOrOne, std::move(node));
 };
 
-template<typename...Args> std::unique_ptr<ExtendedGrammar::RhsNode> OneOf(Args&&... nodes) {
+template<typename...Args> std::unique_ptr<ExtendedGrammar::RhsNode> OneOf(Args... nodes) {
     return std::make_unique<ExtendedGrammar::RhsNodeChildren>(ExtendedGrammar::RhsNode::Type::OneOf, std::forward<Args>(nodes)...);
 };
 
-template<typename...Args> std::unique_ptr<ExtendedGrammar::RhsNode> Sequence(Args&&... nodes) {
+template<typename...Args> std::unique_ptr<ExtendedGrammar::RhsNode> Sequence(Args... nodes) {
     return std::make_unique<ExtendedGrammar::RhsNodeChildren>(ExtendedGrammar::RhsNode::Type::Sequence, std::forward<Args>(nodes)...);
 };
 
@@ -201,7 +201,7 @@ void DefReader::createDefGrammar()
         return std::make_unique<ExtendedGrammar::RhsNodeSymbol>(ExtendedGrammar::RhsNodeSymbol::SymbolType::Nonterminal, ruleIndex(name));
     };
 
-    auto SetRule = [&](const std::string &name, std::unique_ptr<ExtendedGrammar::RhsNode> &&node) {
+    auto SetRule = [&](const std::string &name, std::unique_ptr<ExtendedGrammar::RhsNode> node) {
         grammarRules[ruleIndex(name)].rhs = std::move(node);
     };
 
