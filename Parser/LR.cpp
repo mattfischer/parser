@@ -153,13 +153,8 @@ namespace Parser
         return states;
     }
 
-    void LR::printStates(const std::vector<State> &states) const
+    void LR::printStates(const std::vector<State> &states, GetReduceLookahead getReduceLookahead) const
     {
-        std::vector<std::set<unsigned int>> firstSets;
-        std::vector<std::set<unsigned int>> followSets;
-        std::set<unsigned int> nullableNonterminals;
-        mGrammar.computeSets(firstSets, followSets, nullableNonterminals);
-
         for(unsigned int i=0; i<states.size(); i++) {
             std::cout << "State " << i << ":" << std::endl;
             for(const auto &item : states[i].items) {
@@ -190,7 +185,7 @@ namespace Parser
                 }
                 if(item.pos == rhs.size()) {
                     std::cout << " [ ";
-                    for(unsigned int s : followSets[item.rule]) {
+                    for(unsigned int s : getReduceLookahead(i, item.rule)) {
                         std::cout << mGrammar.terminals()[s] << " ";
                     }
                     std::cout << "]";

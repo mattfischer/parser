@@ -4,6 +4,7 @@
 #include "DefReader.hpp"
 #include "Parser/LL.hpp"
 #include "Parser/SLR.hpp"
+#include "Parser/LALR.hpp"
 
 struct AstNode
 {
@@ -57,10 +58,10 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    Parser::SLR parser(reader.grammar());
+    Parser::LALR parser(reader.grammar());
     
     if(!parser.valid()) {
-        if(parser.conflict().type == Parser::SLR::Conflict::Type::ShiftReduce) {
+        if(parser.conflict().type == Parser::LR::Conflict::Type::ShiftReduce) {
             std::cout << "Shift/reduce";
         } else {
             std::cout << "Reduce/reduce";

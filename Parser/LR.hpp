@@ -165,10 +165,10 @@ namespace Parser
 
         void computeClosure(std::set<Item> &items) const;
         std::vector<State> computeStates() const;
-        void printStates(const std::vector<State> &states) const;
 
         typedef std::function<std::set<unsigned int>(unsigned int, unsigned int)> GetReduceLookahead;
 
+        void printStates(const std::vector<State> &states, GetReduceLookahead getReduceLookahead) const;
         bool computeParseTable(const std::vector<State> &states, GetReduceLookahead getReduceLookahead);
 
         unsigned int symbolIndex(const Grammar::Symbol &symbol) const;
