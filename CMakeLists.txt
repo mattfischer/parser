@@ -10,6 +10,7 @@ set(SOURCES
     Regex/Parser.cpp
     Parser/Grammar.cpp
     Parser/ExtendedGrammar.cpp
+    Parser/Earley.cpp
     Parser/LL.cpp
     Parser/SLR.cpp
     Parser/LR.cpp

@@ -35,6 +35,8 @@ public:
 
     unsigned int patternValue(const std::string &name, unsigned int configuration) const;
 
+    TokenValue endValue() const;
+
     class Stream
     {
     public:
@@ -45,6 +47,8 @@ public:
 
         const Token &nextToken();
         void consumeToken();
+
+        const Tokenizer &tokenizer() const;
 
     private:
         const Tokenizer &mTokenizer;

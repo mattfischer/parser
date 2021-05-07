@@ -27,6 +27,11 @@ unsigned int Tokenizer::patternValue(const std::string &name, unsigned int confi
     return kInvalidTokenValue;
 }
 
+Tokenizer::TokenValue Tokenizer::endValue() const
+{
+    return mEndValue;
+}
+
 Tokenizer::Stream::Stream(const Tokenizer &tokenizer, std::istream &input)
 : mTokenizer(tokenizer), mInput(input)
 {
@@ -111,3 +116,9 @@ void Tokenizer::Stream::consumeToken()
         }
     }
 }
+
+const Tokenizer &Tokenizer::Stream::tokenizer() const
+{
+    return mTokenizer;
+}
+

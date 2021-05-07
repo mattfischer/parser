@@ -5,6 +5,7 @@
 #include "Parser/LL.hpp"
 #include "Parser/SLR.hpp"
 #include "Parser/LALR.hpp"
+#include "Parser/Earley.hpp"
 
 struct AstNode
 {
@@ -57,6 +58,11 @@ int main(int argc, char *argv[])
         std::cout << "Error in def file, line " << reader.parseError().line << ": " << reader.parseError().message << std::endl;
         return 1;
     }
+
+    std::stringstream ss("2+(2*3)");
+    Tokenizer::Stream s(reader.tokenizer(), ss);
+    Parser::Earley earley(reader.grammar());
+    earley.parse(s);
 
     Parser::LALR parser(reader.grammar());
     

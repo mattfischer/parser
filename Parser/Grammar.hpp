@@ -17,6 +17,10 @@ namespace Parser {
             };
             Type type;
             unsigned int index;
+
+            bool operator==(const Symbol &other) const {
+                return type == other.type && index == other.index;
+            }
         };
 
         typedef std::vector<Symbol> RHS;
