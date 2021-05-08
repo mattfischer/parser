@@ -59,10 +59,12 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    Parser::Earley earley(reader.grammar());
+
     std::stringstream ss("2+(2*3)");
     Tokenizer::Stream s(reader.tokenizer(), ss);
-    Parser::Earley earley(reader.grammar());
-    earley.parse(s);
+    Parser::Earley::Session<AstNode> esession(earley);
+    esession.parse(s);
 
     Parser::LALR parser(reader.grammar());
     

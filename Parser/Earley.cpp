@@ -9,7 +9,7 @@ namespace Parser
     {
     }
 
-    void Earley::parse(Tokenizer::Stream &stream) const
+    std::vector<std::set<Earley::Item>> Earley::computeSets(Tokenizer::Stream &stream) const
     {
         std::vector<std::set<Item>> completed;
         std::vector<std::set<Item>> active;
@@ -40,7 +40,7 @@ namespace Parser
             }
         }
 
-        printSets(active, completed);
+        return completed;
     }
 
     std::vector<Earley::Item> Earley::predict(unsigned int ruleIndex, unsigned int pos) const
@@ -154,6 +154,19 @@ namespace Parser
                 std::cout << std::endl;
             }
             std::cout << "  Completed:" << std::endl;
+            for(const auto &item : completed[i]) {
+                std::cout << "    ";
+                printItem(item);
+                std::cout << std::endl;
+            }
+            std::cout << std::endl;
+        }
+    }
+
+    void Earley::printSets(const std::vector<std::set<Item>> &completed) const
+    {
+        for(unsigned int i=0; i<completed.size(); i++) {
+            std::cout << "Set " << i << ":" << std::endl;
             for(const auto &item : completed[i]) {
                 std::cout << "    ";
                 printItem(item);
