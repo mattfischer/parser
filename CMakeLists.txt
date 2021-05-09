@@ -1,4 +1,4 @@
-project(regex)
+project(parser)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -21,4 +21,4 @@ set(SOURCES
 )
 
 include_directories(${CMAKE_SOURCE_DIR})
-add_executable(regex ${SOURCES})
+add_executable(parser ${SOURCES})
