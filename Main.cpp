@@ -2,10 +2,7 @@
 #include <sstream>
 
 #include "DefReader.hpp"
-#include "Parser/LL.hpp"
-#include "Parser/SLR.hpp"
 #include "Parser/LALR.hpp"
-#include "Parser/Earley.hpp"
 
 struct AstNode
 {
@@ -24,7 +21,7 @@ struct AstNode
     }
 
     Type type;
-    std::vector<std::shared_ptr<AstNode>> children;
+    std::vector<std::unique_ptr<AstNode>> children;
 };
 
 struct AstNodeNumber : public AstNode
@@ -59,46 +56,46 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    Parser::Earley earley(reader.grammar());
+    Parser::LALR parser(reader.grammar());
     
-    Parser::Earley::ParseSession<AstNode> session(earley);
+    Parser::LALR::ParseSession<AstNode> session(parser);
 
     session.addTerminalDecorator("NUMBER", [](const Tokenizer::Token &token) {
-        return std::make_shared<AstNodeNumber>(std::atoi(token.text.c_str()));
+        return std::make_unique<AstNodeNumber>(std::atoi(token.text.c_str()));
     });
 
-    session.addReducer("root", [](Parser::Earley::ParseItem<AstNode> *items, unsigned int numItems) {
-        return std::move(items[0].data[0]);
+    session.addReducer("root", [](Parser::LALR::ParseItem<AstNode> *items, unsigned int numItems) {
+        return std::move(items[0].data);
     });
     unsigned int minus = reader.grammar().terminalIndex("-");
-    session.addReducer("E", [&](Parser::Earley::ParseItem<AstNode> *items, unsigned int numItems) {
-        std::shared_ptr<AstNode> node = std::move(items[0].data[0]);
+    session.addReducer("E", [&](Parser::LALR::ParseItem<AstNode> *items, unsigned int numItems) {
+        std::unique_ptr<AstNode> node = std::move(items[0].data);
         for(unsigned int i=1; i<numItems; i+=2) {
             AstNode::Type type = AstNode::Type::Add;
             if(items[i].index == minus) {
                 type = AstNode::Type::Subtract;
             }
-            node = std::make_shared<AstNode>(type, std::move(node), std::move(items[i+1].data[0]));
+            node = std::make_unique<AstNode>(type, std::move(node), std::move(items[i+1].data));
         }
         return node;
     });
     unsigned int divide = reader.grammar().terminalIndex("/");
-    session.addReducer("T", [&](Parser::Earley::ParseItem<AstNode> *items, unsigned int numItems) {
-        std::shared_ptr<AstNode> node = std::move(items[0].data[0]);
+    session.addReducer("T", [&](Parser::LALR::ParseItem<AstNode> *items, unsigned int numItems) {
+        std::unique_ptr<AstNode> node = std::move(items[0].data);
         for(unsigned int i=1; i<numItems; i+=2) {
             AstNode::Type type = AstNode::Type::Multiply;
             if(items[i].index == divide) {
                 type = AstNode::Type::Divide;
             }
-            node = std::make_shared<AstNode>(type, std::move(node), std::move(items[i+1].data[0]));
+            node = std::make_unique<AstNode>(type, std::move(node), std::move(items[i+1].data));
         }
         return node;
     });
-    session.addReducer("F", [](Parser::Earley::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("F", [](Parser::LALR::ParseItem<AstNode> *items, unsigned int numItems) {
         if(numItems == 1) {
-            return std::move(items[0].data[0]);
+            return std::move(items[0].data);
         } else {
-            return std::move(items[1].data[0]);
+            return std::move(items[1].data);
         }
     });
 
@@ -113,7 +110,7 @@ int main(int argc, char *argv[])
         std::stringstream ss(input);
         Tokenizer::Stream stream(reader.tokenizer(), ss);
 
-        std::shared_ptr<AstNode> ast = session.parse(stream);
+        std::unique_ptr<AstNode> ast = session.parse(stream);
         if(ast) {
             int result = evaluate(*ast);
             std::cout << result << std::endl;
