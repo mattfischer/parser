@@ -68,37 +68,37 @@ int main(int argc, char *argv[])
     });
 
     session.addReducer("root", [](Parser::Earley::ParseItem<AstNode> *items, unsigned int numItems) {
-        return std::move(items[0].data);
+        return std::move(items[0].data[0]);
     });
     unsigned int minus = reader.grammar().terminalIndex("-");
     session.addReducer("E", [&](Parser::Earley::ParseItem<AstNode> *items, unsigned int numItems) {
-        std::shared_ptr<AstNode> node = std::move(items[0].data);
+        std::shared_ptr<AstNode> node = std::move(items[0].data[0]);
         for(unsigned int i=1; i<numItems; i+=2) {
             AstNode::Type type = AstNode::Type::Add;
             if(items[i].index == minus) {
                 type = AstNode::Type::Subtract;
             }
-            node = std::make_shared<AstNode>(type, std::move(node), std::move(items[i+1].data));
+            node = std::make_shared<AstNode>(type, std::move(node), std::move(items[i+1].data[0]));
         }
         return node;
     });
     unsigned int divide = reader.grammar().terminalIndex("/");
     session.addReducer("T", [&](Parser::Earley::ParseItem<AstNode> *items, unsigned int numItems) {
-        std::shared_ptr<AstNode> node = std::move(items[0].data);
+        std::shared_ptr<AstNode> node = std::move(items[0].data[0]);
         for(unsigned int i=1; i<numItems; i+=2) {
             AstNode::Type type = AstNode::Type::Multiply;
             if(items[i].index == divide) {
                 type = AstNode::Type::Divide;
             }
-            node = std::make_shared<AstNode>(type, std::move(node), std::move(items[i+1].data));
+            node = std::make_shared<AstNode>(type, std::move(node), std::move(items[i+1].data[0]));
         }
         return node;
     });
     session.addReducer("F", [](Parser::Earley::ParseItem<AstNode> *items, unsigned int numItems) {
         if(numItems == 1) {
-            return std::move(items[0].data);
+            return std::move(items[0].data[0]);
         } else {
-            return std::move(items[1].data);
+            return std::move(items[1].data[0]);
         }
     });
 
