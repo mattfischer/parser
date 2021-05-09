@@ -143,13 +143,17 @@ namespace Parser
                 }
             } else {
                 std::vector<std::vector<unsigned int>> oldPartitions = std::move(partitions);
-                bool repeat = false;
                 for(unsigned int j=0; j<oldPartitions.size(); j++) {
                     unsigned int currentEnd = oldPartitions[j].back();
                     std::vector<unsigned int> starts = findStarts(completedSets, symbol, currentEnd, start);
-                    for(unsigned int s : starts) {
-                        partitions.push_back(oldPartitions[j]);
-                        partitions.back().push_back(s);
+                    if(starts.size() == 1) {
+                        partitions.push_back(std::move(oldPartitions[j]));
+                        partitions.back().push_back(starts[0]);
+                    } else {
+                        for(unsigned int s : starts) {
+                            partitions.push_back(oldPartitions[j]);
+                            partitions.back().push_back(s);
+                        }
                     }
                 } 
             }

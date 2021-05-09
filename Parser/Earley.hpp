@@ -116,7 +116,7 @@ namespace Parser
                         for(unsigned int j = 0; j<partition.size(); j++) {
                             unsigned int ji = (unsigned int)(partition.size() - 1 - j);
                             unsigned int pstart = partition[ji];
-                            unsigned int pend = (j == partition.size() - 1) ? end : partition[ji - 1];
+                            unsigned int pend = (ji == 0) ? end : partition[ji - 1];
 
                             switch(rhsSymbols[j].type) {
                                 case Grammar::Symbol::Type::Terminal:
