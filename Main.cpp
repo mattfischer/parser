@@ -24,7 +24,7 @@ struct AstNode
     }
 
     Type type;
-    std::vector<std::unique_ptr<AstNode>> children;
+    std::vector<std::shared_ptr<AstNode>> children;
 };
 
 struct AstNodeNumber : public AstNode
@@ -60,58 +60,41 @@ int main(int argc, char *argv[])
     }
 
     Parser::Earley earley(reader.grammar());
+    
+    Parser::Earley::ParseSession<AstNode> session(earley);
 
-    std::stringstream ss("2+(2*3)");
-    Tokenizer::Stream s(reader.tokenizer(), ss);
-    Parser::Earley::Session<AstNode> esession(earley);
-    esession.parse(s);
-
-    Parser::LALR parser(reader.grammar());
-    
-    if(!parser.valid()) {
-        if(parser.conflict().type == Parser::LR::Conflict::Type::ShiftReduce) {
-            std::cout << "Shift/reduce";
-        } else {
-            std::cout << "Reduce/reduce";
-        }
-        std::cout << " conflict on symbol " << parser.conflict().symbol << std::endl;
-        return 1; 
-    }
-    
-    Parser::LR::ParseSession<AstNode> session(parser);
-    
     session.addTerminalDecorator("NUMBER", [](const Tokenizer::Token &token) {
-        return std::make_unique<AstNodeNumber>(std::atoi(token.text.c_str()));
+        return std::make_shared<AstNodeNumber>(std::atoi(token.text.c_str()));
     });
 
-    session.addReducer("root", [](Parser::LR::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("root", [](Parser::Earley::ParseItem<AstNode> *items, unsigned int numItems) {
         return std::move(items[0].data);
     });
     unsigned int minus = reader.grammar().terminalIndex("-");
-    session.addReducer("E", [&](Parser::LR::ParseItem<AstNode> *items, unsigned int numItems) {
-        std::unique_ptr<AstNode> node = std::move(items[0].data);
+    session.addReducer("E", [&](Parser::Earley::ParseItem<AstNode> *items, unsigned int numItems) {
+        std::shared_ptr<AstNode> node = std::move(items[0].data);
         for(unsigned int i=1; i<numItems; i+=2) {
             AstNode::Type type = AstNode::Type::Add;
             if(items[i].index == minus) {
                 type = AstNode::Type::Subtract;
             }
-            node = std::make_unique<AstNode>(type, std::move(node), std::move(items[i+1].data));
+            node = std::make_shared<AstNode>(type, std::move(node), std::move(items[i+1].data));
         }
         return node;
     });
     unsigned int divide = reader.grammar().terminalIndex("/");
-    session.addReducer("T", [&](Parser::LR::ParseItem<AstNode> *items, unsigned int numItems) {
-        std::unique_ptr<AstNode> node = std::move(items[0].data);
+    session.addReducer("T", [&](Parser::Earley::ParseItem<AstNode> *items, unsigned int numItems) {
+        std::shared_ptr<AstNode> node = std::move(items[0].data);
         for(unsigned int i=1; i<numItems; i+=2) {
             AstNode::Type type = AstNode::Type::Multiply;
             if(items[i].index == divide) {
                 type = AstNode::Type::Divide;
             }
-            node = std::make_unique<AstNode>(type, std::move(node), std::move(items[i+1].data));
+            node = std::make_shared<AstNode>(type, std::move(node), std::move(items[i+1].data));
         }
         return node;
     });
-    session.addReducer("F", [](Parser::LR::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("F", [](Parser::Earley::ParseItem<AstNode> *items, unsigned int numItems) {
         if(numItems == 1) {
             return std::move(items[0].data);
         } else {
@@ -130,7 +113,7 @@ int main(int argc, char *argv[])
         std::stringstream ss(input);
         Tokenizer::Stream stream(reader.tokenizer(), ss);
 
-        std::unique_ptr<AstNode> ast = session.parse(stream);
+        std::shared_ptr<AstNode> ast = session.parse(stream);
         if(ast) {
             int result = evaluate(*ast);
             std::cout << result << std::endl;

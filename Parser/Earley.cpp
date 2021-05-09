@@ -9,7 +9,7 @@ namespace Parser
     {
     }
 
-    std::vector<std::set<Earley::Item>> Earley::computeSets(Tokenizer::Stream &stream) const
+    std::vector<std::set<Earley::Item>> Earley::computeSets(Tokenizer::Stream &stream, TokenListener tokenListener) const
     {
         std::vector<std::set<Item>> completed;
         std::vector<std::set<Item>> active;
@@ -33,9 +33,10 @@ namespace Parser
             pos++;
             populateSets(newItems, active, completed, pos);
         
+            tokenListener(stream.nextToken());
             if(stream.nextToken().value == stream.tokenizer().endValue()) {
                 break;
-            } else {
+            } else {    
                 stream.consumeToken();
             }
         }
