@@ -105,6 +105,67 @@ namespace Parser
         }
     }
 
+    std::vector<unsigned int> Earley::findStarts(const std::vector<std::set<Earley::Item>> &completedSets, const Grammar::Symbol &symbol, unsigned int end, unsigned int minStart) const
+    {
+        std::vector<unsigned int> starts;
+
+        switch(symbol.type) {
+            case Grammar::Symbol::Type::Terminal:
+                starts.push_back(end - 1);
+                break;
+            case Grammar::Symbol::Type::Epsilon:
+                starts.push_back(end);
+                break;
+            case Grammar::Symbol::Type::Nonterminal:
+                for(const auto &item : completedSets[end]) {
+                    if(item.rule == symbol.index && item.start >= minStart) {
+                        starts.push_back(item.start);
+                    }
+                }
+                break;
+        }
+
+        return starts;               
+    }
+
+    std::vector<std::vector<unsigned int>> Earley::findPartitions(const std::vector<std::set<Earley::Item>> &completedSets, unsigned int rule, unsigned int rhs, unsigned int start, unsigned int end) const
+    {
+        const Grammar::RHS &rhsSymbols = mGrammar.rules()[rule].rhs[rhs];
+        std::vector<std::vector<unsigned int>> partitions;
+
+        for(unsigned int i = 0; i<rhsSymbols.size(); i++) {
+            unsigned int ri = (unsigned int)(rhsSymbols.size() - 1 - i);
+            const Grammar::Symbol &symbol = rhsSymbols[ri];
+            if(i == 0) {
+                std::vector<unsigned int> starts = findStarts(completedSets, symbol, end, start);
+                for(unsigned int s : starts) {
+                    partitions.push_back(std::vector<unsigned int>{s});
+                }
+            } else {
+                std::vector<std::vector<unsigned int>> oldPartitions = std::move(partitions);
+                bool repeat = false;
+                for(unsigned int j=0; j<oldPartitions.size(); j++) {
+                    unsigned int currentEnd = oldPartitions[j].back();
+                    std::vector<unsigned int> starts = findStarts(completedSets, symbol, currentEnd, start);
+                    for(unsigned int s : starts) {
+                        partitions.push_back(oldPartitions[j]);
+                        partitions.back().push_back(s);
+                    }
+                } 
+            }
+
+            if(partitions.size() == 0) {
+                break;
+            }
+        }
+
+        partitions.erase(std::remove_if(partitions.begin(), partitions.end(), [&](const std::vector<unsigned int> &partition) {
+            return partition.back() != start;
+        }), partitions.end());
+
+        return partitions;
+    }
+
     bool Earley::Item::operator<(const Item &other) const
     {
         if(rule < other.rule) return true;
