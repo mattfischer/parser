@@ -64,6 +64,7 @@ namespace Parser
             std::vector<std::shared_ptr<ParseData>> parse(Tokenizer::Stream &stream) const
             {
                 std::vector<std::shared_ptr<ParseData>> terminalData;
+                std::vector<unsigned int> terminalIndices;
 
                 auto tokenListener = [&](const Tokenizer::Token &token) {
                     auto it = mTerminalDecorators.find(token.value);
@@ -72,12 +73,13 @@ namespace Parser
                         parseData = it->second(token);
                     }
                     terminalData.push_back(parseData);
+                    terminalIndices.push_back(token.value);
                 };
 
                 std::vector<std::set<Earley::Item>> completedSets = mParser.computeSets(stream, tokenListener);
-
+                
                 std::vector<ParseItem<ParseData>> parseStack;
-                parseRule(completedSets, mParser.mGrammar.startRule(), 0, (unsigned int)(completedSets.size() - 1), parseStack, terminalData);
+                parseRule(completedSets, terminalIndices, mParser.mGrammar.startRule(), 0, (unsigned int)(completedSets.size() - 1), parseStack, terminalData);
 
                 std::vector<std::shared_ptr<ParseData>> results;
                 if(parseStack.size() > 0) {
@@ -93,7 +95,7 @@ namespace Parser
                 return results;
             }
         
-            void parseRule(const std::vector<std::set<Earley::Item>> &completedSets, unsigned int rule, unsigned int start, unsigned int end, std::vector<ParseItem<ParseData>> &parseStack, std::vector<std::shared_ptr<ParseData>> &terminalData) const
+            void parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, std::vector<ParseItem<ParseData>> &parseStack, std::vector<std::shared_ptr<ParseData>> &terminalData) const
             {
                 unsigned int numReductions = 0;
                 ParseItem<ParseData> multiStackItem;
@@ -106,7 +108,7 @@ namespace Parser
                         continue;
                     }
 
-                    std::vector<std::vector<unsigned int>> partitions = mParser.findPartitions(completedSets, item.rule, item.rhs, start, end);
+                    std::vector<std::vector<unsigned int>> partitions = mParser.findPartitions(completedSets, terminalIndices, item.rule, item.rhs, start, end);
                     const Grammar::RHS &rhsSymbols = mParser.mGrammar.rules()[item.rule].rhs[item.rhs];
             
                     for(const auto &partition : partitions) {
@@ -134,7 +136,7 @@ namespace Parser
                                 }
                                 case Grammar::Symbol::Type::Nonterminal:
                                 {
-                                    parseRule(completedSets, rhsSymbols[j].index, pstart, pend, parseStack, terminalData);
+                                    parseRule(completedSets, terminalIndices, rhsSymbols[j].index, pstart, pend, parseStack, terminalData);
                                     break;
                                 }
                                 case Grammar::Symbol::Type::Epsilon:
@@ -214,8 +216,8 @@ namespace Parser
         std::vector<Earley::Item> predict(unsigned int ruleIndex, unsigned int pos) const;
         std::vector<Earley::Item> scan(std::set<Item> &items, const Grammar::Symbol &symbol) const;    
         void populateSets(std::vector<Item> &items, std::vector<std::set<Item>> &active, std::vector<std::set<Item>> &completed, unsigned int pos) const;
-        std::vector<unsigned int> findStarts(const std::vector<std::set<Earley::Item>> &completedSets, const Grammar::Symbol &symbol, unsigned int end, unsigned int minStart) const;
-        std::vector<std::vector<unsigned int>> findPartitions(const std::vector<std::set<Earley::Item>> &completedSets, unsigned int rule, unsigned int rhs, unsigned int start, unsigned int end) const;
+        std::vector<unsigned int> findStarts(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, const Grammar::Symbol &symbol, unsigned int end, unsigned int minStart) const;
+        std::vector<std::vector<unsigned int>> findPartitions(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int rhs, unsigned int start, unsigned int end) const;
  
 
         void printSets(const std::vector<std::set<Item>> &active, const std::vector<std::set<Item>> &completed) const;
