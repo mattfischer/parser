@@ -6,7 +6,7 @@
 namespace Parser
 {
     LALR::LALR(const Grammar &grammar)
-    : LR(grammar)
+    : LRSingle(grammar)
     {
         std::vector<State> states = computeStates();
 

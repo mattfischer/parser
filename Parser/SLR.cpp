@@ -3,7 +3,7 @@
 namespace Parser
 {
     SLR::SLR(const Grammar &grammar)
-    : LR(grammar)
+    : LRSingle(grammar)
     {
         std::vector<State> states = computeStates();
 
