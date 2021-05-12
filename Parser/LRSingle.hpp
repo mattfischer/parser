@@ -21,6 +21,7 @@ namespace Parser
             unsigned int item2;
         };
 
+        bool valid() const;
         const Conflict &conflict() const;
 
         template<typename Data> struct ParseItem {
@@ -167,6 +168,7 @@ namespace Parser
         std::vector<Reduction> mReductions;
         std::set<unsigned int> mAcceptStates;
 
+        bool mValid;
         Conflict mConflict;
     };
 }

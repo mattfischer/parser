@@ -5,6 +5,12 @@ namespace Parser
     LRSingle::LRSingle(const Grammar &grammar)
     : LR(grammar)
     {
+        mValid = false;
+    }
+
+    bool LRSingle::valid() const
+    {
+        return mValid;
     }
 
     const LRSingle::Conflict &LRSingle::conflict() const

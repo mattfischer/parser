@@ -12,8 +12,6 @@ namespace Parser
     {
     public:
         LR(const Grammar &grammar);
-
-        bool valid() const;
     
         const Grammar &grammar() const;
 
@@ -44,7 +42,6 @@ namespace Parser
         unsigned int ruleIndex(unsigned int rule) const;
 
         const Grammar &mGrammar;
-        bool mValid;
     };
 }
 #endif

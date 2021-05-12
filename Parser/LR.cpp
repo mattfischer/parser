@@ -7,12 +7,6 @@ namespace Parser
     LR::LR(const Grammar &grammar)
     : mGrammar(grammar)
     {
-        mValid = false;
-    }
-
-    bool LR::valid() const
-    {
-        return mValid;
     }
 
     const Grammar &LR::grammar() const
