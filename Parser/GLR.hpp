@@ -1,15 +1,15 @@
-#ifndef PARSER_TOMITA_HPP
-#define PARSER_TOMITA_HPP
+#ifndef PARSER_GLR_HPP
+#define PARSER_GLR_HPP
 
 #include "Parser/LRMulti.hpp"
 #include "Parser/MultiStack.hpp"
 
 namespace Parser
 {
-    class Tomita : public LRMulti
+    class GLR : public LRMulti
     {
     public:
-        Tomita(const Grammar &grammar);
+        GLR(const Grammar &grammar);
 
         template<typename Data> struct ParseItem {
             enum class Type {
@@ -27,7 +27,7 @@ namespace Parser
             typedef std::function<std::shared_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
             typedef std::function<std::shared_ptr<ParseData>(ParseItem<ParseData>*, unsigned int)> Reducer;
             
-            ParseSession(const Tomita &parser)
+            ParseSession(const GLR &parser)
             : mParser(parser)
             {
             }
@@ -230,7 +230,7 @@ namespace Parser
             }
 
         private:
-            const Tomita &mParser;
+            const GLR &mParser;
             std::map<unsigned int, TerminalDecorator> mTerminalDecorators;
             std::map<unsigned int, Reducer> mReducers;
         };

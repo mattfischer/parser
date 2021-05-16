@@ -1,8 +1,8 @@
-#include "Parser/Tomita.hpp"
+#include "Parser/GLR.hpp"
 
 namespace Parser
 {
-    Tomita::Tomita(const Grammar &grammar)
+    GLR::GLR(const Grammar &grammar)
     : LRMulti(grammar)
     {
         std::vector<State> states = computeStates();
@@ -16,7 +16,6 @@ namespace Parser
             return followSets[rule];
         };
 
-        printStates(states, getReduceSet);
         computeParseTable(states, getReduceSet);
     }
 }

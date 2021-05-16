@@ -17,7 +17,7 @@ set(SOURCES
     Parser/LALR.cpp
     Parser/LRMulti.cpp
     Parser/LRSingle.cpp
-    Parser/Tomita.cpp
+    Parser/GLR.cpp
     DefReader.cpp
     Tokenizer.cpp
     Main.cpp

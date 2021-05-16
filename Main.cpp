@@ -2,7 +2,7 @@
 #include <sstream>
 
 #include "DefReader.hpp"
-#include "Parser/Tomita.hpp"
+#include "Parser/GLR.hpp"
 
 struct AstNode
 {
@@ -56,19 +56,19 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    Parser::Tomita parser(reader.grammar());
+    Parser::GLR parser(reader.grammar());
     
-    Parser::Tomita::ParseSession<AstNode> session(parser);
+    Parser::GLR::ParseSession<AstNode> session(parser);
 
     session.addTerminalDecorator("NUMBER", [](const Tokenizer::Token &token) {
         return std::make_unique<AstNodeNumber>(std::atoi(token.text.c_str()));
     });
 
-    session.addReducer("root", [](Parser::Tomita::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("root", [](Parser::GLR::ParseItem<AstNode> *items, unsigned int numItems) {
         return std::move(items[0].data);
     });
     unsigned int minus = reader.grammar().terminalIndex("-");
-    session.addReducer("E", [&](Parser::Tomita::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("E", [&](Parser::GLR::ParseItem<AstNode> *items, unsigned int numItems) {
         std::shared_ptr<AstNode> node = items[0].data;
         for(unsigned int i=1; i<numItems; i+=2) {
             AstNode::Type type = AstNode::Type::Add;
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
         return node;
     });
     unsigned int divide = reader.grammar().terminalIndex("/");
-    session.addReducer("T", [&](Parser::Tomita::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("T", [&](Parser::GLR::ParseItem<AstNode> *items, unsigned int numItems) {
         std::shared_ptr<AstNode> node = items[0].data;
         for(unsigned int i=1; i<numItems; i+=2) {
             AstNode::Type type = AstNode::Type::Multiply;
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
         }
         return node;
     });
-    session.addReducer("F", [](Parser::Tomita::ParseItem<AstNode> *items, unsigned int numItems) {
+    session.addReducer("F", [](Parser::GLR::ParseItem<AstNode> *items, unsigned int numItems) {
         if(numItems == 1) {
             return items[0].data;
         } else {
