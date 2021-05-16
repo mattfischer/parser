@@ -114,6 +114,9 @@ namespace Parser
                         if(repeat) {
                             i--;
                             repeat = false;
+                            if(i >= stacks.size()) {
+                                break;
+                            }
                         }
 
                         unsigned int state = stacks.back(i).state;
@@ -184,7 +187,27 @@ namespace Parser
                     }
                     stream.consumeToken();
 
-                    // TODO: Merge stacks
+                    if(stacks.size() > 1) {
+                        std::map<unsigned int, size_t> stackMap;
+                        repeat = false;
+                        for(size_t i=0; i<stacks.size() || repeat; i++) {
+                            if(repeat) {
+                                i--;
+                                repeat = false;
+                                if(i >= stacks.size()) {
+                                    break;
+                                }
+                            }
+                            const StackItem &stackItem = stacks.back(i);
+                            auto it = stackMap.find(stackItem.state);
+                            if(it == stackMap.end()) {
+                                stackMap[stackItem.state] = i;
+                            } else {
+                                stacks.merge(i, it->second);
+                                repeat = true;
+                            }
+                        }
+                    }
                 }
 
                 std::vector<std::shared_ptr<ParseData>> results;

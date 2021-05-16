@@ -51,16 +51,15 @@ namespace Parser
 
         size_t add(iterator before, T data);
         void replace(size_t stack, iterator before, T data);
-        std::vector<size_t> split(size_t stack, size_t splits);
         void erase(size_t stack);
-        size_t join(const std::vector<size_t> &stacks);
+        void merge(size_t from, size_t to);
 
         void enumerate(size_t stack, size_t size, std::vector<iterator> &firsts, iterator &last);
 
     private:
         struct Segment {
             std::vector<std::shared_ptr<Segment>> prev;
-            std::vector<std::weak_ptr<Segment>> next;
+            std::vector<std::shared_ptr<Segment>> next;
             std::vector<T> data;
         };
 
@@ -216,49 +215,18 @@ namespace Parser
         mStacks.erase(mStacks.begin() + stack);
     }
 
-    template <typename T> void MultiStack<T>::unlinkSegment(std::shared_ptr<Segment> segment)
+    template <typename T> void MultiStack<T>::merge(size_t from, size_t to)
     {
-        for(auto &prev : segment->prev) {
-            for(size_t i=0; i<prev->next.size(); i++) {
-                if(std::shared_ptr<Segment>(prev->next[i]) == segment) {
-                    prev->next.erase(prev->next.begin() + i);
-                    break;
-                }
-            }
-            if(prev->next.size() == 1) {
-                mergeSegment(prev);
-            }
+        std::shared_ptr<Segment> fromSegment = mStacks[from];
+        fromSegment->data.pop_back();
+
+        std::shared_ptr<Segment> toSegment = mStacks[to];
+        if(toSegment->data.size() > 1) {
+            toSegment = splitSegment(toSegment, toSegment->data.size() - 1);
         }
-    }
-
-    template <typename T> size_t MultiStack<T>::join(const std::vector<size_t> &stacks)
-    {
-        std::vector<std::shared_ptr<Segment>> segments;
-        for(size_t stack : stacks) {
-            if(stack >= mStacks.size()) {
-                throw std::out_of_range("stack");
-            }
-
-            segments.push_back(mStacks[stack]);
-        }
-
-        auto pred = [&](std::shared_ptr<Segment> segment) {
-            for(const auto &s : segments) {
-                if(s == segment) {
-                    return true;
-                }
-            }
-            return false;
-        };
-        mStacks.erase(std::remove_if(mStacks.begin(), mStacks.end(), pred), mStacks.end());
-        
-        mStacks.push_back(std::make_shared<Segment>());
-        for(auto &segment : segments) {
-            mStacks.back()->prev.push_back(segment);
-            segment->next.push_back(mStacks.back());
-        }
-
-        return mStacks.size() - 1;
+        fromSegment->next.push_back(toSegment);
+        toSegment->prev.push_back(fromSegment);
+        mStacks.erase(mStacks.begin() + from);
     }
 
     template<typename T> void MultiStack<T>::enumerate(size_t stack, size_t size, std::vector<iterator> &firsts, iterator &last)
@@ -341,8 +309,7 @@ namespace Parser
         
         segment->next.clear();
         segment->next.insert(segment->next.end(), next->next.begin(), next->next.end());
-        for(auto &nn : segment->next) {
-            std::shared_ptr<Segment> n(nn);
+        for(auto &n : segment->next) {
             for(size_t i=0; i<n->prev.size(); i++) {
                 if(n->prev[i] == next) {
                     n->prev[i] = segment;
@@ -354,6 +321,24 @@ namespace Parser
         for(size_t i=0; i<mStacks.size(); i++) {
             if(mStacks[i] == next) {
                 mStacks[i] = segment;
+            }
+        }
+    }
+
+    template <typename T> void MultiStack<T>::unlinkSegment(std::shared_ptr<Segment> segment)
+    {
+        for(auto &prev : segment->prev) {
+            for(size_t i=0; i<prev->next.size(); i++) {
+                if(std::shared_ptr<Segment>(prev->next[i]) == segment) {
+                    prev->next.erase(prev->next.begin() + i);
+                    break;
+                }
+            }
+
+            if(prev->next.size() == 1) {
+                mergeSegment(prev);
+            } else if(prev->next.size() == 0) {
+                unlinkSegment(prev);
             }
         }
     }
