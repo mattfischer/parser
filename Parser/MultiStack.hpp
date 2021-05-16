@@ -233,15 +233,14 @@ namespace Parser
     {
         std::shared_ptr<Path> startPath = std::make_shared<Path>();
         startPath->segments.push_back(mStacks[stack]);
-        std::vector<std::shared_ptr<Path>> paths = expandPath(startPath, size, startPath->segments[0]->data.size());
+        std::vector<std::shared_ptr<Path>> paths = expandPath(startPath, size, startPath->segments.front()->data.size());
         
         for(auto &path : paths) {
             size_t segmentSize = size;
-            for(size_t i=0; i<path->segments.size() - 1; i++) {
+            for(size_t i=1; i<path->segments.size(); i++) {
                 segmentSize -= path->segments[i]->data.size();
             }
-            size_t index = path->segments.back()->data.size() - segmentSize;
-            std::reverse(path->segments.begin(), path->segments.end());
+            size_t index = path->segments.front()->data.size() - segmentSize;
             firsts.push_back(PathIterator(path, 0, index));
         }
         last = PathIterator(startPath, 0, startPath->segments[0]->data.size());
@@ -253,10 +252,10 @@ namespace Parser
         if(currentSize >= size) {
             results.push_back(path);
         } else {
-            for(auto &prev : path->segments.back()->prev) {
+            for(auto &prev : path->segments.front()->prev) {
                 std::shared_ptr<Path> newPath = std::make_shared<Path>();
-                newPath->segments.insert(newPath->segments.end(), path->segments.begin(), path->segments.end());
                 newPath->segments.push_back(prev);
+                newPath->segments.insert(newPath->segments.end(), path->segments.begin(), path->segments.end());
                 std::vector<std::shared_ptr<Path>> newPaths = expandPath(newPath, size, currentSize + prev->data.size());
                 results.insert(results.end(), newPaths.begin(), newPaths.end());
             }
