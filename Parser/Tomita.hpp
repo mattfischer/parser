@@ -50,10 +50,13 @@ namespace Parser
 
             std::vector<std::shared_ptr<ParseData>> parse(Tokenizer::Stream &stream)
             {
+                struct ParseItems {
+                    std::vector<ParseItem<ParseData>> items;
+                };
                 struct StackItem {
                     unsigned int state;
                     ParseItem<ParseData> parseItem;
-                    std::vector<ParseItem<ParseData>> unreduced;
+                    std::shared_ptr<ParseItems> unreduced;
                 };
 
                 MultiStack<StackItem> stacks;
@@ -61,7 +64,13 @@ namespace Parser
                 stacks.push_back(0, StackItem{0});
 
                 auto reduce = [&](size_t stack, unsigned int rule, unsigned int rhs, bool allowReplace) {
-                    size_t size = mParser.mGrammar.rules()[rule].rhs[rhs].size();
+                    size_t size = 0;
+                    for(const auto &symbol: mParser.mGrammar.rules()[rule].rhs[rhs]) {
+                        if(symbol.type != Grammar::Symbol::Type::Epsilon) {
+                            size++;
+                        }
+                    }
+
                     std::vector<MultiStack<StackItem>::iterator> begins;
                     MultiStack<StackItem>::iterator end;
                     stacks.enumerate(stack, size + 1, begins, end);
@@ -76,8 +85,8 @@ namespace Parser
             
                         ++begin;
                         for(auto it = begin; it != end; ++it) {
-                            if(it->unreduced.size() > 0) {
-                                parseStack.insert(parseStack.end(), it->unreduced.begin(), it->unreduced.end());
+                            if(it->unreduced) {
+                                parseStack.insert(parseStack.end(), it->unreduced->items.begin(), it->unreduced->items.end());
                             } else {
                                 parseStack.push_back(it->parseItem);
                             }
@@ -88,9 +97,10 @@ namespace Parser
 
                         auto it = mReducers.find(rule);
                         if(it == mReducers.end()) {
-                            stackItem.unreduced = std::move(parseStack);
+                            stackItem.unreduced = std::make_shared<ParseItems>();
+                            stackItem.unreduced->items = std::move(parseStack);
                         } else {
-                            std::shared_ptr<ParseData> data = it->second(&parseStack[0], (unsigned int)size);
+                            std::shared_ptr<ParseData> data = it->second(&parseStack[0], (unsigned int)parseStack.size());
                             stackItem.parseItem = ParseItem<ParseData>{ParseItem<ParseData>::Type::Nonterminal, rule, data};
                         }
 
