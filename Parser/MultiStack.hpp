@@ -47,14 +47,16 @@ namespace Parser
         size_t size() const;
 
         void push_back(size_t stack, T data);
+        void pop_back(size_t stack);
         const T &back(size_t stack) const;
+        iterator end(size_t stack);
 
-        size_t add(iterator before, T data);
-        void replace(size_t stack, iterator before, T data);
+        size_t add(iterator before);
+        void relocate(size_t stack, iterator before);
         void erase(size_t stack);
-        void merge(size_t from, size_t to);
+        void join(size_t stack, iterator before);
 
-        void enumerate(size_t stack, size_t size, std::vector<iterator> &firsts, iterator &last);
+        std::vector<iterator> enumerate(size_t stack, size_t size);
 
     private:
         struct Segment {
@@ -145,6 +147,11 @@ namespace Parser
         mStacks[stack]->data.push_back(std::move(data));
     }
 
+    template<typename T> void MultiStack<T>::pop_back(size_t stack)
+    {
+        mStacks[stack]->data.pop_back();
+    }
+
     template<typename T> const T& MultiStack<T>::back(size_t stack) const
     {
         if(stack >= mStacks.size()) {
@@ -160,10 +167,16 @@ namespace Parser
         }
     }
 
-    template<typename T> size_t MultiStack<T>::add(iterator before, T data)
+    template<typename T> typename MultiStack<T>::iterator MultiStack<T>::end(size_t stack)
+    {
+        std::shared_ptr<Path> path = std::make_shared<Path>();
+        path->segments.push_back(mStacks[stack]);
+        return PathIterator(path, 0, path->segments[0]->data.size());
+    }
+
+    template<typename T> size_t MultiStack<T>::add(iterator before)
     {
         std::shared_ptr<Segment> newSegment = std::make_shared<Segment>();
-        newSegment->data.push_back(data);
 
         std::shared_ptr<Segment> segment = before.mPath->segments[before.mSegment];
         if(before.mIndex != 0) {
@@ -180,15 +193,13 @@ namespace Parser
         return result;
     }
 
-    template <typename T> void MultiStack<T>::replace(size_t stack, iterator before, T data)
+    template <typename T> void MultiStack<T>::relocate(size_t stack, iterator before)
     {
         std::shared_ptr<Segment> segment = before.mPath->segments[before.mSegment];
         if(segment == mStacks[stack]) {
             segment->data.erase(segment->data.begin() + before.mIndex, segment->data.end());
-            segment->data.push_back(data);
         } else {
             std::shared_ptr<Segment> newSegment = std::make_shared<Segment>();
-            newSegment->data.push_back(data);
 
             std::shared_ptr<Segment> segment = before.mPath->segments[before.mSegment];
             if(before.mIndex != 0) {
@@ -215,35 +226,33 @@ namespace Parser
         mStacks.erase(mStacks.begin() + stack);
     }
 
-    template <typename T> void MultiStack<T>::merge(size_t from, size_t to)
+    template <typename T> void MultiStack<T>::join(size_t stack, iterator before)
     {
-        std::shared_ptr<Segment> fromSegment = mStacks[from];
-        fromSegment->data.pop_back();
-
-        std::shared_ptr<Segment> toSegment = mStacks[to];
-        if(toSegment->data.size() > 1) {
-            toSegment = splitSegment(toSegment, toSegment->data.size() - 1);
+        std::shared_ptr<Segment> segment = mStacks[stack];
+        std::shared_ptr<Segment> targetSegment = before.mPath->segments[before.mSegment];
+        if(before.mIndex != 0) {
+            targetSegment = splitSegment(targetSegment, before.mIndex);
         }
-        fromSegment->next.push_back(toSegment);
-        toSegment->prev.push_back(fromSegment);
-        mStacks.erase(mStacks.begin() + from);
+        segment->next.push_back(targetSegment);
+        targetSegment->prev.push_back(segment);
+        mStacks.erase(mStacks.begin() + stack);
     }
 
-    template<typename T> void MultiStack<T>::enumerate(size_t stack, size_t size, std::vector<iterator> &firsts, iterator &last)
+    template<typename T> std::vector<typename MultiStack<T>::iterator> MultiStack<T>::enumerate(size_t stack, size_t size)
     {
         std::shared_ptr<Path> startPath = std::make_shared<Path>();
         startPath->segments.push_back(mStacks[stack]);
         std::vector<std::shared_ptr<Path>> paths = expandPath(startPath, size, startPath->segments.front()->data.size());
-        
+        std::vector<iterator> results;
         for(auto &path : paths) {
             size_t segmentSize = size;
             for(size_t i=1; i<path->segments.size(); i++) {
                 segmentSize -= path->segments[i]->data.size();
             }
             size_t index = path->segments.front()->data.size() - segmentSize;
-            firsts.push_back(PathIterator(path, 0, index));
+            results.push_back(PathIterator(path, 0, index));
         }
-        last = PathIterator(startPath, 0, startPath->segments[0]->data.size());
+        return results;
     }
 
     template<typename T> std::vector<std::shared_ptr<typename MultiStack<T>::Path>> MultiStack<T>::expandPath(std::shared_ptr<Path> path, size_t size, size_t currentSize)

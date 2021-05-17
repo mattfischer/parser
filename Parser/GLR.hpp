@@ -77,7 +77,7 @@ namespace Parser
 
         stacks.push_back(0, StackItem{0});
 
-        auto reduce = [&](size_t stack, unsigned int rule, unsigned int rhs, bool allowReplace) {
+        auto reduce = [&](size_t stack, unsigned int rule, unsigned int rhs, bool allowRelocate) {
             size_t size = 0;
             for(const auto &symbol: mParser.mGrammar.rules()[rule].rhs[rhs]) {
                 if(symbol.type != Grammar::Symbol::Type::Epsilon) {
@@ -85,9 +85,8 @@ namespace Parser
                 }
             }
 
-            std::vector<MultiStack<StackItem>::iterator> begins;
-            MultiStack<StackItem>::iterator end;
-            stacks.enumerate(stack, size + 1, begins, end);
+            std::vector<MultiStack<StackItem>::iterator> begins = stacks.enumerate(stack, size + 1);
+            MultiStack<StackItem>::iterator end = stacks.end(stack);
             for(size_t i = 0; i<begins.size(); i++) {
                 auto &begin = begins[i];
                 std::vector<ParseItem<ParseData>> parseStack;
@@ -118,10 +117,12 @@ namespace Parser
                     stackItem.parseItem = ParseItem<ParseData>{ParseItem<ParseData>::Type::Nonterminal, rule, data};
                 }
 
-                if(i == begins.size() - 1 && allowReplace) {
-                    stacks.replace(stack, begin, stackItem);
+                if(i == begins.size() - 1 && allowRelocate) {
+                    stacks.relocate(stack, begin);
+                    stacks.push_back(stack, stackItem);
                 } else {
-                    stacks.add(begin, stackItem);
+                    size_t newStack = stacks.add(begin);
+                    stacks.push_back(newStack, stackItem);
                 }
             }
         };
@@ -174,12 +175,12 @@ namespace Parser
                                 case ParseTableEntry::Type::Reduce:
                                 {
                                     const Reduction &reduction = mParser.mReductions[entry.index];
-                                    bool allowReplace = false;
+                                    bool allowRelocate = false;
                                     if(j == entries.size() - 1) {
-                                        allowReplace = true;
+                                        allowRelocate = true;
                                         repeat = true;
                                     }
-                                    reduce(i, reduction.rule, reduction.rhs, allowReplace);
+                                    reduce(i, reduction.rule, reduction.rhs, allowRelocate);
                                     break;
                                 }
 
@@ -227,7 +228,9 @@ namespace Parser
                     if(it == stackMap.end()) {
                         stackMap[stackItem.state] = i;
                     } else {
-                        stacks.merge(i, it->second);
+                        stacks.pop_back(i);
+                        std::vector<MultiStack<StackItem>::iterator> begins = stacks.enumerate(it->second, 1);
+                        stacks.join(i, begins[0]);
                         repeat = true;
                     }
                 }
