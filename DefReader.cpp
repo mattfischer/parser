@@ -268,75 +268,91 @@ std::unique_ptr<DefReader::DefNode> DefReader::parseFile(const std::string &file
         return std::make_unique<DefNode>(DefNode::Type::Regex, token.text, token.line);
     });
 
-    session.addReducer("root", [](Parser::LL::ParseItem<DefNode> *items, unsigned int numItems) {
-        return std::move(items[0].data);
+    session.addReducer("root", [](auto begin, auto end) {
+        return std::move(begin->data);
     });
-    session.addReducer("definitions", [](Parser::LL::ParseItem<DefNode> *items, unsigned int numItems) {
+    session.addReducer("definitions", [](auto begin, auto end) {
         std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::List);
-        for(unsigned int i=0; i<numItems; i++) {
-            if(items[i].data) {
-                node->children.push_back(std::move(items[i].data));
+        for(auto it = begin; it != end; ++it) {
+            if(it->data) {
+                node->children.push_back(std::move(it->data));
             }
         }
         return node;
     });
-    session.addReducer("pattern", [](Parser::LL::ParseItem<DefNode> *items, unsigned int numItems) {
-        return std::make_unique<DefNode>(DefNode::Type::Pattern, std::move(items[0].data), std::move(items[2].data));
+    session.addReducer("pattern", [](auto begin, auto end) {
+        auto it = begin;
+        std::unique_ptr<DefNode> name = std::move(it->data);
+        it += 2;
+        std::unique_ptr<DefNode> regex = std::move(it->data);
+        return std::make_unique<DefNode>(DefNode::Type::Pattern, std::move(name), std::move(regex));
     });
-    session.addReducer("rule", [](Parser::LL::ParseItem<DefNode> *items, unsigned int numItems) {
-        std::unique_ptr<DefNode> rhs;
-        if(numItems == 4) {
-            rhs = std::move(items[2].data);
-        } else {
-            rhs = std::make_unique<DefNode>(DefNode::Type::RhsOneOf);
-            for(unsigned int i=2; i<numItems; i+=2) {
-                rhs->children.push_back(std::move(items[i].data));
-            }
+    session.addReducer("rule", [](auto begin, auto end) {
+        auto it = begin;
+        std::unique_ptr<DefNode> lhs = std::move(it->data);
+        it += 2;
+        
+        std::unique_ptr<DefNode> rhs = std::make_unique<DefNode>(DefNode::Type::RhsOneOf);
+        while(it != end) {
+            rhs->children.push_back(std::move(it->data));
+            it += 2;
         }
-        return std::make_unique<DefNode>(DefNode::Type::Rule, std::move(items[0].data), std::move(rhs));
+        if(rhs->children.size() == 1) {
+            rhs = std::move(rhs->children[0]);
+        }
+        return std::make_unique<DefNode>(DefNode::Type::Rule, std::move(lhs), std::move(rhs));
     });
-    session.addReducer("rhs", [](Parser::LL::ParseItem<DefNode> *items, unsigned int numItems) {
-        std::unique_ptr<DefNode> node;
-        if(numItems == 1) {
-            node = std::move(items[0].data);
-        } else {
-            node = std::make_unique<DefNode>(DefNode::Type::RhsSequence);
-            for(unsigned int i=0; i<numItems; i++) {
-                node->children.push_back(std::move(items[i].data));
-            }
+    session.addReducer("rhs", [](auto begin, auto end) {
+        std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::RhsSequence);
+        for(auto it = begin; it != end; ++it) {
+            node->children.push_back(std::move(it->data));
+        }
+        if(node->children.size() == 1) {
+            node = std::move(node->children[0]);
         }
         return node;
     });
     unsigned int star = mDefGrammar->terminalIndex("star");
     unsigned int plus = mDefGrammar->terminalIndex("plus");
     unsigned int question = mDefGrammar->terminalIndex("question");
-    session.addReducer("rhsSuffix", [&](Parser::LL::ParseItem<DefNode> *items, unsigned int numItems) {
-        std::unique_ptr<DefNode> node = std::move(items[0].data);
-        for(unsigned int i=1; i<numItems; i++) {
-            if(items[i].index == star) {
+    session.addReducer("rhsSuffix", [&](auto begin, auto end) {
+        auto it = begin;
+        std::unique_ptr<DefNode> node = std::move(it->data);
+        ++it;
+        for(; it != end; ++it) {
+            if(it->index == star) {
                 node = std::make_unique<DefNode>(DefNode::Type::RhsZeroOrMore, std::move(node));
-            } else if(items[i].index == plus) {
+            } else if(it->index == plus) {
                 node = std::make_unique<DefNode>(DefNode::Type::RhsOneOrMore, std::move(node));
-            } else if(items[i].index == question) {
+            } else if(it->index == question) {
                 node = std::make_unique<DefNode>(DefNode::Type::RhsZeroOrOne, std::move(node));
             }
         }
         return node;
     });
     unsigned int lparen = mDefGrammar->terminalIndex("lparen");
-    session.addReducer("rhsSymbol", [&](Parser::LL::ParseItem<DefNode> *items, unsigned int numItems) {
+    unsigned int rparen = mDefGrammar->terminalIndex("rparen");
+    session.addReducer("rhsSymbol", [&](auto begin, auto end) {
         std::unique_ptr<DefNode> node;
-        if(numItems == 1) {
-            node = std::move(items[0].data);        
-        } else if(numItems == 3) {
-            node = std::move(items[1].data);
-        } else {
+        auto it = begin;
+        if(it->index == lparen) {
+            ++it;
             node = std::make_unique<DefNode>(DefNode::Type::RhsOneOf);
-            for(unsigned int i=1; i<numItems; i+=2) {
-                node->children.push_back(std::move(items[i].data));
+            while(true) {
+                node->children.push_back(std::move(it->data));
+                ++it;
+                if(it->index == rparen) {
+                    break;
+                }
+                ++it;
             }
+            if(node->children.size() == 1) {
+                node = std::move(node->children[0]);
+            }
+        } else {
+            node = std::move(it->data);
         }
-       return node;
+        return node;
     });
 
     std::unique_ptr<DefNode> node = session.parse(stream);

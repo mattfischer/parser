@@ -64,39 +64,48 @@ int main(int argc, char *argv[])
         return std::make_unique<AstNodeNumber>(std::atoi(token.text.c_str()));
     });
 
-    session.addReducer("root", [](Parser::GLR::ParseItem<AstNode> *items, unsigned int numItems) {
-        return std::move(items[0].data);
+    session.addReducer("root", [](auto begin, auto end) {
+        return std::move(begin->data);
     });
     unsigned int minus = reader.grammar().terminalIndex("-");
-    session.addReducer("E", [&](Parser::GLR::ParseItem<AstNode> *items, unsigned int numItems) {
-        std::shared_ptr<AstNode> node = items[0].data;
-        for(unsigned int i=1; i<numItems; i+=2) {
+    session.addReducer("E", [&](auto begin, auto end) {
+        auto it = begin;
+        std::shared_ptr<AstNode> node = it->data;
+        ++it;
+        while(it != end) {
             AstNode::Type type = AstNode::Type::Add;
-            if(items[i].index == minus) {
+            if(it->index == minus) {
                 type = AstNode::Type::Subtract;
             }
-            node = std::make_unique<AstNode>(type, node, items[i+1].data);
+            ++it;
+            node = std::make_unique<AstNode>(type, node, it->data);
+            ++it;
         }
         return node;
     });
     unsigned int divide = reader.grammar().terminalIndex("/");
-    session.addReducer("T", [&](Parser::GLR::ParseItem<AstNode> *items, unsigned int numItems) {
-        std::shared_ptr<AstNode> node = items[0].data;
-        for(unsigned int i=1; i<numItems; i+=2) {
+    session.addReducer("T", [&](auto begin, auto end) {
+        auto it = begin;
+        std::shared_ptr<AstNode> node = it->data;
+        ++it;
+        while(it != end) {
             AstNode::Type type = AstNode::Type::Multiply;
-            if(items[i].index == divide) {
+            if(it->index == divide) {
                 type = AstNode::Type::Divide;
             }
-            node = std::make_unique<AstNode>(type, node, items[i+1].data);
+            ++it;
+            node = std::make_unique<AstNode>(type, node, it->data);
+            ++it;
         }
         return node;
     });
-    session.addReducer("F", [](Parser::GLR::ParseItem<AstNode> *items, unsigned int numItems) {
-        if(numItems == 1) {
-            return items[0].data;
-        } else {
-            return items[1].data;
+    unsigned int lparen = reader.grammar().terminalIndex("(");
+    session.addReducer("F", [&](auto begin, auto end) {
+        auto it = begin;
+        if(it->index == lparen) {
+            ++it;
         }
+        return it->data;
     });
 
     while(true) {

@@ -32,13 +32,15 @@ namespace Parser
             Type type;
             unsigned int index;
             std::unique_ptr<Data> data;
+
+            typedef ParseItem* iterator;
         };
 
         template<typename ParseData> class ParseSession
         {
         public:
             typedef std::function<std::unique_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
-            typedef std::function<std::unique_ptr<ParseData>(ParseItem<ParseData>*, unsigned int)> Reducer;
+            typedef std::function<std::unique_ptr<ParseData>(typename ParseItem<ParseData>::iterator, typename ParseItem<ParseData>::iterator)> Reducer;
             
             ParseSession(const LRSingle &parser);
         
@@ -150,7 +152,7 @@ namespace Parser
 
                     auto it = mReducers.find(reduction.rule);
                     if(it != mReducers.end()) {
-                        std::unique_ptr<ParseData> data = it->second(&parseStack[parseStackStart], (unsigned int)(parseStack.size() - parseStackStart));
+                        std::unique_ptr<ParseData> data = it->second(&parseStack[parseStackStart], &parseStack[0] + parseStack.size());
                         parseStack.erase(parseStack.begin() + parseStackStart, parseStack.end());
 
                         ParseItem<ParseData> parseItem;

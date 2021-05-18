@@ -19,13 +19,15 @@ namespace Parser
             Type type;
             unsigned int index;
             std::shared_ptr<Data> data;
+
+            typedef ParseItem* iterator;
         };
 
         template<typename ParseData> class ParseSession
         {
         public:
             typedef std::function<std::shared_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
-            typedef std::function<std::shared_ptr<ParseData>(ParseItem<ParseData>*, unsigned int)> Reducer;
+            typedef std::function<std::shared_ptr<ParseData>(typename ParseItem<ParseData>::iterator, typename ParseItem<ParseData>::iterator)> Reducer;
             
             ParseSession(const GLR &parser);
         
@@ -113,7 +115,7 @@ namespace Parser
                     stackItem.unreduced = std::make_shared<ParseItems>();
                     stackItem.unreduced->items = std::move(parseStack);
                 } else {
-                    std::shared_ptr<ParseData> data = it->second(&parseStack[0], (unsigned int)parseStack.size());
+                    std::shared_ptr<ParseData> data = it->second(&parseStack[0], &parseStack[0] + parseStack.size());
                     stackItem.parseItem = ParseItem<ParseData>{ParseItem<ParseData>::Type::Nonterminal, rule, data};
                 }
 

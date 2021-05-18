@@ -35,13 +35,15 @@ namespace Parser
             unsigned int index;
             std::shared_ptr<Data> data;
             std::vector<std::vector<ParseItem<Data>>> stacks;
+
+            typedef ParseItem* iterator;
         };
 
         template<typename ParseData> class ParseSession
         {
         public:
             typedef std::function<std::shared_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
-            typedef std::function<std::shared_ptr<ParseData>(ParseItem<ParseData>*, unsigned int)> Reducer;
+            typedef std::function<std::shared_ptr<ParseData>(typename ParseItem<ParseData>::iterator, typename ParseItem<ParseData>::iterator)> Reducer;
             
             ParseSession(const Earley &parser);
 
@@ -231,7 +233,7 @@ namespace Parser
         }
 
         if(!foundMultistack) {
-            std::shared_ptr<ParseData> parseData = reducer(&parseStack[parseStackStart], (unsigned int)(parseStack.size() - parseStackStart));
+            std::shared_ptr<ParseData> parseData = reducer(&parseStack[parseStackStart], &parseStack[0] + parseStack.size());
             results.push_back(parseData);
         }
 
