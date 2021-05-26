@@ -28,23 +28,23 @@ namespace Parser {
         const Grammar &grammar() const;
         unsigned int rhs(unsigned int rule, unsigned int symbol) const;
 
-        template<typename Data> struct ParseItem {
-            enum class Type {
-                Terminal,
-                Nonterminal
-            };
-            Type type;
-            unsigned int index;
-            std::unique_ptr<Data> data;
-
-            typedef ParseItem* iterator;
-        };
-
         template<typename ParseData> class ParseSession
         {
         public:
+            struct ParseItem {
+                enum class Type {
+                    Terminal,
+                    Nonterminal
+                };
+                Type type;
+                unsigned int index;
+                std::unique_ptr<ParseData> data;
+
+                typedef ParseItem* iterator;
+            };
+
             typedef std::function<std::unique_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
-            typedef std::function<std::unique_ptr<ParseData>(typename ParseItem<ParseData>::iterator, typename ParseItem<ParseData>::iterator)> Reducer;
+            typedef std::function<std::unique_ptr<ParseData>(typename ParseItem::iterator, typename ParseItem::iterator)> Reducer;
             typedef std::function<void(unsigned int)> MatchListener;
 
             ParseSession(const LL &parser);
@@ -125,7 +125,7 @@ namespace Parser {
         };
 
         std::vector<PredictItem> predictStack;
-        std::vector<ParseItem<ParseData>> parseStack;
+        std::vector<ParseItem> parseStack;
 
         predictStack.push_back(PredictItem{PredictItem::Type::Nonterminal, mParser.mGrammar.startRule()});
 
@@ -137,8 +137,8 @@ namespace Parser {
                 case PredictItem::Type::Terminal:
                 {
                     if(stream.nextToken().value == predictItem.symbol.index) {
-                        ParseItem<ParseData> parseItem;
-                        parseItem.type = ParseItem<ParseData>::Type::Terminal;
+                        ParseItem parseItem;
+                        parseItem.type = ParseItem::Type::Terminal;
                         parseItem.index = predictItem.symbol.index;
                         auto it = mTerminalDecorators.find(predictItem.symbol.index);
                         if(it != mTerminalDecorators.end()) {
@@ -199,8 +199,8 @@ namespace Parser {
                         std::unique_ptr<ParseData> data = it->second(&parseStack[parseStackStart], &parseStack[0] + parseStack.size());
                         parseStack.erase(parseStack.begin() + parseStackStart, parseStack.end());
 
-                        ParseItem<ParseData> parseItem;
-                        parseItem.type = ParseItem<ParseData>::Type::Nonterminal;
+                        ParseItem parseItem;
+                        parseItem.type = ParseItem::Type::Nonterminal;
                         parseItem.index = currentRule;
                         parseItem.data = std::move(data);
                         parseStack.push_back(std::move(parseItem));

@@ -11,23 +11,23 @@ namespace Parser
     public:
         GLR(const Grammar &grammar);
 
-        template<typename Data> struct ParseItem {
-            enum class Type {
-                Terminal,
-                Nonterminal
-            };
-            Type type;
-            unsigned int index;
-            std::shared_ptr<Data> data;
-
-            typedef ParseItem* iterator;
-        };
-
         template<typename ParseData> class ParseSession
         {
         public:
+            struct ParseItem {
+                enum class Type {
+                    Terminal,
+                    Nonterminal
+                };
+                Type type;
+                unsigned int index;
+                std::shared_ptr<ParseData> data;
+
+                typedef ParseItem* iterator;
+            };
+
             typedef std::function<std::shared_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
-            typedef std::function<std::shared_ptr<ParseData>(typename ParseItem<ParseData>::iterator, typename ParseItem<ParseData>::iterator)> Reducer;
+            typedef std::function<std::shared_ptr<ParseData>(typename ParseItem::iterator, typename ParseItem::iterator)> Reducer;
             
             ParseSession(const GLR &parser);
         
@@ -67,11 +67,11 @@ namespace Parser
     template<typename ParseData> std::vector<std::shared_ptr<ParseData>> GLR::ParseSession<ParseData>::parse(Tokenizer::Stream &stream)
     {
         struct ParseItems {
-            std::vector<ParseItem<ParseData>> items;
+            std::vector<ParseItem> items;
         };
         struct StackItem {
             unsigned int state;
-            ParseItem<ParseData> parseItem;
+            ParseItem parseItem;
             std::shared_ptr<ParseItems> unreduced;
         };
 
@@ -91,7 +91,7 @@ namespace Parser
             MultiStack<StackItem>::iterator end = stacks.end(stack);
             for(size_t i = 0; i<begins.size(); i++) {
                 auto &begin = begins[i];
-                std::vector<ParseItem<ParseData>> parseStack;
+                std::vector<ParseItem> parseStack;
                 parseStack.reserve(size);
                 
                 unsigned int state = begin->state;
@@ -116,7 +116,7 @@ namespace Parser
                     stackItem.unreduced->items = std::move(parseStack);
                 } else {
                     std::shared_ptr<ParseData> data = it->second(&parseStack[0], &parseStack[0] + parseStack.size());
-                    stackItem.parseItem = ParseItem<ParseData>{ParseItem<ParseData>::Type::Nonterminal, rule, data};
+                    stackItem.parseItem = ParseItem{ParseItem::Type::Nonterminal, rule, data};
                 }
 
                 if(i == begins.size() - 1 && allowRelocate) {
@@ -155,7 +155,7 @@ namespace Parser
                 switch(entry.type) {
                     case ParseTableEntry::Type::Shift:
                     {
-                        ParseItem<ParseData> parseItem{ParseItem<ParseData>::Type::Terminal, stream.nextToken().value, terminal};
+                        ParseItem parseItem{ParseItem::Type::Terminal, stream.nextToken().value, terminal};
                         stacks.push_back(i, StackItem{entry.index, std::move(parseItem)});
                         break;
                     }
@@ -188,7 +188,7 @@ namespace Parser
 
                                 case ParseTableEntry::Type::Shift:
                                 {
-                                    ParseItem<ParseData> parseItem{ParseItem<ParseData>::Type::Terminal, stream.nextToken().value, terminal};
+                                    ParseItem parseItem{ParseItem::Type::Terminal, stream.nextToken().value, terminal};
                                     stacks.push_back(i, StackItem{entry.index, std::move(parseItem)});
                                     break;
                                 }
