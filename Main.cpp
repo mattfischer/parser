@@ -2,7 +2,7 @@
 #include <sstream>
 
 #include "DefReader.hpp"
-#include "Parser/GLR.hpp"
+#include "Parser/Earley.hpp"
 
 struct AstNode
 {
@@ -56,9 +56,9 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    Parser::GLR parser(reader.grammar());
+    Parser::Earley parser(reader.grammar());
     
-    Parser::GLR::ParseSession<AstNode> session(parser);
+    Parser::Earley::ParseSession<AstNode> session(parser);
 
     session.addTerminalDecorator("NUMBER", [](const Tokenizer::Token &token) {
         return std::make_unique<AstNodeNumber>(std::atoi(token.text.c_str()));

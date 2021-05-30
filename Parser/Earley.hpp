@@ -2,6 +2,7 @@
 #define PARSER_EARLEY_HPP
 
 #include "Parser/Grammar.hpp"
+#include "Parser/MultiStack.hpp"
 #include "Tokenizer.hpp"
 
 #include <set>
@@ -32,12 +33,10 @@ namespace Parser
                 enum class Type {
                     Terminal,
                     Nonterminal,
-                    Multistack
                 };
                 Type type;
                 unsigned int index;
                 std::shared_ptr<ParseData> data;
-                std::vector<std::vector<ParseItem>> stacks;
 
                 typedef ParseItem* iterator;
             };
@@ -53,8 +52,7 @@ namespace Parser
             std::vector<std::shared_ptr<ParseData>> parse(Tokenizer::Stream &stream) const;
         
         private:
-            void parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, std::vector<ParseItem> &parseStack, std::vector<std::shared_ptr<ParseData>> &terminalData) const;
-            std::vector<std::shared_ptr<ParseData>> reduce(std::vector<ParseItem> &parseStack, unsigned int parseStackStart, const Reducer &reducer) const;
+            void parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, MultiStack<ParseItem> &parseStack, std::vector<std::shared_ptr<ParseData>> &terminalData) const;
 
             const Earley &mParser;
             std::map<unsigned int, TerminalDecorator> mTerminalDecorators;
@@ -114,30 +112,21 @@ namespace Parser
 
         std::vector<std::set<Earley::Item>> completedSets = mParser.computeSets(stream, tokenListener);
         
-        std::vector<ParseItem> parseStack;
+        MultiStack<ParseItem> parseStack;
         parseRule(completedSets, terminalIndices, mParser.mGrammar.startRule(), 0, (unsigned int)(completedSets.size() - 1), parseStack, terminalData);
 
         std::vector<std::shared_ptr<ParseData>> results;
-        if(parseStack.size() > 0) {
-            if(parseStack[0].type == ParseItem::Type::Multistack) {
-                for(auto &stack : parseStack[0].stacks) {
-                    results.push_back(stack[0].data);
-                }
-            } else {
-                results.push_back(parseStack[0].data);
-            }
+        for(size_t i=0; i<parseStack.size(); i++) {
+            results.push_back(parseStack.back(i).data);
         }
 
         return results;
     }
 
-    template<typename ParseData> void Earley::ParseSession<ParseData>::parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, std::vector<ParseItem> &parseStack, std::vector<std::shared_ptr<ParseData>> &terminalData) const
+    template<typename ParseData> void Earley::ParseSession<ParseData>::parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, MultiStack<ParseItem> &parseStack, std::vector<std::shared_ptr<ParseData>> &terminalData) const
     {
-        unsigned int numReductions = 0;
-        ParseItem multiStackItem;
-        multiStackItem.type = ParseItem::Type::Multistack;
-
-        unsigned int parseStackStart = (unsigned int)parseStack.size();
+        MultiStack<ParseItem>::Locator stackBegin = parseStack.end(parseStack.size() - 1);
+        bool first = true;
 
         for(const auto &item : completedSets[end]) {
             if(item.rule != rule || item.start != start) {
@@ -148,11 +137,12 @@ namespace Parser
             const Grammar::RHS &rhsSymbols = mParser.mGrammar.rules()[item.rule].rhs[item.rhs];
     
             for(const auto &partition : partitions) {
-                if(numReductions == 1) {
-                    std::vector<ParseItem> stack;
-                    stack.insert(stack.end(), parseStack.begin() + parseStackStart, parseStack.end());
-                    multiStackItem.stacks.push_back(std::move(stack));
-                    parseStack.erase(parseStack.begin() + parseStackStart, parseStack.end());
+                size_t stack;
+                if(first) {
+                    stack = parseStack.size() - 1;
+                    first = false;
+                } else {
+                    stack = parseStack.add(stackBegin);
                 }
 
                 for(unsigned int j = 0; j<partition.size(); j++) {
@@ -167,12 +157,15 @@ namespace Parser
                             newItem.type = ParseItem::Type::Terminal;
                             newItem.index = rhsSymbols[j].index;
                             newItem.data = terminalData[pstart];
-                            parseStack.push_back(std::move(newItem));
+                            parseStack.push_back(stack, std::move(newItem));
                             break;
                         }
                         case Grammar::Symbol::Type::Nonterminal:
                         {
                             parseRule(completedSets, terminalIndices, rhsSymbols[j].index, pstart, pend, parseStack, terminalData);
+                            while(parseStack.size() > stack + 1) {
+                                parseStack.join(parseStack.size() - 1, parseStack.end(stack));
+                            }
                             break;
                         }
                         case Grammar::Symbol::Type::Epsilon:
@@ -182,63 +175,30 @@ namespace Parser
 
                 auto it = mReducers.find(rule);
                 if(it != mReducers.end()) {
-                    std::vector<std::shared_ptr<ParseData>> newData = reduce(parseStack, parseStackStart, it->second);
-                    parseStack.erase(parseStack.begin() + parseStackStart, parseStack.end());
-                    for(auto &data : newData) {
+                    size_t stack = parseStack.size() - 1;
+                    MultiStack<ParseItem>::Locator end = parseStack.end(stack);
+                    std::vector<MultiStack<ParseItem>::iterator> begins = parseStack.connect(stackBegin, end);
+                    for(unsigned int i=0; i<begins.size(); i++) {
+                        std::vector<ParseItem> tempStack;
+                        for(auto it = begins[i]; it != end; ++it) {
+                            tempStack.push_back(*it);
+                        }
+                        std::shared_ptr<ParseData> data = it->second(&tempStack[0], &tempStack[0] + tempStack.size());
                         ParseItem newItem;
                         newItem.type = ParseItem::Type::Nonterminal;
                         newItem.index = rule;
                         newItem.data = data;
-                        if(newData.size() == 1 && numReductions == 0) {
-                            parseStack.push_back(newItem);
+                        if(i < begins.size() - 1) {
+                            size_t newStack = parseStack.add(stackBegin);
+                            parseStack.push_back(newStack, std::move(newItem));
                         } else {
-                            multiStackItem.stacks.push_back(std::vector<ParseItem>{std::move(newItem)});
+                            parseStack.relocate(stack, stackBegin);
+                            parseStack.push_back(stack, std::move(newItem));
                         }
                     }
-                    numReductions += (unsigned int)newData.size();
-                } else if(numReductions > 0) {
-                    std::vector<ParseItem> stack;
-                    stack.insert(stack.end(), parseStack.begin() + parseStackStart, parseStack.end());
-                    multiStackItem.stacks.push_back(std::move(stack));
-                    parseStack.erase(parseStack.begin() + parseStackStart, parseStack.end());
-                    numReductions++;
                 }
             }
         }
-
-        if(numReductions > 1) {
-            parseStack.push_back(std::move(multiStackItem));
-        }
     }
-
-    template<typename ParseData> std::vector<std::shared_ptr<ParseData>> Earley::ParseSession<ParseData>::reduce(std::vector<ParseItem> &parseStack, unsigned int parseStackStart, const Reducer &reducer) const
-    {
-        std::vector<std::shared_ptr<ParseData>> results;
-
-        bool foundMultistack = false;
-        for(unsigned int i=parseStackStart; i<parseStack.size(); i++) {
-            if(parseStack[i].type == ParseItem::Type::Multistack) {
-                ParseItem item = std::move(parseStack[i]);
-                parseStack.erase(parseStack.begin() + i);
-                for(const auto &stack : item.stacks) {
-                    parseStack.insert(parseStack.begin() + i, stack.begin(), stack.end());
-                    std::vector<std::shared_ptr<ParseData>> newResults = reduce(parseStack, parseStackStart, reducer);
-                    results.insert(results.end(), newResults.begin(), newResults.end());
-                    parseStack.erase(parseStack.begin() + i, parseStack.begin() + i + stack.size());
-                }
-                parseStack.insert(parseStack.begin() + i, std::move(item));
-                foundMultistack = true;
-                break;
-            }
-        }
-
-        if(!foundMultistack) {
-            std::shared_ptr<ParseData> parseData = reducer(&parseStack[parseStackStart], &parseStack[0] + parseStack.size());
-            results.push_back(parseData);
-        }
-
-        return results;
-    }
-
 }
 #endif
