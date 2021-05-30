@@ -87,8 +87,8 @@ namespace Parser
                 }
             }
 
-            std::vector<MultiStack<StackItem>::iterator> begins = stacks.enumerate(stack, size + 1);
             MultiStack<StackItem>::Locator end = stacks.end(stack);
+            std::vector<MultiStack<StackItem>::iterator> begins = stacks.backtrack(end, size + 1);
             for(size_t i = 0; i<begins.size(); i++) {
                 auto &begin = begins[i];
                 std::vector<ParseItem> parseStack;
@@ -231,7 +231,7 @@ namespace Parser
                         stackMap[stackItem.state] = i;
                     } else {
                         stacks.pop_back(i);
-                        std::vector<MultiStack<StackItem>::iterator> begins = stacks.enumerate(it->second, 1);
+                        std::vector<MultiStack<StackItem>::iterator> begins = stacks.backtrack(stacks.end(it->second), 1);
                         stacks.join(i, begins[0]);
                         repeat = true;
                     }

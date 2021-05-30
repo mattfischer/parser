@@ -81,7 +81,7 @@ namespace Parser
         void join(size_t stack, Locator &before);
         void join(size_t stack, iterator &before) { return join(stack, Locator(before)); }
 
-        std::vector<iterator> enumerate(size_t stack, size_t size);
+        std::vector<iterator> backtrack(Locator &end, size_t size);
 
     private:
         struct Segment {
@@ -288,11 +288,11 @@ namespace Parser
         mStacks.erase(mStacks.begin() + stack);
     }
 
-    template<typename T> std::vector<typename MultiStack<T>::iterator> MultiStack<T>::enumerate(size_t stack, size_t size)
+    template<typename T> std::vector<typename MultiStack<T>::iterator> MultiStack<T>::backtrack(Locator &end, size_t size)
     {
         std::shared_ptr<Path> startPath = std::make_shared<Path>();
-        startPath->segments.push_back(mStacks[stack]);
-        std::vector<std::shared_ptr<Path>> paths = expandPath(startPath, size, startPath->segments.front()->data.size());
+        startPath->segments.push_back(end.mSegment);
+        std::vector<std::shared_ptr<Path>> paths = expandPath(startPath, size, end.mIndex);
         std::vector<iterator> results;
         for(auto &path : paths) {
             size_t segmentSize = size;
@@ -304,7 +304,7 @@ namespace Parser
         }
         return results;
     }
-
+    
     template<typename T> std::vector<std::shared_ptr<typename MultiStack<T>::Path>> MultiStack<T>::expandPath(std::shared_ptr<Path> path, size_t size, size_t currentSize)
     {
         std::vector<std::shared_ptr<Path>> results;
