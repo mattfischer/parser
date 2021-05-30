@@ -88,7 +88,7 @@ namespace Parser
             }
 
             std::vector<MultiStack<StackItem>::iterator> begins = stacks.enumerate(stack, size + 1);
-            MultiStack<StackItem>::iterator end = stacks.end(stack);
+            MultiStack<StackItem>::Locator end = stacks.end(stack);
             for(size_t i = 0; i<begins.size(); i++) {
                 auto &begin = begins[i];
                 std::vector<ParseItem> parseStack;
