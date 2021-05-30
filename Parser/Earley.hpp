@@ -42,7 +42,7 @@ namespace Parser
             };
 
             typedef std::function<std::shared_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
-            typedef std::function<std::shared_ptr<ParseData>(typename ParseItem::iterator, typename ParseItem::iterator)> Reducer;
+            typedef std::function<std::shared_ptr<ParseData>(typename MultiStack<ParseItem>::iterator, typename MultiStack<ParseItem>::Locator)> Reducer;
             
             ParseSession(const Earley &parser);
 
@@ -179,11 +179,7 @@ namespace Parser
                     MultiStack<ParseItem>::Locator end = parseStack.end(stack);
                     std::vector<MultiStack<ParseItem>::iterator> begins = parseStack.connect(stackBegin, end);
                     for(unsigned int i=0; i<begins.size(); i++) {
-                        std::vector<ParseItem> tempStack;
-                        for(auto it = begins[i]; it != end; ++it) {
-                            tempStack.push_back(*it);
-                        }
-                        std::shared_ptr<ParseData> data = it->second(&tempStack[0], &tempStack[0] + tempStack.size());
+                        std::shared_ptr<ParseData> data = it->second(begins[i], end);
                         ParseItem newItem;
                         newItem.type = ParseItem::Type::Nonterminal;
                         newItem.index = rule;
