@@ -52,7 +52,7 @@ namespace Parser
             std::vector<std::shared_ptr<ParseData>> parse(Tokenizer::Stream &stream) const;
         
         private:
-            void parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, MultiStack<ParseItem> &parseStack, std::vector<std::shared_ptr<ParseData>> &terminalData) const;
+            void parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, MultiStack<ParseItem> &parseStacks, std::vector<std::shared_ptr<ParseData>> &terminalData) const;
 
             const Earley &mParser;
             std::map<unsigned int, TerminalDecorator> mTerminalDecorators;
@@ -112,20 +112,20 @@ namespace Parser
 
         std::vector<std::set<Earley::Item>> completedSets = mParser.computeSets(stream, tokenListener);
         
-        MultiStack<ParseItem> parseStack;
-        parseRule(completedSets, terminalIndices, mParser.mGrammar.startRule(), 0, (unsigned int)(completedSets.size() - 1), parseStack, terminalData);
+        MultiStack<ParseItem> parseStacks;
+        parseRule(completedSets, terminalIndices, mParser.mGrammar.startRule(), 0, (unsigned int)(completedSets.size() - 1), parseStacks, terminalData);
 
         std::vector<std::shared_ptr<ParseData>> results;
-        for(size_t i=0; i<parseStack.size(); i++) {
-            results.push_back(parseStack.back(i).data);
+        for(size_t i=0; i<parseStacks.size(); i++) {
+            results.push_back(parseStacks.back(i).data);
         }
 
         return results;
     }
 
-    template<typename ParseData> void Earley::ParseSession<ParseData>::parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, MultiStack<ParseItem> &parseStack, std::vector<std::shared_ptr<ParseData>> &terminalData) const
+    template<typename ParseData> void Earley::ParseSession<ParseData>::parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, MultiStack<ParseItem> &parseStacks, std::vector<std::shared_ptr<ParseData>> &terminalData) const
     {
-        MultiStack<ParseItem>::Locator stackBegin = parseStack.end(parseStack.size() - 1);
+        MultiStack<ParseItem>::Locator stackBegin = parseStacks.end(parseStacks.size() - 1);
         bool first = true;
 
         for(const auto &item : completedSets[end]) {
@@ -139,10 +139,10 @@ namespace Parser
             for(const auto &partition : partitions) {
                 size_t stack;
                 if(first) {
-                    stack = parseStack.size() - 1;
+                    stack = parseStacks.size() - 1;
                     first = false;
                 } else {
-                    stack = parseStack.add(stackBegin);
+                    stack = parseStacks.add(stackBegin);
                 }
 
                 for(unsigned int j = 0; j<partition.size(); j++) {
@@ -157,14 +157,14 @@ namespace Parser
                             newItem.type = ParseItem::Type::Terminal;
                             newItem.index = rhsSymbols[j].index;
                             newItem.data = terminalData[pstart];
-                            parseStack.push_back(stack, std::move(newItem));
+                            parseStacks.push_back(stack, std::move(newItem));
                             break;
                         }
                         case Grammar::Symbol::Type::Nonterminal:
                         {
-                            parseRule(completedSets, terminalIndices, rhsSymbols[j].index, pstart, pend, parseStack, terminalData);
-                            while(parseStack.size() > stack + 1) {
-                                parseStack.join(parseStack.size() - 1, parseStack.end(stack));
+                            parseRule(completedSets, terminalIndices, rhsSymbols[j].index, pstart, pend, parseStacks, terminalData);
+                            while(parseStacks.size() > stack + 1) {
+                                parseStacks.join(parseStacks.size() - 1, parseStacks.end(stack));
                             }
                             break;
                         }
@@ -175,9 +175,9 @@ namespace Parser
 
                 auto it = mReducers.find(rule);
                 if(it != mReducers.end()) {
-                    size_t stack = parseStack.size() - 1;
-                    MultiStack<ParseItem>::Locator end = parseStack.end(stack);
-                    std::vector<MultiStack<ParseItem>::iterator> begins = parseStack.connect(stackBegin, end);
+                    size_t stack = parseStacks.size() - 1;
+                    MultiStack<ParseItem>::Locator end = parseStacks.end(stack);
+                    std::vector<MultiStack<ParseItem>::iterator> begins = parseStacks.connect(stackBegin, end);
                     for(unsigned int i=0; i<begins.size(); i++) {
                         std::shared_ptr<ParseData> data = it->second(begins[i], end);
                         ParseItem newItem;
@@ -185,11 +185,11 @@ namespace Parser
                         newItem.index = rule;
                         newItem.data = data;
                         if(i < begins.size() - 1) {
-                            size_t newStack = parseStack.add(stackBegin);
-                            parseStack.push_back(newStack, std::move(newItem));
+                            size_t newStack = parseStacks.add(stackBegin);
+                            parseStacks.push_back(newStack, std::move(newItem));
                         } else {
-                            parseStack.relocate(stack, stackBegin);
-                            parseStack.push_back(stack, std::move(newItem));
+                            parseStacks.relocate(stack, stackBegin);
+                            parseStacks.push_back(stack, std::move(newItem));
                         }
                     }
                 }
