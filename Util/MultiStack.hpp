@@ -1,12 +1,12 @@
-#ifndef PARSER_MULTI_STACK_HPP
-#define PARSER_MULTI_STACK_HPP
+#ifndef UTIL_MULTI_STACK_HPP
+#define UTIL_MULTI_STACK_HPP
 
 #include <vector>
 #include <functional>
 #include <memory>
 #include <stdexcept>
 
-namespace Parser
+namespace Util
 {
     template<typename T> class MultiStack
     {

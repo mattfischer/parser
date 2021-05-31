@@ -2,7 +2,7 @@
 #define PARSER_GLR_HPP
 
 #include "Parser/LRMulti.hpp"
-#include "Parser/MultiStack.hpp"
+#include "Util/MultiStack.hpp"
 
 namespace Parser
 {
@@ -42,7 +42,7 @@ namespace Parser
                 std::vector<ParseItem> parseItems;
             };
 
-            void reduce(MultiStack<StackItem> &stacks, size_t stack, unsigned int rule, unsigned int rhs, bool allowRelocate);
+            void reduce(Util::MultiStack<StackItem> &stacks, size_t stack, unsigned int rule, unsigned int rhs, bool allowRelocate);
 
             const GLR &mParser;
             std::map<unsigned int, TerminalDecorator> mTerminalDecorators;
@@ -73,7 +73,7 @@ namespace Parser
 
     template<typename ParseData> std::vector<std::shared_ptr<ParseData>> GLR::ParseSession<ParseData>::parse(Tokenizer::Stream &stream)
     {
-        MultiStack<StackItem> stacks;
+        Util::MultiStack<StackItem> stacks;
         stacks.push_back(0, StackItem{0});    
 
         while(true) {
@@ -184,7 +184,7 @@ namespace Parser
                         stackMap[stackItem.state] = i;
                     } else {
                         stacks.pop_back(i);
-                        std::vector<MultiStack<StackItem>::iterator> begins = stacks.backtrack(stacks.end(it->second), 1);
+                        std::vector<Util::MultiStack<StackItem>::iterator> begins = stacks.backtrack(stacks.end(it->second), 1);
                         stacks.join(i, begins[0]);
                         repeat = true;
                     }
@@ -201,7 +201,7 @@ namespace Parser
         return results;
     }
 
-    template<typename ParseData> void GLR::ParseSession<ParseData>::reduce(MultiStack<StackItem> &stacks, size_t stack, unsigned int rule, unsigned int rhs, bool allowRelocate)
+    template<typename ParseData> void GLR::ParseSession<ParseData>::reduce(Util::MultiStack<StackItem> &stacks, size_t stack, unsigned int rule, unsigned int rhs, bool allowRelocate)
     {
         size_t size = 0;
         for(const auto &symbol: mParser.mGrammar.rules()[rule].rhs[rhs]) {
@@ -210,8 +210,8 @@ namespace Parser
             }
         }
 
-        MultiStack<StackItem>::Locator end = stacks.end(stack);
-        std::vector<MultiStack<StackItem>::iterator> begins = stacks.backtrack(end, size + 1);
+        Util::MultiStack<StackItem>::Locator end = stacks.end(stack);
+        std::vector<Util::MultiStack<StackItem>::iterator> begins = stacks.backtrack(end, size + 1);
         for(size_t i = 0; i<begins.size(); i++) {
             auto &begin = begins[i];
             std::vector<ParseItem> parseStack;

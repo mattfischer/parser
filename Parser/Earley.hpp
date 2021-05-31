@@ -2,7 +2,7 @@
 #define PARSER_EARLEY_HPP
 
 #include "Parser/Grammar.hpp"
-#include "Parser/MultiStack.hpp"
+#include "Util/MultiStack.hpp"
 #include "Tokenizer.hpp"
 
 #include <set>
@@ -42,7 +42,7 @@ namespace Parser
             };
 
             typedef std::function<std::shared_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
-            typedef std::function<std::shared_ptr<ParseData>(typename MultiStack<ParseItem>::iterator, typename MultiStack<ParseItem>::Locator)> Reducer;
+            typedef std::function<std::shared_ptr<ParseData>(typename Util::MultiStack<ParseItem>::iterator, typename Util::MultiStack<ParseItem>::Locator)> Reducer;
             
             ParseSession(const Earley &parser);
 
@@ -52,7 +52,7 @@ namespace Parser
             std::vector<std::shared_ptr<ParseData>> parse(Tokenizer::Stream &stream) const;
         
         private:
-            void parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, MultiStack<ParseItem> &parseStacks, std::vector<std::shared_ptr<ParseData>> &terminalData) const;
+            void parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, Util::MultiStack<ParseItem> &parseStacks, std::vector<std::shared_ptr<ParseData>> &terminalData) const;
 
             const Earley &mParser;
             std::map<unsigned int, TerminalDecorator> mTerminalDecorators;
@@ -112,7 +112,7 @@ namespace Parser
 
         std::vector<std::set<Earley::Item>> completedSets = mParser.computeSets(stream, tokenListener);
         
-        MultiStack<ParseItem> parseStacks;
+        Util::MultiStack<ParseItem> parseStacks;
         parseRule(completedSets, terminalIndices, mParser.mGrammar.startRule(), 0, (unsigned int)(completedSets.size() - 1), parseStacks, terminalData);
 
         std::vector<std::shared_ptr<ParseData>> results;
@@ -123,9 +123,9 @@ namespace Parser
         return results;
     }
 
-    template<typename ParseData> void Earley::ParseSession<ParseData>::parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, MultiStack<ParseItem> &parseStacks, std::vector<std::shared_ptr<ParseData>> &terminalData) const
+    template<typename ParseData> void Earley::ParseSession<ParseData>::parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, Util::MultiStack<ParseItem> &parseStacks, std::vector<std::shared_ptr<ParseData>> &terminalData) const
     {
-        MultiStack<ParseItem>::Locator stackBegin = parseStacks.end(parseStacks.size() - 1);
+        Util::MultiStack<ParseItem>::Locator stackBegin = parseStacks.end(parseStacks.size() - 1);
         bool first = true;
 
         for(const auto &item : completedSets[end]) {
