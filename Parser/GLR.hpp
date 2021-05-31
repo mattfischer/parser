@@ -37,6 +37,13 @@ namespace Parser
             std::vector<std::shared_ptr<ParseData>> parse(Tokenizer::Stream &stream);
 
         private:
+            struct StackItem {
+                unsigned int state;
+                std::vector<ParseItem> parseItems;
+            };
+
+            void reduce(MultiStack<StackItem> &stacks, size_t stack, unsigned int rule, unsigned int rhs, bool allowRelocate);
+
             const GLR &mParser;
             std::map<unsigned int, TerminalDecorator> mTerminalDecorators;
             std::map<unsigned int, Reducer> mReducers;
@@ -66,68 +73,8 @@ namespace Parser
 
     template<typename ParseData> std::vector<std::shared_ptr<ParseData>> GLR::ParseSession<ParseData>::parse(Tokenizer::Stream &stream)
     {
-        struct ParseItems {
-            std::vector<ParseItem> items;
-        };
-        struct StackItem {
-            unsigned int state;
-            ParseItem parseItem;
-            std::shared_ptr<ParseItems> unreduced;
-        };
-
         MultiStack<StackItem> stacks;
-
-        stacks.push_back(0, StackItem{0});
-
-        auto reduce = [&](size_t stack, unsigned int rule, unsigned int rhs, bool allowRelocate) {
-            size_t size = 0;
-            for(const auto &symbol: mParser.mGrammar.rules()[rule].rhs[rhs]) {
-                if(symbol.type != Grammar::Symbol::Type::Epsilon) {
-                    size++;
-                }
-            }
-
-            MultiStack<StackItem>::Locator end = stacks.end(stack);
-            std::vector<MultiStack<StackItem>::iterator> begins = stacks.backtrack(end, size + 1);
-            for(size_t i = 0; i<begins.size(); i++) {
-                auto &begin = begins[i];
-                std::vector<ParseItem> parseStack;
-                parseStack.reserve(size);
-                
-                unsigned int state = begin->state;
-                const ParseTableEntry &newEntry = mParser.mParseTable.at(state, mParser.ruleIndex(rule));
-                state = newEntry.index;
-    
-                ++begin;
-                for(auto it = begin; it != end; ++it) {
-                    if(it->unreduced) {
-                        parseStack.insert(parseStack.end(), it->unreduced->items.begin(), it->unreduced->items.end());
-                    } else {
-                        parseStack.push_back(it->parseItem);
-                    }
-                }
-
-                StackItem stackItem;
-                stackItem.state = state;
-
-                auto it = mReducers.find(rule);
-                if(it == mReducers.end()) {
-                    stackItem.unreduced = std::make_shared<ParseItems>();
-                    stackItem.unreduced->items = std::move(parseStack);
-                } else {
-                    std::shared_ptr<ParseData> data = it->second(&parseStack[0], &parseStack[0] + parseStack.size());
-                    stackItem.parseItem = ParseItem{ParseItem::Type::Nonterminal, rule, data};
-                }
-
-                if(i == begins.size() - 1 && allowRelocate) {
-                    stacks.relocate(stack, begin);
-                    stacks.push_back(stack, stackItem);
-                } else {
-                    size_t newStack = stacks.add(begin);
-                    stacks.push_back(newStack, stackItem);
-                }
-            }
-        };
+        stacks.push_back(0, StackItem{0});    
 
         while(true) {
             std::shared_ptr<ParseData> terminal;
@@ -156,14 +103,17 @@ namespace Parser
                     case ParseTableEntry::Type::Shift:
                     {
                         ParseItem parseItem{ParseItem::Type::Terminal, stream.nextToken().value, terminal};
-                        stacks.push_back(i, StackItem{entry.index, std::move(parseItem)});
+                        StackItem stackItem;
+                        stackItem.state = entry.index;
+                        stackItem.parseItems.push_back(std::move(parseItem));
+                        stacks.push_back(i, std::move(stackItem));
                         break;
                     }
 
                     case ParseTableEntry::Type::Reduce:
                     {
                         const Reduction &reduction = mParser.mReductions[entry.index];
-                        reduce(i, reduction.rule, reduction.rhs, true);
+                        reduce(stacks, i, reduction.rule, reduction.rhs, true);
                         repeat = true;
                         break;
                     }
@@ -182,14 +132,17 @@ namespace Parser
                                         allowRelocate = true;
                                         repeat = true;
                                     }
-                                    reduce(i, reduction.rule, reduction.rhs, allowRelocate);
+                                    reduce(stacks, i, reduction.rule, reduction.rhs, allowRelocate);
                                     break;
                                 }
 
                                 case ParseTableEntry::Type::Shift:
                                 {
                                     ParseItem parseItem{ParseItem::Type::Terminal, stream.nextToken().value, terminal};
-                                    stacks.push_back(i, StackItem{entry.index, std::move(parseItem)});
+                                    StackItem stackItem;
+                                    stackItem.state = entry.index;
+                                    stackItem.parseItems.push_back(std::move(parseItem));
+                                    stacks.push_back(i, std::move(stackItem));
                                     break;
                                 }
 
@@ -241,11 +194,57 @@ namespace Parser
 
         std::vector<std::shared_ptr<ParseData>> results;
         for(size_t i=0; i<stacks.size(); i++) {
-            reduce(i, mParser.mGrammar.startRule(), 0, true);
-            results.push_back(stacks.back(i).parseItem.data);
+            reduce(stacks, i, mParser.mGrammar.startRule(), 0, true);
+            results.push_back(stacks.back(i).parseItems[0].data);
         }
 
         return results;
+    }
+
+    template<typename ParseData> void GLR::ParseSession<ParseData>::reduce(MultiStack<StackItem> &stacks, size_t stack, unsigned int rule, unsigned int rhs, bool allowRelocate)
+    {
+        size_t size = 0;
+        for(const auto &symbol: mParser.mGrammar.rules()[rule].rhs[rhs]) {
+            if(symbol.type != Grammar::Symbol::Type::Epsilon) {
+                size++;
+            }
+        }
+
+        MultiStack<StackItem>::Locator end = stacks.end(stack);
+        std::vector<MultiStack<StackItem>::iterator> begins = stacks.backtrack(end, size + 1);
+        for(size_t i = 0; i<begins.size(); i++) {
+            auto &begin = begins[i];
+            std::vector<ParseItem> parseStack;
+            parseStack.reserve(size);
+            
+            unsigned int state = begin->state;
+            const ParseTableEntry &newEntry = mParser.mParseTable.at(state, mParser.ruleIndex(rule));
+            state = newEntry.index;
+
+            ++begin;
+            for(auto it = begin; it != end; ++it) {
+                parseStack.insert(parseStack.end(), it->parseItems.begin(), it->parseItems.end());
+            }
+
+            StackItem stackItem;
+            stackItem.state = state;
+
+            auto it = mReducers.find(rule);
+            if(it == mReducers.end()) {
+                stackItem.parseItems = std::move(parseStack);
+            } else {
+                std::shared_ptr<ParseData> data = it->second(&parseStack[0], &parseStack[0] + parseStack.size());
+                stackItem.parseItems.push_back(ParseItem{ParseItem::Type::Nonterminal, rule, data});
+            }
+
+            if(i == begins.size() - 1 && allowRelocate) {
+                stacks.relocate(stack, begin);
+                stacks.push_back(stack, stackItem);
+            } else {
+                size_t newStack = stacks.add(begin);
+                stacks.push_back(newStack, stackItem);
+            }
+        }
     }
 }
 #endif
