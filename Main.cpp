@@ -1,8 +1,8 @@
 #include <iostream>
 #include <sstream>
 
-#include "DefReader.hpp"
-#include "Parser/GLR.hpp"
+#include "Parser/DefReader.hpp"
+#include "Parser/Impl/GLR.hpp"
 
 struct AstNode
 {
@@ -50,17 +50,17 @@ int evaluate(const AstNode &node)
 
 int main(int argc, char *argv[])
 {
-    DefReader reader("grammar.def");
+    Parser::DefReader reader("grammar.def");
     if(!reader.valid()) {
         std::cout << "Error in def file, line " << reader.parseError().line << ": " << reader.parseError().message << std::endl;
         return 1;
     }
 
-    Parser::GLR parser(reader.grammar());
+    Parser::Impl::GLR parser(reader.grammar());
     
-    Parser::GLR::ParseSession<AstNode> session(parser);
+    Parser::Impl::GLR::ParseSession<AstNode> session(parser);
 
-    session.addTerminalDecorator("NUMBER", [](const Tokenizer::Token &token) {
+    session.addTerminalDecorator("NUMBER", [](const Parser::Tokenizer::Token &token) {
         return std::make_unique<AstNodeNumber>(std::atoi(token.text.c_str()));
     });
 
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
         }
 
         std::stringstream ss(input);
-        Tokenizer::Stream stream(reader.tokenizer(), ss);
+        Parser::Tokenizer::Stream stream(reader.tokenizer(), ss);
 
         std::vector<std::shared_ptr<AstNode>> ast = session.parse(stream);
         if(ast.size() > 0) {
