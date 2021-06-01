@@ -7,7 +7,7 @@ namespace Parser
     namespace Impl
     {
         Earley::Earley(const Grammar &grammar)
-        : mGrammar(grammar)
+        : Base(grammar)
         {
         }
 

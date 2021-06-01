@@ -1,7 +1,7 @@
 #ifndef PARSER_IMPL_LL_HPP
 #define PARSER_IMPL_LL_HPP
 
-#include "Parser/Grammar.hpp"
+#include "Parser/Base.hpp"
 #include "Parser/Tokenizer.hpp"
 
 #include "Util/Table.hpp"
@@ -13,7 +13,7 @@ namespace Parser
 {
     namespace Impl
     {
-        class LL {
+        class LL : public Base {
         public:
             LL(const Grammar &grammar);
 
@@ -27,7 +27,6 @@ namespace Parser
             };
             const Conflict &conflict() const;
 
-            const Grammar &grammar() const;
             unsigned int rhs(unsigned int rule, unsigned int symbol) const;
 
             template<typename ParseData> class ParseSession
@@ -69,7 +68,6 @@ namespace Parser
             bool addParseTableEntries(unsigned int rule, const std::set<unsigned int> &symbols, unsigned int rhs);
             bool computeParseTable(const std::vector<std::set<unsigned int>> &firstSets, std::vector<std::set<unsigned int>> &followSets, std::set<unsigned int> &nullableNonterminals);
         
-            const Grammar &mGrammar;
             Util::Table<unsigned int> mParseTable;  
             bool mValid;
             Conflict mConflict;

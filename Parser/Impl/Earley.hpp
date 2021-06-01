@@ -1,7 +1,7 @@
 #ifndef PARSER_IMPL_EARLEY_HPP
 #define PARSER_IMPL_EARLEY_HPP
 
-#include "Parser/Grammar.hpp"
+#include "Parser/Base.hpp"
 #include "Parser/Tokenizer.hpp"
 
 #include "Util/MultiStack.hpp"
@@ -15,7 +15,7 @@ namespace Parser
 {
     namespace Impl
     {
-        class Earley
+        class Earley : public Base
         {
         public:
             Earley(const Grammar &grammar);
@@ -63,8 +63,6 @@ namespace Parser
             };
 
         private:
-            const Grammar &mGrammar;
-
             std::vector<Earley::Item> predict(unsigned int ruleIndex, unsigned int pos) const;
             std::vector<Earley::Item> scan(std::set<Item> &items, const Grammar::Symbol &symbol) const;    
             void populateSets(std::vector<Item> &items, std::vector<std::set<Item>> &active, std::vector<std::set<Item>> &completed, unsigned int pos) const;

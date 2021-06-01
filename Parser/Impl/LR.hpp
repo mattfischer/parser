@@ -1,7 +1,7 @@
 #ifndef PARSER_IMPL_LR_HPP
 #define PARSER_IMPL_LR_HPP
 
-#include "Parser/Grammar.hpp"
+#include "Parser/Base.hpp"
 #include "Parser/Tokenizer.hpp"
 
 #include "Util/Table.hpp"
@@ -10,13 +10,11 @@ namespace Parser
 {
     namespace Impl
     {
-        class LR
+        class LR : public Base
         {
         public:
             LR(const Grammar &grammar);
         
-            const Grammar &grammar() const;
-
         protected:
             struct Item {
                 bool operator<(const Item &other) const;
@@ -42,8 +40,6 @@ namespace Parser
             unsigned int symbolIndex(const Grammar::Symbol &symbol) const;
             unsigned int terminalIndex(unsigned int terminal) const;
             unsigned int ruleIndex(unsigned int rule) const;
-
-            const Grammar &mGrammar;
         };
     }
 }

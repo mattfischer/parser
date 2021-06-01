@@ -7,13 +7,8 @@ namespace Parser
     namespace Impl
     {
         LR::LR(const Grammar &grammar)
-        : mGrammar(grammar)
+        : Base(grammar)
         {
-        }
-
-        const Grammar &LR::grammar() const
-        {
-            return mGrammar;
         }
 
         bool LR::Item::operator<(const Item &other) const {

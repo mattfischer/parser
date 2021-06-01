@@ -8,6 +8,7 @@ set(SOURCES
     Regex/Matcher.cpp
     Regex/NFA.cpp
     Regex/Parser.cpp
+    Parser/Base.cpp
     Parser/Grammar.cpp
     Parser/ExtendedGrammar.cpp
     Parser/DefReader.cpp

@@ -7,7 +7,7 @@ namespace Parser
     namespace Impl
     {
         LL::LL(const Grammar &grammar)
-        : mGrammar(grammar)
+        : Base(grammar)
         {
             std::vector<std::set<unsigned int>> firstSets;
             std::vector<std::set<unsigned int>> followSets;
@@ -90,11 +90,6 @@ namespace Parser
         const LL::Conflict &LL::conflict() const
         {
             return mConflict;
-        }
-
-        const Grammar &LL::grammar() const
-        {
-            return mGrammar;
         }
 
         unsigned int LL::rhs(unsigned int rule, unsigned int symbol) const
