@@ -53,14 +53,14 @@ namespace Parser {
             case Grammar::Symbol::Type::Epsilon:
                 return true;
             case Grammar::Symbol::Type::Nonterminal:
-                return nullableNonterminals.count(symbol.index) > 0;
+                return nullableNonterminals.contains(symbol.index);
         }
         return false;
     }
 
     void addSymbol(std::set<unsigned int> &set, unsigned int symbol, bool &changed)
     {
-        if(set.count(symbol) == 0) {
+        if(!set.contains(symbol)) {
             set.insert(symbol);
             changed = true;
         }

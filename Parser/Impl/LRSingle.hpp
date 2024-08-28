@@ -119,7 +119,7 @@ namespace Parser
             std::vector<ParseItem> parseStack;
             unsigned int state = 0;
 
-            while(mParser.mAcceptStates.count(state) == 0) {
+            while(!mParser.mAcceptStates.contains(state)) {
                 stateStack.push_back(StateItem{state, (unsigned int)parseStack.size()});
                 const ParseTableEntry &entry = mParser.mParseTable.at(state, mParser.terminalIndex(stream.nextToken().value));
                 switch(entry.type) {

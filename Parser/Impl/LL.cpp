@@ -63,7 +63,7 @@ namespace Parser
                                 return false;
                             }
 
-                            if(nullableNonterminals.count(symbol.index) > 0) {
+                            if(nullableNonterminals.contains(symbol.index)) {
                                 if(!addParseTableEntries(i, followSets[symbol.index], j)) {
                                     return false;
                                 }

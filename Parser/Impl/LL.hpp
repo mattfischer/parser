@@ -164,7 +164,7 @@ namespace Parser
                             return std::unique_ptr<ParseData>();
                         }   
 
-                        if(mReducers.find(nextRule) != mReducers.end()) {
+                        if(mReducers.contains(nextRule)) {
                             predictStack.push_back(PredictItem{PredictItem::Type::Reduce, nextRule, (unsigned int)parseStack.size()});
                         }
 

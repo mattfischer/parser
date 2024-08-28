@@ -26,7 +26,7 @@ namespace Regex {
             }
 
             for(unsigned int j=0; j<nfa.acceptStates().size(); j++) { 
-                if(stateSet.nfaStates.find(nfa.acceptStates()[j]) != stateSet.nfaStates.end()) {
+                if(stateSet.nfaStates.contains(nfa.acceptStates()[j])) {
                     acceptSets[j].insert(i);
                 }
             }
@@ -40,7 +40,7 @@ namespace Regex {
             const State &state = states[i];
             acceptStates[i] = UINT_MAX;
             for(unsigned int j=0; j<acceptSets.size(); j++) {
-                if(acceptSets[j].count(i) > 0) {
+                if(acceptSets[j].contains(i)) {
                     acceptStates[i] = j;
                     break;
                 }
@@ -127,7 +127,7 @@ namespace Regex {
         while(queue.size() > 0) {
             unsigned int state = queue.front();
             queue.erase(queue.begin());
-            if(epsilonClosure.find(state) == epsilonClosure.end()) {
+            if(!epsilonClosure.contains(state)) {
                 epsilonClosure.insert(state);
                 const auto &transitions = nfa.states()[state].epsilonTransitions;
                 queue.insert(queue.end(), transitions.cbegin(), transitions.cend());
@@ -193,7 +193,7 @@ namespace Regex {
                 for(unsigned int i=0; i<states.size(); i++) {
                     const auto &state = states[i];
                     const auto it = state.transitions.find(c);
-                    if(it != state.transitions.end() && distinguisher.count(it->second)) {
+                    if(it != state.transitions.end() && distinguisher.contains(it->second)) {
                         inbound.insert(i);
                     }
                 }
@@ -207,7 +207,7 @@ namespace Regex {
                     std::set<unsigned int> out;
 
                     for(int s : partition[i]) {
-                        if(inbound.count(s)) {
+                        if(inbound.contains(s)) {
                             in.insert(s);
                         } else {
                             out.insert(s);

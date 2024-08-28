@@ -85,14 +85,14 @@ namespace Parser
                 const Grammar::RHS &rhs = mGrammar.rules()[item.rule].rhs[item.rhs];
                 std::vector<Item> newItems;
                 if(item.pos == rhs.size()) {
-                    if(completed[pos].find(item) != completed[pos].end()) {
+                    if(completed[pos].contains(item)) {
                         continue;
                     }
 
                     completed[pos].insert(item);
                     newItems = scan(active[item.start], Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, item.rule});
                 } else {
-                    if(active[pos].find(item) != active[pos].end()) {
+                    if(active[pos].contains(item)) {
                         continue;
                     }
                     active[pos].insert(item);

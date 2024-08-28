@@ -52,7 +52,7 @@ namespace Parser
             queue.insert(queue.begin(), items.begin(), items.end());
 
             auto addItem = [&](const Item &item) {
-                if(items.count(item) == 0) {
+                if(!items.contains(item)) {
                     items.insert(item);
                     queue.push_back(item);
                 }

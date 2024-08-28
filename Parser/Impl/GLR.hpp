@@ -96,7 +96,7 @@ namespace Parser
                     }
 
                     unsigned int state = stacks.back(i).state;
-                    if(mParser.mAcceptStates.count(state) > 0) {
+                    if(mParser.mAcceptStates.contains(state)) {
                         continue;
                     }
 
