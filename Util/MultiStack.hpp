@@ -75,24 +75,36 @@ namespace Util
             Locator mEnd;
         };
 
+        class Stack {
+        public:
+            Stack();
+
+            void push_back(T data);
+            void pop_back();
+            const T &back() const;
+            Locator end();
+
+        private:
+            std::shared_ptr<Segment> mSegment;
+
+            friend class MultiStack;
+        };
+
         MultiStack();
+
         size_t size() const;
+        Stack &stack(size_t index);
 
-        void push_back(size_t stack, T data);
-        void pop_back(size_t stack);
-        const T &back(size_t stack) const;
-        Locator end(size_t stack);
+        size_t addStack(Locator &before);
+        size_t addStack(PathIterator &before) { auto loc = Locator(before); return addStack(loc); }
 
-        size_t add(Locator &before);
-        size_t add(PathIterator &before) { auto loc = Locator(before); return add(loc); }
+        void relocateStack(size_t stack, Locator &before);
+        void relocateStack(size_t stack, PathIterator &before) { auto loc = Locator(before); return relocateStack(stack, loc); }
 
-        void relocate(size_t stack, Locator &before);
-        void relocate(size_t stack, PathIterator &before) { auto loc = Locator(before); return relocate(stack, loc); }
+        void eraseStack(size_t stack);
 
-        void erase(size_t stack);
-
-        void join(size_t stack, Locator &before);
-        void join(size_t stack, PathIterator &before) { auto loc = Locator(before); return join(stack, loc); }
+        void joinStack(size_t stack, Locator &before);
+        void joinStack(size_t stack, PathIterator &before) { auto loc = Locator(before); return joinStack(stack, loc); }
 
         std::vector<PathIterator> backtrack(Locator &end, size_t size);
         std::vector<PathIterator> connect(Locator &begin, Locator &end);
@@ -110,7 +122,7 @@ namespace Util
         void mergeSegment(std::shared_ptr<Segment> segment);
         void unlinkSegment(std::shared_ptr<Segment> segment);
 
-        std::vector<std::shared_ptr<Segment>> mStacks;
+        std::vector<Stack> mStacks;
         std::shared_ptr<Segment> mStartSegment;
     };
 
@@ -200,13 +212,43 @@ namespace Util
     {
     }
 
+    template<typename T> MultiStack<T>::Stack::Stack() {
+        mSegment = std::make_shared<Segment>();
+    }
+
+    template<typename T> void MultiStack<T>::Stack::push_back(T data)
+    {
+        mSegment->data.push_back(std::move(data));
+    }
+
+    template<typename T> void MultiStack<T>::Stack::pop_back()
+    {
+        mSegment->data.pop_back();
+    }
+
+    template<typename T> const T& MultiStack<T>::Stack::back() const
+    {
+        if(mSegment->data.size() > 0) {
+            return mSegment->data.back();
+        } else if(mSegment->prev.size() == 1) {
+            return mSegment->prev[0]->data.back();
+        } else {
+            throw std::out_of_range("size");
+        }
+    }
+
+    template<typename T> typename MultiStack<T>::Locator MultiStack<T>::Stack::end()
+    {
+        return Locator(mSegment, mSegment->data.size());
+    }
+
     template<typename T> MultiStack<T>::MultiStack()
     {
         mStartSegment = std::make_shared<Segment>();
-        std::shared_ptr<Segment> segment = std::make_shared<Segment>();
-        segment->prev.push_back(mStartSegment);
-        mStartSegment->next.push_back(segment);
-        mStacks.push_back(segment);
+        Stack stack;
+        stack.mSegment->prev.push_back(mStartSegment);
+        mStartSegment->next.push_back(stack.mSegment);
+        mStacks.push_back(std::move(stack));
     }
 
     template<typename T> size_t MultiStack<T>::size() const
@@ -214,61 +256,36 @@ namespace Util
         return mStacks.size();
     }
 
-    template<typename T> void MultiStack<T>::push_back(size_t stack, T data)
+    template<typename T> MultiStack<T>::Stack &MultiStack<T>::stack(size_t index)
     {
-        if(stack >= mStacks.size()) {
+        if(index >= mStacks.size()) {
             throw std::out_of_range("stack");
         }
 
-        mStacks[stack]->data.push_back(std::move(data));
+        return mStacks[index];
     }
 
-    template<typename T> void MultiStack<T>::pop_back(size_t stack)
+    template<typename T> size_t MultiStack<T>::addStack(Locator &before)
     {
-        mStacks[stack]->data.pop_back();
-    }
-
-    template<typename T> const T& MultiStack<T>::back(size_t stack) const
-    {
-        if(stack >= mStacks.size()) {
-            throw std::out_of_range("stack");
-        }
-
-        if(mStacks[stack]->data.size() > 0) {
-            return mStacks[stack]->data.back();
-        } else if(mStacks[stack]->prev.size() == 1) {
-            return mStacks[stack]->prev[0]->data.back();
-        } else {
-            throw std::out_of_range("size");
-        }
-    }
-
-    template<typename T> typename MultiStack<T>::Locator MultiStack<T>::end(size_t stack)
-    {
-        return Locator(mStacks[stack], mStacks[stack]->data.size());
-    }
-
-    template<typename T> size_t MultiStack<T>::add(Locator &before)
-    {
-        std::shared_ptr<Segment> newSegment = std::make_shared<Segment>();
+        Stack newStack;
 
         splitSegment(before);
         std::shared_ptr<Segment> segment = before.mSegment;
         
         for(auto &prev : segment->prev) {
-            newSegment->prev.push_back(prev);
-            prev->next.push_back(newSegment);
+            newStack.mSegment->prev.push_back(prev);
+            prev->next.push_back(newStack.mSegment);
         }
     
         size_t result = mStacks.size();
-        mStacks.push_back(newSegment);
+        mStacks.push_back(std::move(newStack));
         return result;
     }
 
-    template <typename T> void MultiStack<T>::relocate(size_t stack, Locator &before)
+    template <typename T> void MultiStack<T>::relocateStack(size_t stack, Locator &before)
     {
         std::shared_ptr<Segment> segment = before.mSegment;
-        if(segment == mStacks[stack]) {
+        if(segment == mStacks[stack].mSegment) {
             segment->data.erase(segment->data.begin() + before.mIndex, segment->data.end());
         } else {
             std::shared_ptr<Segment> newSegment = std::make_shared<Segment>();
@@ -281,24 +298,24 @@ namespace Util
                 prev->next.push_back(newSegment);
             }
         
-            unlinkSegment(mStacks[stack]);
-            mStacks[stack] = newSegment;
+            unlinkSegment(mStacks[stack].mSegment);
+            mStacks[stack].mSegment = newSegment;
         }
     }
 
-    template <typename T> void MultiStack<T>::erase(size_t stack)
+    template <typename T> void MultiStack<T>::eraseStack(size_t stack)
     {
         if(stack >= mStacks.size()) {
             throw std::out_of_range("stack");
         }
 
-        unlinkSegment(mStacks[stack]);
+        unlinkSegment(mStacks[stack].mSegment);
         mStacks.erase(mStacks.begin() + stack);
     }
 
-    template <typename T> void MultiStack<T>::join(size_t stack, Locator &before)
+    template <typename T> void MultiStack<T>::joinStack(size_t stack, Locator &before)
     {
-        std::shared_ptr<Segment> segment = mStacks[stack];
+        std::shared_ptr<Segment> segment = mStacks[stack].mSegment;
         
         splitSegment(before);
         std::shared_ptr<Segment> targetSegment = before.mSegment;
@@ -420,8 +437,8 @@ namespace Util
         segment->next.push_back(back);
 
         for(unsigned int i=0; i<mStacks.size(); i++) {
-            if(mStacks[i] == segment) {
-                mStacks[i] = back;
+            if(mStacks[i].mSegment == segment) {
+                mStacks[i].mSegment = back;
                 break;
             }
         }
@@ -451,8 +468,8 @@ namespace Util
         }
 
         for(size_t i=0; i<mStacks.size(); i++) {
-            if(mStacks[i] == next) {
-                mStacks[i] = segment;
+            if(mStacks[i].mSegment == next) {
+                mStacks[i].mSegment = segment;
             }
         }
     }

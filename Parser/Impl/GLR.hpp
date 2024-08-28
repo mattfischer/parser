@@ -76,7 +76,7 @@ namespace Parser
         template<typename ParseData> std::vector<std::shared_ptr<ParseData>> GLR::ParseSession<ParseData>::parse(Tokenizer::Stream &stream)
         {
             Util::MultiStack<StackItem> stacks;
-            stacks.push_back(0, StackItem{0});    
+            stacks.stack(0).push_back(StackItem{0});    
 
             while(true) {
                 std::shared_ptr<ParseData> terminal;
@@ -95,7 +95,7 @@ namespace Parser
                         }
                     }
 
-                    unsigned int state = stacks.back(i).state;
+                    unsigned int state = stacks.stack(i).back().state;
                     if(mParser.mAcceptStates.contains(state)) {
                         continue;
                     }
@@ -108,7 +108,7 @@ namespace Parser
                             StackItem stackItem;
                             stackItem.state = entry.index;
                             stackItem.parseItems.push_back(std::move(parseItem));
-                            stacks.push_back(i, std::move(stackItem));
+                            stacks.stack(i).push_back(std::move(stackItem));
                             break;
                         }
 
@@ -144,7 +144,7 @@ namespace Parser
                                         StackItem stackItem;
                                         stackItem.state = entry.index;
                                         stackItem.parseItems.push_back(std::move(parseItem));
-                                        stacks.push_back(i, std::move(stackItem));
+                                        stacks.stack(i).push_back(std::move(stackItem));
                                         break;
                                     }
 
@@ -157,7 +157,7 @@ namespace Parser
 
                         case ParseTableEntry::Type::Error:
                         {
-                            stacks.erase(i);
+                            stacks.eraseStack(i);
                             repeat = true;
                             break;
                         }
@@ -180,15 +180,15 @@ namespace Parser
                                 break;
                             }
                         }
-                        const StackItem &stackItem = stacks.back(i);
+                        const StackItem &stackItem = stacks.stack(i).back();
                         auto it = stackMap.find(stackItem.state);
                         if(it == stackMap.end()) {
                             stackMap[stackItem.state] = i;
                         } else {
-                            stacks.pop_back(i);
-                            typename Util::MultiStack<StackItem>::Locator end = stacks.end(it->second);
+                            stacks.stack(i).pop_back();
+                            typename Util::MultiStack<StackItem>::Locator end = stacks.stack(it->second).end();
                             std::vector<typename Util::MultiStack<StackItem>::PathIterator> begins = stacks.backtrack(end, 1);
-                            stacks.join(i, begins[0]);
+                            stacks.joinStack(i, begins[0]);
                             repeat = true;
                         }
                     }
@@ -198,7 +198,7 @@ namespace Parser
             std::vector<std::shared_ptr<ParseData>> results;
             for(size_t i=0; i<stacks.size(); i++) {
                 reduce(stacks, i, mParser.mGrammar.startRule(), 0, true);
-                results.push_back(stacks.back(i).parseItems[0].data);
+                results.push_back(stacks.stack(i).back().parseItems[0].data);
             }
 
             return results;
@@ -213,7 +213,7 @@ namespace Parser
                 }
             }
 
-            typename Util::MultiStack<StackItem>::Locator end = stacks.end(stack);
+            typename Util::MultiStack<StackItem>::Locator end = stacks.stack(stack).end();
             std::vector<typename Util::MultiStack<StackItem>::PathIterator> begins = stacks.backtrack(end, size + 1);
             for(size_t i = 0; i<begins.size(); i++) {
                 auto &begin = begins[i];
@@ -241,11 +241,11 @@ namespace Parser
                 }
 
                 if(i == begins.size() - 1 && allowRelocate) {
-                    stacks.relocate(stack, begin);
-                    stacks.push_back(stack, stackItem);
+                    stacks.relocateStack(stack, begin);
+                    stacks.stack(stack).push_back(stackItem);
                 } else {
-                    size_t newStack = stacks.add(begin);
-                    stacks.push_back(newStack, stackItem);
+                    size_t newStack = stacks.addStack(begin);
+                    stacks.stack(newStack).push_back(stackItem);
                 }
             }
         }

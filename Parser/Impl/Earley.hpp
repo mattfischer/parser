@@ -116,7 +116,7 @@ namespace Parser
 
             std::vector<std::shared_ptr<ParseData>> results;
             for(size_t i=0; i<parseStacks.size(); i++) {
-                results.push_back(parseStacks.back(i).data);
+                results.push_back(parseStacks.stack(i).back().data);
             }
 
             return results;
@@ -124,7 +124,7 @@ namespace Parser
 
         template<typename ParseData> void Earley::ParseSession<ParseData>::parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, Util::MultiStack<ParseItem> &parseStacks, std::vector<std::shared_ptr<ParseData>> &terminalData) const
         {
-            typename Util::MultiStack<ParseItem>::Locator stackBegin = parseStacks.end(parseStacks.size() - 1);
+            typename Util::MultiStack<ParseItem>::Locator stackBegin = parseStacks.stack(parseStacks.size() - 1).end();
             bool first = true;
 
             for(const auto &item : completedSets[end]) {
@@ -141,7 +141,7 @@ namespace Parser
                         stack = parseStacks.size() - 1;
                         first = false;
                     } else {
-                        stack = parseStacks.add(stackBegin);
+                        stack = parseStacks.addStack(stackBegin);
                     }
 
                     for(unsigned int j = 0; j<partition.size(); j++) {
@@ -156,15 +156,15 @@ namespace Parser
                                 newItem.type = ParseItem::Type::Terminal;
                                 newItem.index = rhsSymbols[j].index;
                                 newItem.data = terminalData[pstart];
-                                parseStacks.push_back(stack, std::move(newItem));
+                                parseStacks.stack(stack).push_back(std::move(newItem));
                                 break;
                             }
                             case Grammar::Symbol::Type::Nonterminal:
                             {
                                 parseRule(completedSets, terminalIndices, rhsSymbols[j].index, pstart, pend, parseStacks, terminalData);
                                 while(parseStacks.size() > stack + 1) {
-                                    typename Util::MultiStack<ParseItem>::Locator end = parseStacks.end(stack);
-                                    parseStacks.join(parseStacks.size() - 1, end);
+                                    typename Util::MultiStack<ParseItem>::Locator end = parseStacks.stack(stack).end();
+                                    parseStacks.joinStack(parseStacks.size() - 1, end);
                                 }
                                 break;
                             }
@@ -176,7 +176,7 @@ namespace Parser
                     auto it = mReducers.find(rule);
                     if(it != mReducers.end()) {
                         size_t stack = parseStacks.size() - 1;
-                        typename Util::MultiStack<ParseItem>::Locator end = parseStacks.end(stack);
+                        typename Util::MultiStack<ParseItem>::Locator end = parseStacks.stack(stack).end();
                         std::vector<typename Util::MultiStack<ParseItem>::PathIterator> begins = parseStacks.connect(stackBegin, end);
                         for(unsigned int i=0; i<begins.size(); i++) {
                             typename Util::MultiStack<ParseItem>::PathView view(begins[i], end);
@@ -186,11 +186,11 @@ namespace Parser
                             newItem.index = rule;
                             newItem.data = data;
                             if(i < begins.size() - 1) {
-                                size_t newStack = parseStacks.add(stackBegin);
-                                parseStacks.push_back(newStack, std::move(newItem));
+                                size_t newStack = parseStacks.addStack(stackBegin);
+                                parseStacks.stack(newStack).push_back(std::move(newItem));
                             } else {
-                                parseStacks.relocate(stack, stackBegin);
-                                parseStacks.push_back(stack, std::move(newItem));
+                                parseStacks.relocateStack(stack, stackBegin);
+                                parseStacks.stack(stack).push_back(std::move(newItem));
                             }
                         }
                     }
