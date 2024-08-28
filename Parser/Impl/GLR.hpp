@@ -4,6 +4,8 @@
 #include "Parser/Impl/LRMulti.hpp"
 #include "Util/MultiStack.hpp"
 
+#include <span>
+
 namespace Parser
 {
     namespace Impl
@@ -24,12 +26,10 @@ namespace Parser
                     Type type;
                     unsigned int index;
                     std::shared_ptr<ParseData> data;
-
-                    typedef ParseItem* iterator;
                 };
 
                 typedef std::function<std::shared_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
-                typedef std::function<std::shared_ptr<ParseData>(typename ParseItem::iterator, typename ParseItem::iterator)> Reducer;
+                typedef std::function<std::shared_ptr<ParseData>(std::span<ParseItem>)> Reducer;
                 
                 ParseSession(const GLR &parser);
             
@@ -187,7 +187,7 @@ namespace Parser
                         } else {
                             stacks.pop_back(i);
                             typename Util::MultiStack<StackItem>::Locator end = stacks.end(it->second);
-                            std::vector<typename Util::MultiStack<StackItem>::iterator> begins = stacks.backtrack(end, 1);
+                            std::vector<typename Util::MultiStack<StackItem>::PathIterator> begins = stacks.backtrack(end, 1);
                             stacks.join(i, begins[0]);
                             repeat = true;
                         }
@@ -214,7 +214,7 @@ namespace Parser
             }
 
             typename Util::MultiStack<StackItem>::Locator end = stacks.end(stack);
-            std::vector<typename Util::MultiStack<StackItem>::iterator> begins = stacks.backtrack(end, size + 1);
+            std::vector<typename Util::MultiStack<StackItem>::PathIterator> begins = stacks.backtrack(end, size + 1);
             for(size_t i = 0; i<begins.size(); i++) {
                 auto &begin = begins[i];
                 std::vector<ParseItem> parseStack;
@@ -236,7 +236,7 @@ namespace Parser
                 if(it == mReducers.end()) {
                     stackItem.parseItems = std::move(parseStack);
                 } else {
-                    std::shared_ptr<ParseData> data = it->second(&parseStack[0], &parseStack[0] + parseStack.size());
+                    std::shared_ptr<ParseData> data = it->second(parseStack);
                     stackItem.parseItems.push_back(ParseItem{ParseItem::Type::Nonterminal, rule, data});
                 }
 

@@ -40,12 +40,10 @@ namespace Parser
                     Type type;
                     unsigned int index;
                     std::shared_ptr<ParseData> data;
-
-                    typedef ParseItem* iterator;
                 };
 
                 typedef std::function<std::shared_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
-                typedef std::function<std::shared_ptr<ParseData>(typename Util::MultiStack<ParseItem>::iterator, typename Util::MultiStack<ParseItem>::Locator)> Reducer;
+                typedef std::function<std::shared_ptr<ParseData>(typename Util::MultiStack<ParseItem>::PathView)> Reducer;
                 
                 ParseSession(const Earley &parser);
 
@@ -165,7 +163,8 @@ namespace Parser
                             {
                                 parseRule(completedSets, terminalIndices, rhsSymbols[j].index, pstart, pend, parseStacks, terminalData);
                                 while(parseStacks.size() > stack + 1) {
-                                    parseStacks.join(parseStacks.size() - 1, parseStacks.end(stack));
+                                    typename Util::MultiStack<ParseItem>::Locator end = parseStacks.end(stack);
+                                    parseStacks.join(parseStacks.size() - 1, end);
                                 }
                                 break;
                             }
@@ -178,9 +177,10 @@ namespace Parser
                     if(it != mReducers.end()) {
                         size_t stack = parseStacks.size() - 1;
                         typename Util::MultiStack<ParseItem>::Locator end = parseStacks.end(stack);
-                        std::vector<MultiStack<ParseItem>::iterator> begins = parseStacks.connect(stackBegin, end);
+                        std::vector<typename Util::MultiStack<ParseItem>::PathIterator> begins = parseStacks.connect(stackBegin, end);
                         for(unsigned int i=0; i<begins.size(); i++) {
-                            std::shared_ptr<ParseData> data = it->second(begins[i], end);
+                            typename Util::MultiStack<ParseItem>::PathView view(begins[i], end);
+                            std::shared_ptr<ParseData> data = it->second(view);
                             ParseItem newItem;
                             newItem.type = ParseItem::Type::Nonterminal;
                             newItem.index = rule;

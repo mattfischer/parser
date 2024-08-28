@@ -268,43 +268,43 @@ namespace Parser
             return std::make_unique<DefNode>(DefNode::Type::Regex, token.text, token.line);
         });
 
-        session.addReducer("root", [](auto begin, auto end) {
-            return std::move(begin->data);
+        session.addReducer("root", [](auto rhs) {
+            return std::move(rhs.begin()->data);
         });
-        session.addReducer("definitions", [](auto begin, auto end) {
+        session.addReducer("definitions", [](auto rhs) {
             std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::List);
-            for(auto it = begin; it != end; ++it) {
+            for(auto it = rhs.begin(); it != rhs.end(); ++it) {
                 if(it->data) {
                     node->children.push_back(std::move(it->data));
                 }
             }
             return node;
         });
-        session.addReducer("pattern", [](auto begin, auto end) {
-            auto it = begin;
+        session.addReducer("pattern", [](auto rhs) {
+            auto it = rhs.begin();
             std::unique_ptr<DefNode> name = std::move(it->data);
             it += 2;
             std::unique_ptr<DefNode> regex = std::move(it->data);
             return std::make_unique<DefNode>(DefNode::Type::Pattern, std::move(name), std::move(regex));
         });
-        session.addReducer("rule", [](auto begin, auto end) {
-            auto it = begin;
-            std::unique_ptr<DefNode> lhs = std::move(it->data);
+        session.addReducer("rule", [](auto rhs) {
+            auto it = rhs.begin();
+            std::unique_ptr<DefNode> ruleLhs = std::move(it->data);
             it += 2;
             
-            std::unique_ptr<DefNode> rhs = std::make_unique<DefNode>(DefNode::Type::RhsOneOf);
-            while(it != end) {
-                rhs->children.push_back(std::move(it->data));
+            std::unique_ptr<DefNode> ruleRhs = std::make_unique<DefNode>(DefNode::Type::RhsOneOf);
+            while(it != rhs.end()) {
+                ruleRhs->children.push_back(std::move(it->data));
                 it += 2;
             }
-            if(rhs->children.size() == 1) {
-                rhs = std::move(rhs->children[0]);
+            if(ruleRhs->children.size() == 1) {
+                ruleRhs = std::move(ruleRhs->children[0]);
             }
-            return std::make_unique<DefNode>(DefNode::Type::Rule, std::move(lhs), std::move(rhs));
+            return std::make_unique<DefNode>(DefNode::Type::Rule, std::move(ruleLhs), std::move(ruleRhs));
         });
-        session.addReducer("rhs", [](auto begin, auto end) {
+        session.addReducer("rhs", [](auto rhs) {
             std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::RhsSequence);
-            for(auto it = begin; it != end; ++it) {
+            for(auto it = rhs.begin(); it != rhs.end(); ++it) {
                 node->children.push_back(std::move(it->data));
             }
             if(node->children.size() == 1) {
@@ -315,11 +315,11 @@ namespace Parser
         unsigned int star = mDefGrammar->terminalIndex("star");
         unsigned int plus = mDefGrammar->terminalIndex("plus");
         unsigned int question = mDefGrammar->terminalIndex("question");
-        session.addReducer("rhsSuffix", [&](auto begin, auto end) {
-            auto it = begin;
+        session.addReducer("rhsSuffix", [&](auto rhs) {
+            auto it = rhs.begin();
             std::unique_ptr<DefNode> node = std::move(it->data);
             ++it;
-            for(; it != end; ++it) {
+            for(; it != rhs.end(); ++it) {
                 if(it->index == star) {
                     node = std::make_unique<DefNode>(DefNode::Type::RhsZeroOrMore, std::move(node));
                 } else if(it->index == plus) {
@@ -332,9 +332,9 @@ namespace Parser
         });
         unsigned int lparen = mDefGrammar->terminalIndex("lparen");
         unsigned int rparen = mDefGrammar->terminalIndex("rparen");
-        session.addReducer("rhsSymbol", [&](auto begin, auto end) {
+        session.addReducer("rhsSymbol", [&](auto rhs) {
             std::unique_ptr<DefNode> node;
-            auto it = begin;
+            auto it = rhs.begin();
             if(it->index == lparen) {
                 ++it;
                 node = std::make_unique<DefNode>(DefNode::Type::RhsOneOf);

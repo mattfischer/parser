@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <set>
+#include <span>
 
 namespace Parser
 {
@@ -40,12 +41,10 @@ namespace Parser
                     Type type;
                     unsigned int index;
                     std::unique_ptr<ParseData> data;
-
-                    typedef ParseItem* iterator;
                 };
 
                 typedef std::function<std::unique_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
-                typedef std::function<std::unique_ptr<ParseData>(typename ParseItem::iterator, typename ParseItem::iterator)> Reducer;
+                typedef std::function<std::unique_ptr<ParseData>(std::span<ParseItem>)> Reducer;
                 typedef std::function<void(unsigned int)> MatchListener;
 
                 ParseSession(const LL &parser);
@@ -196,7 +195,8 @@ namespace Parser
 
                         auto it = mReducers.find(currentRule);
                         if(it != mReducers.end()) {
-                            std::unique_ptr<ParseData> data = it->second(&parseStack[parseStackStart], &parseStack[0] + parseStack.size());
+                            std::span<ParseItem> span(&parseStack[parseStackStart], &parseStack[0] + parseStack.size());
+                            std::unique_ptr<ParseData> data = it->second(span);
                             parseStack.erase(parseStack.begin() + parseStackStart, parseStack.end());
 
                             ParseItem parseItem;

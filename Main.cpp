@@ -64,15 +64,15 @@ int main(int argc, char *argv[])
         return std::make_unique<AstNodeNumber>(std::atoi(token.text.c_str()));
     });
 
-    session.addReducer("root", [](auto begin, auto end) {
-        return std::move(begin->data);
+    session.addReducer("root", [](auto rhs) {
+        return std::move(rhs.begin()->data);
     });
     unsigned int minus = reader.grammar().terminalIndex("-");
-    session.addReducer("E", [&](auto begin, auto end) {
-        auto it = begin;
+    session.addReducer("E", [&](auto rhs) {
+        auto it = rhs.begin();
         std::shared_ptr<AstNode> node = it->data;
         ++it;
-        while(it != end) {
+        while(it != rhs.end()) {
             AstNode::Type type = AstNode::Type::Add;
             if(it->index == minus) {
                 type = AstNode::Type::Subtract;
@@ -84,11 +84,11 @@ int main(int argc, char *argv[])
         return node;
     });
     unsigned int divide = reader.grammar().terminalIndex("/");
-    session.addReducer("T", [&](auto begin, auto end) {
-        auto it = begin;
+    session.addReducer("T", [&](auto rhs) {
+        auto it = rhs.begin();
         std::shared_ptr<AstNode> node = it->data;
         ++it;
-        while(it != end) {
+        while(it != rhs.end()) {
             AstNode::Type type = AstNode::Type::Multiply;
             if(it->index == divide) {
                 type = AstNode::Type::Divide;
@@ -100,8 +100,8 @@ int main(int argc, char *argv[])
         return node;
     });
     unsigned int lparen = reader.grammar().terminalIndex("(");
-    session.addReducer("F", [&](auto begin, auto end) {
-        auto it = begin;
+    session.addReducer("F", [&](auto rhs) {
+        auto it = rhs.begin();
         if(it->index == lparen) {
             ++it;
         }

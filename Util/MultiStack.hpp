@@ -5,6 +5,7 @@
 #include <functional>
 #include <memory>
 #include <stdexcept>
+#include <ranges>
 
 namespace Util
 {
@@ -60,7 +61,19 @@ namespace Util
             friend class MultiStack;
         };
 
-        typedef PathIterator iterator;
+        class PathView : public std::ranges::view_interface<PathView> {
+        public:
+            PathView(PathIterator begin, Locator end)
+            : mBegin(std::move(begin)), mEnd(std::move(end))
+            {}
+        
+            PathIterator &begin() { return mBegin; }
+            Locator &end() { return mEnd; }
+
+        private:
+            PathIterator mBegin;
+            Locator mEnd;
+        };
 
         MultiStack();
         size_t size() const;
@@ -71,18 +84,18 @@ namespace Util
         Locator end(size_t stack);
 
         size_t add(Locator &before);
-        size_t add(iterator &before) { auto loc = Locator(before); return add(loc); }
+        size_t add(PathIterator &before) { auto loc = Locator(before); return add(loc); }
 
         void relocate(size_t stack, Locator &before);
-        void relocate(size_t stack, iterator &before) { auto loc = Locator(before); return relocate(stack, loc); }
+        void relocate(size_t stack, PathIterator &before) { auto loc = Locator(before); return relocate(stack, loc); }
 
         void erase(size_t stack);
 
         void join(size_t stack, Locator &before);
-        void join(size_t stack, iterator &before) { auto loc = Locator(before); return join(stack, loc); }
+        void join(size_t stack, PathIterator &before) { auto loc = Locator(before); return join(stack, loc); }
 
-        std::vector<iterator> backtrack(Locator &end, size_t size);
-        std::vector<iterator> connect(Locator &begin, Locator &end);
+        std::vector<PathIterator> backtrack(Locator &end, size_t size);
+        std::vector<PathIterator> connect(Locator &begin, Locator &end);
 
     private:
         struct Segment {
@@ -294,12 +307,12 @@ namespace Util
         mStacks.erase(mStacks.begin() + stack);
     }
 
-    template<typename T> std::vector<typename MultiStack<T>::iterator> MultiStack<T>::backtrack(Locator &end, size_t size)
+    template<typename T> std::vector<typename MultiStack<T>::PathIterator> MultiStack<T>::backtrack(Locator &end, size_t size)
     {
         std::shared_ptr<Path> startPath = std::make_shared<Path>();
         startPath->segments.push_back(end.mSegment);
         std::vector<std::shared_ptr<Path>> paths = expandPath(startPath, size, end.mIndex);
-        std::vector<iterator> results;
+        std::vector<PathIterator> results;
         for(auto &path : paths) {
             size_t segmentSize = size;
             for(size_t i=1; i<path->segments.size(); i++) {
@@ -328,10 +341,10 @@ namespace Util
         return results;
     }
 
-    template<typename T> std::vector<typename MultiStack<T>::iterator> MultiStack<T>::connect(Locator &begin, Locator &end)
+    template<typename T> std::vector<typename MultiStack<T>::PathIterator> MultiStack<T>::connect(Locator &begin, Locator &end)
     {
         std::vector<std::shared_ptr<Path>> paths;
-        std::vector<iterator> iterators;
+        std::vector<PathIterator> iterators;
 
         size_t beginIndex = begin.mIndex;
         if(beginIndex == 0) {
