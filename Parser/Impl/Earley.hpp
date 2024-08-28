@@ -126,7 +126,7 @@ namespace Parser
 
         template<typename ParseData> void Earley::ParseSession<ParseData>::parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, Util::MultiStack<ParseItem> &parseStacks, std::vector<std::shared_ptr<ParseData>> &terminalData) const
         {
-            Util::MultiStack<ParseItem>::Locator stackBegin = parseStacks.end(parseStacks.size() - 1);
+            typename Util::MultiStack<ParseItem>::Locator stackBegin = parseStacks.end(parseStacks.size() - 1);
             bool first = true;
 
             for(const auto &item : completedSets[end]) {
@@ -177,7 +177,7 @@ namespace Parser
                     auto it = mReducers.find(rule);
                     if(it != mReducers.end()) {
                         size_t stack = parseStacks.size() - 1;
-                        MultiStack<ParseItem>::Locator end = parseStacks.end(stack);
+                        typename Util::MultiStack<ParseItem>::Locator end = parseStacks.end(stack);
                         std::vector<MultiStack<ParseItem>::iterator> begins = parseStacks.connect(stackBegin, end);
                         for(unsigned int i=0; i<begins.size(); i++) {
                             std::shared_ptr<ParseData> data = it->second(begins[i], end);

@@ -71,15 +71,15 @@ namespace Util
         Locator end(size_t stack);
 
         size_t add(Locator &before);
-        size_t add(iterator &before) { return add(Locator(before)); }
+        size_t add(iterator &before) { auto loc = Locator(before); return add(loc); }
 
         void relocate(size_t stack, Locator &before);
-        void relocate(size_t stack, iterator &before) { return relocate(stack, Locator(before)); }
+        void relocate(size_t stack, iterator &before) { auto loc = Locator(before); return relocate(stack, loc); }
 
         void erase(size_t stack);
 
         void join(size_t stack, Locator &before);
-        void join(size_t stack, iterator &before) { return join(stack, Locator(before)); }
+        void join(size_t stack, iterator &before) { auto loc = Locator(before); return join(stack, loc); }
 
         std::vector<iterator> backtrack(Locator &end, size_t size);
         std::vector<iterator> connect(Locator &begin, Locator &end);
