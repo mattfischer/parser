@@ -17,6 +17,9 @@ namespace Parser
 
             template<typename ParseData> class ParseSession
             {
+            private:
+                struct StackItem;
+
             public:
                 struct ParseItem {
                     enum class Type {
@@ -27,10 +30,42 @@ namespace Parser
                     unsigned int index;
                     std::shared_ptr<ParseData> data;
                 };
+                
+                class ParseStackIterator {
+                public:
+                    ParseStackIterator(Util::MultiStack<StackItem>::PathIterator pathIterator);
+
+                    ParseItem &operator*();
+                    ParseItem *operator->();
+                    ParseStackIterator &operator++();
+                    bool operator==(Util::MultiStack<StackItem>::Locator locator);
+                    bool operator!=(Util::MultiStack<StackItem>::Locator locator);
+                    
+                private:
+                    void checkResetItem();
+
+                    typename Util::MultiStack<StackItem>::PathIterator mPathIterator;
+                    typename std::vector<ParseItem>::iterator mItemIterator;
+                    bool mResetItem;
+                };
+
+                class ParseStackView : public std::ranges::view_interface<ParseStackView> {
+                public:
+                    ParseStackView(ParseStackIterator begin, Util::MultiStack<StackItem>::Locator end)
+                    : mBegin(std::move(begin)), mEnd(std::move(end))
+                    {}
+
+                    ParseStackIterator &begin() { return mBegin; }
+                    Util::MultiStack<StackItem>::Locator &end() { return mEnd; }
+
+                private:
+                    ParseStackIterator mBegin;
+                    Util::MultiStack<StackItem>::Locator mEnd;
+                };
 
                 typedef std::function<std::shared_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
-                typedef std::function<std::shared_ptr<ParseData>(std::span<ParseItem>)> Reducer;
-                
+                typedef std::function<std::shared_ptr<ParseData>(ParseStackView &)> Reducer;
+
                 ParseSession(const GLR &parser);
             
                 void addTerminalDecorator(const std::string &terminal, TerminalDecorator terminalDecorator);
@@ -51,6 +86,53 @@ namespace Parser
                 std::map<unsigned int, Reducer> mReducers;
             };
         };
+
+        template<typename ParseData> GLR::ParseSession<ParseData>::ParseStackIterator::ParseStackIterator(Util::MultiStack<StackItem>::PathIterator pathIterator)
+        : mPathIterator(pathIterator)
+        {
+            mResetItem = true;
+        }
+
+        template<typename ParseData> GLR::ParseSession<ParseData>::ParseItem &GLR::ParseSession<ParseData>::ParseStackIterator::operator*()
+        {
+            checkResetItem();
+            return *mItemIterator;
+        }
+
+        template<typename ParseData> GLR::ParseSession<ParseData>::ParseItem *GLR::ParseSession<ParseData>::ParseStackIterator::operator->()
+        {
+            checkResetItem();
+            return &(*mItemIterator);
+        }
+
+        template<typename ParseData> GLR::ParseSession<ParseData>::ParseStackIterator &GLR::ParseSession<ParseData>::ParseStackIterator::operator++()
+        {
+            ++mItemIterator;
+            if(mItemIterator == mPathIterator->parseItems.end()) {
+                ++mPathIterator;
+                mResetItem = true;
+            }
+
+            return *this;
+        }
+
+        template<typename ParseData> bool GLR::ParseSession<ParseData>::ParseStackIterator::operator==(Util::MultiStack<StackItem>::Locator locator)
+        {
+            return mPathIterator == locator;
+        }
+    
+        template<typename ParseData> bool GLR::ParseSession<ParseData>::ParseStackIterator::operator!=(Util::MultiStack<StackItem>::Locator locator)
+        {
+            return mPathIterator != locator;
+        }
+
+        template<typename ParseData> void GLR::ParseSession<ParseData>::ParseStackIterator::checkResetItem()
+        {
+            if(mResetItem) {
+                mItemIterator = mPathIterator->parseItems.begin();
+                mResetItem = false;
+            }
+        }
 
         template<typename ParseData> GLR::ParseSession<ParseData>::ParseSession(const GLR &parser)
         : mParser(parser)
@@ -217,26 +299,24 @@ namespace Parser
             std::vector<typename Util::MultiStack<StackItem>::PathIterator> begins = stacks.backtrack(end, size + 1);
             for(size_t i = 0; i<begins.size(); i++) {
                 auto &begin = begins[i];
-                std::vector<ParseItem> parseStack;
-                parseStack.reserve(size);
                 
                 unsigned int state = begin->state;
                 const ParseTableEntry &newEntry = mParser.mParseTable.at(state, mParser.ruleIndex(rule));
                 state = newEntry.index;
 
                 ++begin;
-                for(auto it = begin; it != end; ++it) {
-                    parseStack.insert(parseStack.end(), it->parseItems.begin(), it->parseItems.end());
-                }
-
+                ParseStackView view(begin, end);
+                
                 StackItem stackItem;
                 stackItem.state = state;
 
                 auto it = mReducers.find(rule);
                 if(it == mReducers.end()) {
-                    stackItem.parseItems = std::move(parseStack);
+                    for(auto i : view) {
+                        stackItem.parseItems.push_back(i);
+                    }
                 } else {
-                    std::shared_ptr<ParseData> data = it->second(parseStack);
+                    std::shared_ptr<ParseData> data = it->second(view);
                     stackItem.parseItems.push_back(ParseItem{ParseItem::Type::Nonterminal, rule, data});
                 }
 
