@@ -43,22 +43,24 @@ namespace Parser
                     std::unique_ptr<ParseData> data;
                 };
 
-                typedef std::function<std::unique_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
-                typedef std::function<std::unique_ptr<ParseData>(std::span<ParseItem>)> Reducer;
-                typedef std::function<void(unsigned int)> MatchListener;
-
                 ParseSession(const LL &parser);
             
-                void addMatchListener(const std::string &rule, MatchListener matchListener);        
-                void addTerminalDecorator(const std::string &terminal, TerminalDecorator terminalDecorator);
-                void addReducer(const std::string &rule, Reducer reducer);
+                template<typename M> void addMatchListener(const std::string &rule, M matchListener);        
+                template<typename T> void addTerminalDecorator(const std::string &terminal, T terminalDecorator);
+                template<typename R> void addReducer(const std::string &rule, R reducer);
 
                 std::unique_ptr<ParseData> parse(Tokenizer::Stream &stream) const;
 
             private:
                 const LL &mParser;
+
+                typedef std::function<void(unsigned int)> MatchListener;
                 std::map<unsigned int, MatchListener> mMatchListeners;
+                
+                typedef std::function<std::unique_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
                 std::map<unsigned int, TerminalDecorator> mTerminalDecorators;
+                
+                typedef std::function<std::unique_ptr<ParseData>(std::span<ParseItem>)> Reducer;
                 std::map<unsigned int, Reducer> mReducers;
             };
 
@@ -77,7 +79,7 @@ namespace Parser
         {
         }
 
-        template<typename ParseData> void LL::ParseSession<ParseData>::addMatchListener(const std::string &rule, MatchListener matchListener)
+        template<typename ParseData> template<typename M> void LL::ParseSession<ParseData>::addMatchListener(const std::string &rule, M matchListener)
         {
             unsigned int ruleIndex = mParser.grammar().ruleIndex(rule);
             if(ruleIndex != UINT_MAX) {
@@ -85,7 +87,7 @@ namespace Parser
             }
         }
 
-        template<typename ParseData> void LL::ParseSession<ParseData>::addTerminalDecorator(const std::string &terminal, TerminalDecorator terminalDecorator)
+        template<typename ParseData> template<typename T> void LL::ParseSession<ParseData>::addTerminalDecorator(const std::string &terminal, T terminalDecorator)
         {
             unsigned int terminalIndex = mParser.grammar().terminalIndex(terminal);
             if(terminalIndex != UINT_MAX) {
@@ -93,7 +95,7 @@ namespace Parser
             }
         }
 
-        template<typename ParseData> void LL::ParseSession<ParseData>::addReducer(const std::string &rule, Reducer reducer)
+        template<typename ParseData> template<typename R> void LL::ParseSession<ParseData>::addReducer(const std::string &rule, R reducer)
         {
             unsigned int ruleIndex = mParser.grammar().ruleIndex(rule);
             if(ruleIndex != UINT_MAX) {

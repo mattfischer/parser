@@ -41,14 +41,11 @@ namespace Parser
                     unsigned int index;
                     std::shared_ptr<ParseData> data;
                 };
-
-                typedef std::function<std::shared_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
-                typedef std::function<std::shared_ptr<ParseData>(typename Util::MultiStack<ParseItem>::PathView)> Reducer;
                 
                 ParseSession(const Earley &parser);
 
-                void addTerminalDecorator(const std::string &terminal, TerminalDecorator terminalDecorator);
-                void addReducer(const std::string &rule, Reducer reducer);
+                template <typename T> void addTerminalDecorator(const std::string &terminal, T terminalDecorator);
+                template <typename R> void addReducer(const std::string &rule, R reducer);
 
                 std::vector<std::shared_ptr<ParseData>> parse(Tokenizer::Stream &stream) const;
             
@@ -56,7 +53,11 @@ namespace Parser
                 void parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, Util::MultiStack<ParseItem> &parseStacks, std::vector<std::shared_ptr<ParseData>> &terminalData) const;
 
                 const Earley &mParser;
+
+                typedef std::function<std::shared_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
                 std::map<unsigned int, TerminalDecorator> mTerminalDecorators;
+    
+                typedef std::function<std::shared_ptr<ParseData>(typename Util::MultiStack<ParseItem>::PathView)> Reducer;
                 std::map<unsigned int, Reducer> mReducers;        
             };
 
@@ -78,7 +79,7 @@ namespace Parser
 
         template<typename ParseData> Earley::ParseSession<ParseData>::ParseSession(const Earley &parser) : mParser(parser) {}
 
-        template<typename ParseData> void Earley::ParseSession<ParseData>::addTerminalDecorator(const std::string &terminal, TerminalDecorator terminalDecorator)
+        template<typename ParseData> template<typename T> void Earley::ParseSession<ParseData>::addTerminalDecorator(const std::string &terminal, T terminalDecorator)
         {
             unsigned int terminalIndex = mParser.mGrammar.terminalIndex(terminal);
             if(terminalIndex != UINT_MAX) {
@@ -86,7 +87,7 @@ namespace Parser
             }
         }
 
-        template<typename ParseData> void Earley::ParseSession<ParseData>::addReducer(const std::string &rule, Reducer reducer)
+        template<typename ParseData> template<typename R> void Earley::ParseSession<ParseData>::addReducer(const std::string &rule, R reducer)
         {
             unsigned int ruleIndex = mParser.mGrammar.ruleIndex(rule);
             if(ruleIndex != UINT_MAX) {

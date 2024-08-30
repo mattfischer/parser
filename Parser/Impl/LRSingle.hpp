@@ -40,20 +40,21 @@ namespace Parser
                     unsigned int index;
                     std::unique_ptr<ParseData> data;
                 };
-
-                typedef std::function<std::unique_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
-                typedef std::function<std::unique_ptr<ParseData>(std::span<ParseItem>)> Reducer;
                 
                 ParseSession(const LRSingle &parser);
             
-                void addTerminalDecorator(const std::string &terminal, TerminalDecorator terminalDecorator);
-                void addReducer(const std::string &rule, Reducer reducer);
+                template <typename T> void addTerminalDecorator(const std::string &terminal, T terminalDecorator);
+                template <typename R> void addReducer(const std::string &rule, R reducer);
 
                 std::unique_ptr<ParseData> parse(Tokenizer::Stream &stream);
 
             private:
                 const LRSingle &mParser;
+
+                typedef std::function<std::unique_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
                 std::map<unsigned int, TerminalDecorator> mTerminalDecorators;
+
+                typedef std::function<std::unique_ptr<ParseData>(std::span<ParseItem>)> Reducer;
                 std::map<unsigned int, Reducer> mReducers;
             };
 
@@ -92,7 +93,7 @@ namespace Parser
         {
         }
 
-        template<typename ParseData> void LRSingle::ParseSession<ParseData>::addTerminalDecorator(const std::string &terminal, TerminalDecorator terminalDecorator)
+        template<typename ParseData> template<typename T> void LRSingle::ParseSession<ParseData>::addTerminalDecorator(const std::string &terminal, T terminalDecorator)
         {
             unsigned int terminalIndex = mParser.grammar().terminalIndex(terminal);
             if(terminalIndex != UINT_MAX) {
@@ -100,7 +101,7 @@ namespace Parser
             }
         }
 
-        template<typename ParseData> void LRSingle::ParseSession<ParseData>::addReducer(const std::string &rule, Reducer reducer)
+        template<typename ParseData> template<typename R> void LRSingle::ParseSession<ParseData>::addReducer(const std::string &rule, R reducer)
         {
             unsigned int ruleIndex = mParser.grammar().ruleIndex(rule);
             if(ruleIndex != UINT_MAX) {
