@@ -3,15 +3,12 @@
 
 #include "Parser/Impl/LRSingle.hpp"
 
-namespace Parser
+namespace Parser::Impl
 {
-    namespace Impl
+    class LALR : public LRSingle
     {
-        class LALR : public LRSingle
-        {
-        public:
-            LALR(const Grammar &grammar);
-        };
-    }
+    public:
+        LALR(const Grammar &grammar);
+    };
 }
 #endif

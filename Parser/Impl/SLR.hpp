@@ -7,17 +7,14 @@
 #include <map>
 #include <vector>
 
-namespace Parser
+namespace Parser::Impl
 {
-    namespace Impl
+    class SLR : public LRSingle
     {
-        class SLR : public LRSingle
-        {
-        public:
-            SLR(const Grammar &grammar);
+    public:
+        SLR(const Grammar &grammar);
 
-        private:
-        };
-    }
+    private:
+    };
 }
 #endif
