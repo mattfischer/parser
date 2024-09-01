@@ -1,14 +1,16 @@
 #ifndef PARSER_IMPL_GLR_HPP
 #define PARSER_IMPL_GLR_HPP
 
-#include "Parser/Impl/LRMulti.hpp"
+#include "Parser/Base.hpp"
+#include "Parser/Tokenizer.hpp"
+#include "Parser/Impl/LRTable.hpp"
 #include "Util/MultiStack.hpp"
 
 #include <span>
 
 namespace Parser::Impl
 {
-    class GLRBase : public LRMulti
+    class GLRBase : public Base
     {
     public:
         GLRBase(const Grammar &grammar);
@@ -28,6 +30,8 @@ namespace Parser::Impl
 
         virtual void shift(const Tokenizer::Token &token, unsigned int state, ParseStacksBase &stacksBase, size_t stack) const = 0;
         virtual void reduce(unsigned int rule, unsigned int rhs, ParseStacksBase &stacksBase, size_t stack, bool preserveStack) const = 0;
+    
+        LRTable::Multi mParseTable;
     };
 
     template<typename ParseData> class GLR : public GLRBase
@@ -151,9 +155,7 @@ namespace Parser::Impl
             for(size_t i = 0; i<begins.size(); i++) {
                 auto &begin = begins[i];
                 
-                unsigned int state = begin->state;
-                const ParseTableEntry &newEntry = mParseTable.at(state, ruleIndex(rule));
-                state = newEntry.index;
+                unsigned int state = mParseTable.nextStateForRule(begin->state, rule);
 
                 ++begin;
                 ParseStackView view(begin, end);

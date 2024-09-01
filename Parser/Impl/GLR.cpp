@@ -3,20 +3,9 @@
 namespace Parser::Impl
 {
     GLRBase::GLRBase(const Grammar &grammar)
-    : LRMulti(grammar)
+    : Base(grammar)
+    , mParseTable(grammar)
     {
-        std::vector<State> states = computeStates();
-
-        std::vector<std::set<unsigned int>> firstSets;
-        std::vector<std::set<unsigned int>> followSets;
-        std::set<unsigned int> nullableNonterminals;
-        mGrammar.computeSets(firstSets, followSets, nullableNonterminals);
-
-        auto getReduceSet = [&](unsigned int state, unsigned int rule) {
-            return followSets[rule];
-        };
-
-        computeParseTable(states, getReduceSet);
     }
 
     void GLRBase::runParse(Tokenizer::Stream &stream, ParseStacksBase &stacks) const
@@ -35,64 +24,25 @@ namespace Parser::Impl
                 }
 
                 unsigned int state = stacks.backState(i);
-                if(mAcceptStates.contains(state)) {
+                if(mParseTable.isAccept(state)) {
                     continue;
                 }
 
-                const ParseTableEntry &entry = mParseTable.at(state, stream.nextToken().value);
-                switch(entry.type) {
-                    case ParseTableEntry::Type::Shift:
-                    {
-                        shift(stream.nextToken(), entry.index, stacks, i);
-                        break;
-                    }
-
-                    case ParseTableEntry::Type::Reduce:
-                    {
-                        const Reduction &reduction = mReductions[entry.index];
-                        reduce(reduction.rule, reduction.rhs, stacks, i, false);
-                        repeat = true;
-                        break;
-                    }
-
-                    case ParseTableEntry::Type::Multi:
-                    {
-                        const auto &entries = mMultiEntries[entry.index];
-                        for(size_t j=0; j<entries.size(); j++) {
-                            const auto &entry = entries[j];
-                            switch(entry.type) {
-                                case ParseTableEntry::Type::Shift:
-                                {
-                                    shift(stream.nextToken(), entry.index, stacks, i);
-                                    break;
-                                }
-
-                                case ParseTableEntry::Type::Reduce:
-                                {
-                                    const Reduction &reduction = mReductions[entry.index];
-                                    bool preserveStack = true;
-                                    if(j == entries.size() - 1) {
-                                        preserveStack = false;
-                                        repeat = true;
-                                    }
-                                    reduce(reduction.rule, reduction.rhs, stacks, i, preserveStack);
-                                    break;
-                                }
-
-                                default:
-                                    break;
-                            }
+                mParseTable.process(state, stream.nextToken().value, 
+                    [&](unsigned int newState) {
+                        shift(stream.nextToken(), newState, stacks, i);
+                    },
+                    [&](unsigned int rule, unsigned int rhs, bool final) {
+                        reduce(rule, rhs, stacks, i, !final);
+                        if(final) {
+                            repeat = true; 
                         }
-                        break;
-                    }
-
-                    case ParseTableEntry::Type::Error:
-                    {
+                    },
+                    [&]() {
                         stacks.eraseStack(i);
                         repeat = true;
-                        break;
                     }
-                }
+                );
             }
 
             if(stream.nextToken().value == stream.tokenizer().endValue()) {
