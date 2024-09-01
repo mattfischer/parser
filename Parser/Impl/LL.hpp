@@ -12,9 +12,9 @@
 
 namespace Parser::Impl
 {
-    class LL : public Base {
+    class LLBase : public Base {
     public:
-        LL(const Grammar &grammar);
+        LLBase(const Grammar &grammar);
 
         bool valid() const;
 
@@ -26,7 +26,24 @@ namespace Parser::Impl
         };
         const Conflict &conflict() const;
 
-        template<typename ParseData> class ParseSession;
+        template<typename M> void addMatchListener(const std::string &rule, M matchListener)
+        {
+            unsigned int ruleIndex = grammar().ruleIndex(rule);
+            if(ruleIndex != UINT_MAX) {
+                mMatchListeners[ruleIndex] = matchListener;
+            }
+        }
+
+    protected:
+        struct ParseStackBase {
+            virtual size_t size() = 0;
+        };
+
+        bool runParse(Tokenizer::Stream &stream, ParseStackBase &parseStack) const;
+
+        virtual void shift(const Tokenizer::Token &token, ParseStackBase &stackBase) const = 0;
+        virtual bool canReduce(unsigned int rule) const = 0;
+        virtual void reduce(unsigned int rule, unsigned int stackStart, ParseStackBase &stackBase) const = 0;
 
     private:
         unsigned int rhs(unsigned int rule, unsigned int symbol) const;
@@ -38,9 +55,12 @@ namespace Parser::Impl
         Util::Table<unsigned int> mParseTable;  
         bool mValid;
         Conflict mConflict;
+
+        typedef std::function<void(unsigned int)> MatchListener;
+        std::map<unsigned int, MatchListener> mMatchListeners;
     };
 
-    template<typename ParseData> class LL::ParseSession
+    template<typename ParseData> class LL : public LLBase
     {
     public:
         struct ParseItem {
@@ -53,35 +73,28 @@ namespace Parser::Impl
             std::unique_ptr<ParseData> data;
         };
 
-    private:
-        const LL &mParser;
-
-        typedef std::function<void(unsigned int)> MatchListener;
-        std::map<unsigned int, MatchListener> mMatchListeners;
-        
+    private:        
         typedef std::function<std::unique_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
         std::map<unsigned int, TerminalDecorator> mTerminalDecorators;
         
         typedef std::function<std::unique_ptr<ParseData>(std::span<ParseItem>)> Reducer;
         std::map<unsigned int, Reducer> mReducers;
 
+        struct ParseStack : public ParseStackBase {
+            std::vector<ParseItem> items;
+
+            virtual size_t size() { return items.size(); }
+        };
+
     public:
-        ParseSession(const LL &parser)
-        : mParser(parser)
+        LL(const Grammar &grammar)
+        : LLBase(grammar)
         {
         }
     
-        template<typename M> void addMatchListener(const std::string &rule, M matchListener)
-        {
-            unsigned int ruleIndex = mParser.grammar().ruleIndex(rule);
-            if(ruleIndex != UINT_MAX) {
-                mMatchListeners[ruleIndex] = matchListener;
-            }
-        }
-
         template<typename T> void addTerminalDecorator(const std::string &terminal, T terminalDecorator)
         {
-            unsigned int terminalIndex = mParser.grammar().terminalIndex(terminal);
+            unsigned int terminalIndex = grammar().terminalIndex(terminal);
             if(terminalIndex != UINT_MAX) {
                 mTerminalDecorators[terminalIndex] = terminalDecorator;
             }
@@ -89,7 +102,7 @@ namespace Parser::Impl
 
         template<typename R> void addReducer(const std::string &rule, R reducer)
         {
-            unsigned int ruleIndex = mParser.grammar().ruleIndex(rule);
+            unsigned int ruleIndex = grammar().ruleIndex(rule);
             if(ruleIndex != UINT_MAX) {
                 mReducers[ruleIndex] = reducer;
             }
@@ -97,114 +110,55 @@ namespace Parser::Impl
 
         std::unique_ptr<ParseData> parse(Tokenizer::Stream &stream) const
         {
-            struct PredictItem {
-                enum class Type {
-                    Terminal,
-                    Nonterminal,
-                    Reduce
-                };
-                Type type;
-                union {
-                    struct {
-                        unsigned int index;
-                        unsigned int rule;
-                        unsigned int pos;
-                    } symbol;
-                    struct {
-                        unsigned int rule;
-                        unsigned int parseStackStart;
-                    } reduce;
-                };
-            };
-
-            std::vector<PredictItem> predictStack;
-            std::vector<ParseItem> parseStack;
-
-            predictStack.push_back(PredictItem{PredictItem::Type::Nonterminal, mParser.mGrammar.startRule()});
-
-            while(predictStack.size() > 0) {
-                PredictItem predictItem = predictStack.back();
-                predictStack.pop_back();
-
-                switch(predictItem.type) {
-                    case PredictItem::Type::Terminal:
-                    {
-                        if(stream.nextToken().value == predictItem.symbol.index) {
-                            ParseItem parseItem;
-                            parseItem.type = ParseItem::Type::Terminal;
-                            parseItem.index = predictItem.symbol.index;
-                            auto it = mTerminalDecorators.find(predictItem.symbol.index);
-                            if(it != mTerminalDecorators.end()) {
-                                parseItem.data = it->second(stream.nextToken());
-                            }
-                            parseStack.push_back(std::move(parseItem));
-                            auto it2 = mMatchListeners.find(predictItem.symbol.rule);
-                            if(it2 != mMatchListeners.end()) {
-                                it2->second(predictItem.symbol.pos);
-                            }
-                            stream.consumeToken();
-                        } else {
-                            return std::unique_ptr<ParseData>();
-                        }
-                        break;
-                    }
-
-                    case PredictItem::Type::Nonterminal:
-                    {
-                        unsigned int nextRule = predictItem.symbol.index;
-                        unsigned int nextRhs = mParser.rhs(nextRule, stream.nextToken().value);
-
-                        if(nextRhs == UINT_MAX) {
-                            return std::unique_ptr<ParseData>();
-                        }   
-
-                        if(mReducers.contains(nextRule)) {
-                            predictStack.push_back(PredictItem{PredictItem::Type::Reduce, nextRule, (unsigned int)parseStack.size()});
-                        }
-
-                        const std::vector<Grammar::Symbol> &symbols = mParser.grammar().rules()[nextRule].rhs[nextRhs];
-                        for(unsigned int i=0; i<symbols.size(); i++) {
-                            unsigned int ri = (unsigned int)symbols.size() - i - 1;
-                            const Grammar::Symbol &s = symbols[ri];
-                            switch(s.type) {
-                                case Grammar::Symbol::Type::Terminal:
-                                    predictStack.push_back(PredictItem{PredictItem::Type::Terminal, s.index, nextRule, ri});
-                                    break;
-                                
-                                case Grammar::Symbol::Type::Nonterminal:
-                                    predictStack.push_back(PredictItem{PredictItem::Type::Nonterminal, s.index, nextRule, ri});
-                                    break;
-                                
-                                case Grammar::Symbol::Type::Epsilon:
-                                    break;
-                            }
-                        }
-                        break;
-                    }
-
-                    case PredictItem::Type::Reduce:
-                    {
-                        unsigned int currentRule = predictItem.reduce.rule;
-                        unsigned int parseStackStart = predictItem.reduce.parseStackStart;
-
-                        auto it = mReducers.find(currentRule);
-                        if(it != mReducers.end()) {
-                            std::span<ParseItem> span(&parseStack[parseStackStart], &parseStack[0] + parseStack.size());
-                            std::unique_ptr<ParseData> data = it->second(span);
-                            parseStack.erase(parseStack.begin() + parseStackStart, parseStack.end());
-
-                            ParseItem parseItem;
-                            parseItem.type = ParseItem::Type::Nonterminal;
-                            parseItem.index = currentRule;
-                            parseItem.data = std::move(data);
-                            parseStack.push_back(std::move(parseItem));
-                        }
-                        break;
-                    }
-                }
+            ParseStack stack;
+            if(runParse(stream, stack)) {
+                return std::move(stack.items[0].data);
+            } else {
+                return std::unique_ptr<ParseData>();
             }
-        
-            return std::move(parseStack[0].data);
+        }
+
+        virtual void shift(const Tokenizer::Token &token, ParseStackBase &stackBase) const
+        {
+            ParseStack &stack = static_cast<ParseStack&>(stackBase);
+
+            std::unique_ptr<ParseData> data;
+            auto it = mTerminalDecorators.find(token.value);
+            if(it != mTerminalDecorators.end()) {
+                data = it->second(token);
+            }
+
+            ParseItem parseItem {
+                .type = ParseItem::Type::Terminal,
+                .index = token.value,
+                .data = std::move(data)
+            };
+            
+            stack.items.push_back(std::move(parseItem));
+        }
+
+        virtual bool canReduce(unsigned int rule) const
+        {
+            return mReducers.contains(rule);
+        }
+
+        virtual void reduce(unsigned int rule, unsigned int stackStart, ParseStackBase &stackBase) const
+        {
+            ParseStack &stack = static_cast<ParseStack&>(stackBase);
+ 
+            auto it = mReducers.find(rule);
+            if(it != mReducers.end()) {
+                std::span<ParseItem> span(&stack.items[stackStart], &stack.items[0] + stack.items.size());
+                std::unique_ptr<ParseData> data = it->second(span);
+                stack.items.erase(stack.items.begin() + stackStart, stack.items.end());
+
+                ParseItem parseItem {
+                    .type = ParseItem::Type::Nonterminal,
+                    .index = rule,
+                    .data = std::move(data)
+                };
+                stack.items.push_back(std::move(parseItem));
+            }
         }
     };
 }

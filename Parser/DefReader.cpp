@@ -244,34 +244,33 @@ namespace Parser
     std::unique_ptr<DefReader::DefNode> DefReader::parseFile(const std::string &filename)
     {
         createDefGrammar();
-        Parser::Impl::LL parser(*mDefGrammar);
+        Parser::Impl::LL<DefNode> parser(*mDefGrammar);
         
         std::ifstream file(filename);
         Tokenizer::Stream stream(*mDefTokenizer, file);
 
-        Parser::Impl::LL::ParseSession<DefNode> session(parser);
-        session.addMatchListener("pattern", [&](unsigned int symbol) {
+        parser.addMatchListener("pattern", [&](unsigned int symbol) {
             if(symbol == 1) stream.setConfiguration(1);
             else if(symbol == 2) stream.setConfiguration(0);
         });
 
-        session.addTerminalDecorator("terminal", [](const Tokenizer::Token &token) {
+        parser.addTerminalDecorator("terminal", [](const Tokenizer::Token &token) {
             return std::make_unique<DefNode>(DefNode::Type::Terminal, token.text, token.line);
         });
-        session.addTerminalDecorator("nonterminal", [](const Tokenizer::Token &token) {
+        parser.addTerminalDecorator("nonterminal", [](const Tokenizer::Token &token) {
             return std::make_unique<DefNode>(DefNode::Type::Nonterminal, token.text.substr(1, token.text.size() - 2), token.line);
         });
-        session.addTerminalDecorator("literal", [](const Tokenizer::Token &token) {
+        parser.addTerminalDecorator("literal", [](const Tokenizer::Token &token) {
             return std::make_unique<DefNode>(DefNode::Type::Literal, token.text.substr(1, token.text.size() - 2), token.line);
         });
-        session.addTerminalDecorator("regex", [](const Tokenizer::Token &token) {
+        parser.addTerminalDecorator("regex", [](const Tokenizer::Token &token) {
             return std::make_unique<DefNode>(DefNode::Type::Regex, token.text, token.line);
         });
 
-        session.addReducer("root", [](auto rhs) {
+        parser.addReducer("root", [](auto rhs) {
             return std::move(rhs.begin()->data);
         });
-        session.addReducer("definitions", [](auto rhs) {
+        parser.addReducer("definitions", [](auto rhs) {
             std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::List);
             for(auto it = rhs.begin(); it != rhs.end(); ++it) {
                 if(it->data) {
@@ -280,14 +279,14 @@ namespace Parser
             }
             return node;
         });
-        session.addReducer("pattern", [](auto rhs) {
+        parser.addReducer("pattern", [](auto rhs) {
             auto it = rhs.begin();
             std::unique_ptr<DefNode> name = std::move(it->data);
             it += 2;
             std::unique_ptr<DefNode> regex = std::move(it->data);
             return std::make_unique<DefNode>(DefNode::Type::Pattern, std::move(name), std::move(regex));
         });
-        session.addReducer("rule", [](auto rhs) {
+        parser.addReducer("rule", [](auto rhs) {
             auto it = rhs.begin();
             std::unique_ptr<DefNode> ruleLhs = std::move(it->data);
             it += 2;
@@ -302,7 +301,7 @@ namespace Parser
             }
             return std::make_unique<DefNode>(DefNode::Type::Rule, std::move(ruleLhs), std::move(ruleRhs));
         });
-        session.addReducer("rhs", [](auto rhs) {
+        parser.addReducer("rhs", [](auto rhs) {
             std::unique_ptr<DefNode> node = std::make_unique<DefNode>(DefNode::Type::RhsSequence);
             for(auto it = rhs.begin(); it != rhs.end(); ++it) {
                 node->children.push_back(std::move(it->data));
@@ -315,7 +314,7 @@ namespace Parser
         unsigned int star = mDefGrammar->terminalIndex("star");
         unsigned int plus = mDefGrammar->terminalIndex("plus");
         unsigned int question = mDefGrammar->terminalIndex("question");
-        session.addReducer("rhsSuffix", [&](auto rhs) {
+        parser.addReducer("rhsSuffix", [&](auto rhs) {
             auto it = rhs.begin();
             std::unique_ptr<DefNode> node = std::move(it->data);
             ++it;
@@ -332,7 +331,7 @@ namespace Parser
         });
         unsigned int lparen = mDefGrammar->terminalIndex("lparen");
         unsigned int rparen = mDefGrammar->terminalIndex("rparen");
-        session.addReducer("rhsSymbol", [&](auto rhs) {
+        parser.addReducer("rhsSymbol", [&](auto rhs) {
             std::unique_ptr<DefNode> node;
             auto it = rhs.begin();
             if(it->index == lparen) {
@@ -355,7 +354,7 @@ namespace Parser
             return node;
         });
 
-        std::unique_ptr<DefNode> node = session.parse(stream);
+        std::unique_ptr<DefNode> node = parser.parse(stream);
         if(!node) {
             mParseError.line = stream.nextToken().line;
             mParseError.message =  "Unexpected symbol " + stream.nextToken().text;

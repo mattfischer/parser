@@ -13,10 +13,10 @@
 
 namespace Parser::Impl
 {
-    class Earley : public Base
+    class EarleyBase : public Base
     {
     public:
-        Earley(const Grammar &grammar);
+        EarleyBase(const Grammar &grammar);
 
         struct Item {
             unsigned int rule;
@@ -29,13 +29,12 @@ namespace Parser::Impl
 
         template<typename ParseData> class ParseSession;
         
-    private:
-        std::vector<Earley::Item> predict(unsigned int ruleIndex, unsigned int pos) const;
-        std::vector<Earley::Item> scan(std::set<Item> &items, const Grammar::Symbol &symbol) const;    
+    protected:
+        std::vector<Item> predict(unsigned int ruleIndex, unsigned int pos) const;
+        std::vector<Item> scan(std::set<Item> &items, const Grammar::Symbol &symbol) const;    
         void populateSets(std::vector<Item> &items, std::vector<std::set<Item>> &active, std::vector<std::set<Item>> &completed, unsigned int pos) const;
-        std::vector<unsigned int> findStarts(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, const Grammar::Symbol &symbol, unsigned int end, unsigned int minStart) const;
-        std::vector<std::vector<unsigned int>> findPartitions(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int rhs, unsigned int start, unsigned int end) const;
-
+        std::vector<unsigned int> findStarts(const std::vector<std::set<Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, const Grammar::Symbol &symbol, unsigned int end, unsigned int minStart) const;
+        std::vector<std::vector<unsigned int>> findPartitions(const std::vector<std::set<Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int rhs, unsigned int start, unsigned int end) const;
 
         void printSets(const std::vector<std::set<Item>> &active, const std::vector<std::set<Item>> &completed) const;
         void printSets(const std::vector<std::set<Item>> &completed) const;
@@ -45,7 +44,7 @@ namespace Parser::Impl
         std::vector<std::set<Item>> computeSets(Tokenizer::Stream &stream, TokenListener tokenListener) const;
     };
 
-    template<typename ParseData> class Earley::ParseSession
+    template<typename ParseData> class Earley : public EarleyBase
     {
     public:
         struct ParseItem {
@@ -59,8 +58,6 @@ namespace Parser::Impl
         };
 
     private:
-        const Earley &mParser;
-
         typedef std::function<std::shared_ptr<ParseData>(const Tokenizer::Token&)> TerminalDecorator;
         std::map<unsigned int, TerminalDecorator> mTerminalDecorators;
 
@@ -68,14 +65,14 @@ namespace Parser::Impl
         std::map<unsigned int, Reducer> mReducers;        
 
     public:            
-        ParseSession(const Earley &parser)
-            : mParser(parser)
+        Earley(const Grammar &grammar)
+            : EarleyBase(grammar)
         {
         }
 
         template <typename T> void addTerminalDecorator(const std::string &terminal, T terminalDecorator)
         {
-            unsigned int terminalIndex = mParser.mGrammar.terminalIndex(terminal);
+            unsigned int terminalIndex = grammar().terminalIndex(terminal);
             if(terminalIndex != UINT_MAX) {
                 mTerminalDecorators[terminalIndex] = terminalDecorator;
             }
@@ -83,7 +80,7 @@ namespace Parser::Impl
 
         template <typename R> void addReducer(const std::string &rule, R reducer)
         {
-            unsigned int ruleIndex = mParser.mGrammar.ruleIndex(rule);
+            unsigned int ruleIndex = grammar().ruleIndex(rule);
             if(ruleIndex != UINT_MAX) {
                 mReducers[ruleIndex] = reducer;
             }
@@ -104,10 +101,10 @@ namespace Parser::Impl
                 terminalIndices.push_back(token.value);
             };
 
-            std::vector<std::set<Earley::Item>> completedSets = mParser.computeSets(stream, tokenListener);
+            std::vector<std::set<Item>> completedSets = computeSets(stream, tokenListener);
             
             Util::MultiStack<ParseItem> parseStacks;
-            parseRule(completedSets, terminalIndices, mParser.mGrammar.startRule(), 0, (unsigned int)(completedSets.size() - 1), parseStacks, terminalData);
+            parseRule(completedSets, terminalIndices, grammar().startRule(), 0, (unsigned int)(completedSets.size() - 1), parseStacks, terminalData);
 
             std::vector<std::shared_ptr<ParseData>> results;
             for(size_t i=0; i<parseStacks.size(); i++) {
@@ -118,9 +115,9 @@ namespace Parser::Impl
         }
 
     private:
-        void parseRule(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, Util::MultiStack<ParseItem> &parseStacks, std::vector<std::shared_ptr<ParseData>> &terminalData) const
+        void parseRule(const std::vector<std::set<Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int start, unsigned int end, Util::MultiStack<ParseItem> &parseStacks, std::vector<std::shared_ptr<ParseData>> &terminalData) const
         {
-            typename Util::MultiStack<ParseItem>::Locator stackBegin = parseStacks.stack(parseStacks.size() - 1).end();
+            auto stackBegin = parseStacks.stack(parseStacks.size() - 1).end();
             bool first = true;
 
             for(const auto &item : completedSets[end]) {
@@ -128,8 +125,8 @@ namespace Parser::Impl
                     continue;
                 }
 
-                std::vector<std::vector<unsigned int>> partitions = mParser.findPartitions(completedSets, terminalIndices, item.rule, item.rhs, start, end);
-                const Grammar::RHS &rhsSymbols = mParser.mGrammar.rules()[item.rule].rhs[item.rhs];
+                std::vector<std::vector<unsigned int>> partitions = findPartitions(completedSets, terminalIndices, item.rule, item.rhs, start, end);
+                const Grammar::RHS &rhsSymbols = grammar().rules()[item.rule].rhs[item.rhs];
         
                 for(const auto &partition : partitions) {
                     size_t stack;
@@ -148,10 +145,11 @@ namespace Parser::Impl
                         switch(rhsSymbols[j].type) {
                             case Grammar::Symbol::Type::Terminal:
                             {
-                                ParseItem newItem;
-                                newItem.type = ParseItem::Type::Terminal;
-                                newItem.index = rhsSymbols[j].index;
-                                newItem.data = terminalData[pstart];
+                                ParseItem newItem {
+                                    .type = ParseItem::Type::Terminal,
+                                    .index = rhsSymbols[j].index,
+                                    .data = terminalData[pstart]
+                                };
                                 parseStacks.stack(stack).push_back(std::move(newItem));
                                 break;
                             }
@@ -159,8 +157,8 @@ namespace Parser::Impl
                             {
                                 parseRule(completedSets, terminalIndices, rhsSymbols[j].index, pstart, pend, parseStacks, terminalData);
                                 while(parseStacks.size() > stack + 1) {
-                                    typename Util::MultiStack<ParseItem>::Locator end = parseStacks.stack(stack).end();
-                                    parseStacks.joinStack(parseStacks.size() - 1, end);
+                                    auto stackEnd = parseStacks.stack(stack).end();
+                                    parseStacks.joinStack(parseStacks.size() - 1, stackEnd);
                                 }
                                 break;
                             }
@@ -172,15 +170,17 @@ namespace Parser::Impl
                     auto it = mReducers.find(rule);
                     if(it != mReducers.end()) {
                         size_t stack = parseStacks.size() - 1;
-                        typename Util::MultiStack<ParseItem>::Locator end = parseStacks.stack(stack).end();
-                        std::vector<typename Util::MultiStack<ParseItem>::PathIterator> begins = parseStacks.connect(stackBegin, end);
+                        auto stackEnd = parseStacks.stack(stack).end();
+                        auto begins = parseStacks.connect(stackBegin, stackEnd);
                         for(unsigned int i=0; i<begins.size(); i++) {
-                            typename Util::MultiStack<ParseItem>::PathView view(begins[i], end);
+                            typename Util::MultiStack<ParseItem>::PathView view(begins[i], stackEnd);
                             std::shared_ptr<ParseData> data = it->second(view);
-                            ParseItem newItem;
-                            newItem.type = ParseItem::Type::Nonterminal;
-                            newItem.index = rule;
-                            newItem.data = data;
+                            ParseItem newItem {
+                                .type = ParseItem::Type::Nonterminal,
+                                .index = rule,
+                                .data = data
+                            };
+
                             if(i < begins.size() - 1) {
                                 size_t newStack = parseStacks.addStack(stackBegin);
                                 parseStacks.stack(newStack).push_back(std::move(newItem));

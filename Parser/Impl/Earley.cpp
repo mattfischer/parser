@@ -4,12 +4,12 @@
 
 namespace Parser::Impl
 {
-    Earley::Earley(const Grammar &grammar)
+    EarleyBase::EarleyBase(const Grammar &grammar)
     : Base(grammar)
     {
     }
 
-    std::vector<std::set<Earley::Item>> Earley::computeSets(Tokenizer::Stream &stream, TokenListener tokenListener) const
+    std::vector<std::set<EarleyBase::Item>> EarleyBase::computeSets(Tokenizer::Stream &stream, TokenListener tokenListener) const
     {
         std::vector<std::set<Item>> completed;
         std::vector<std::set<Item>> active;
@@ -44,7 +44,7 @@ namespace Parser::Impl
         return completed;
     }
 
-    std::vector<Earley::Item> Earley::predict(unsigned int ruleIndex, unsigned int pos) const
+    std::vector<EarleyBase::Item> EarleyBase::predict(unsigned int ruleIndex, unsigned int pos) const
     {
         std::vector<Item> items;
 
@@ -62,7 +62,7 @@ namespace Parser::Impl
         return items;
     }
 
-    std::vector<Earley::Item> Earley::scan(std::set<Item> &items, const Grammar::Symbol &symbol) const
+    std::vector<EarleyBase::Item> EarleyBase::scan(std::set<Item> &items, const Grammar::Symbol &symbol) const
     {
         std::vector<Item> newItems;
         for(const auto &item : items) {
@@ -74,7 +74,7 @@ namespace Parser::Impl
         return newItems;
     }
 
-    void Earley::populateSets(std::vector<Item> &items, std::vector<std::set<Item>> &active, std::vector<std::set<Item>> &completed, unsigned int pos) const
+    void EarleyBase::populateSets(std::vector<Item> &items, std::vector<std::set<Item>> &active, std::vector<std::set<Item>> &completed, unsigned int pos) const
     {
         while(items.size() > 0) {
             Item item = items.back();
@@ -105,7 +105,7 @@ namespace Parser::Impl
         }
     }
 
-    std::vector<unsigned int> Earley::findStarts(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, const Grammar::Symbol &symbol, unsigned int end, unsigned int minStart) const
+    std::vector<unsigned int> EarleyBase::findStarts(const std::vector<std::set<Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, const Grammar::Symbol &symbol, unsigned int end, unsigned int minStart) const
     {
         std::vector<unsigned int> starts;
 
@@ -130,7 +130,7 @@ namespace Parser::Impl
         return starts;               
     }
 
-    std::vector<std::vector<unsigned int>> Earley::findPartitions(const std::vector<std::set<Earley::Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int rhs, unsigned int start, unsigned int end) const
+    std::vector<std::vector<unsigned int>> EarleyBase::findPartitions(const std::vector<std::set<Item>> &completedSets, const std::vector<unsigned int> &terminalIndices, unsigned int rule, unsigned int rhs, unsigned int start, unsigned int end) const
     {
         const Grammar::RHS &rhsSymbols = mGrammar.rules()[rule].rhs[rhs];
         std::vector<std::vector<unsigned int>> partitions;
@@ -172,7 +172,7 @@ namespace Parser::Impl
         return partitions;
     }
 
-    bool Earley::Item::operator<(const Item &other) const
+    bool EarleyBase::Item::operator<(const Item &other) const
     {
         if(rule < other.rule) return true;
         if(rule > other.rule) return false;
@@ -184,7 +184,7 @@ namespace Parser::Impl
         return false;
     }
 
-    void Earley::printItem(const Item &item) const
+    void EarleyBase::printItem(const Item &item) const
     {
         std::cout << "<" << mGrammar.rules()[item.rule].lhs << ">: ";
         const Grammar::RHS &rhs = mGrammar.rules()[item.rule].rhs[item.rhs];
@@ -211,7 +211,7 @@ namespace Parser::Impl
         std::cout << "@" << item.start;
     }
 
-    void Earley::printSets(const std::vector<std::set<Item>> &active, const std::vector<std::set<Item>> &completed) const
+    void EarleyBase::printSets(const std::vector<std::set<Item>> &active, const std::vector<std::set<Item>> &completed) const
     {
         for(unsigned int i=0; i<active.size(); i++) {
             std::cout << "Set " << i << ":" << std::endl;
@@ -231,7 +231,7 @@ namespace Parser::Impl
         }
     }
 
-    void Earley::printSets(const std::vector<std::set<Item>> &completed) const
+    void EarleyBase::printSets(const std::vector<std::set<Item>> &completed) const
     {
         for(unsigned int i=0; i<completed.size(); i++) {
             std::cout << "Set " << i << ":" << std::endl;
