@@ -56,19 +56,17 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    Parser::Impl::GLR parser(reader.grammar());
+    Parser::Impl::GLR<AstNode> parser(reader.grammar());
     
-    Parser::Impl::GLR::ParseSession<AstNode> session(parser);
-
-    session.addTerminalDecorator("NUMBER", [](const Parser::Tokenizer::Token &token) {
+    parser.addTerminalDecorator("NUMBER", [](const Parser::Tokenizer::Token &token) {
         return std::make_unique<AstNodeNumber>(std::atoi(token.text.c_str()));
     });
 
-    session.addReducer("root", [](auto rhs) {
+    parser.addReducer("root", [](auto rhs) {
         return std::move(rhs.begin()->data);
     });
     unsigned int minus = reader.grammar().terminalIndex("-");
-    session.addReducer("E", [&](auto rhs) {
+    parser.addReducer("E", [&](auto rhs) {
         auto it = rhs.begin();
         std::shared_ptr<AstNode> node = it->data;
         ++it;
@@ -84,7 +82,7 @@ int main(int argc, char *argv[])
         return node;
     });
     unsigned int divide = reader.grammar().terminalIndex("/");
-    session.addReducer("T", [&](auto rhs) {
+    parser.addReducer("T", [&](auto rhs) {
         auto it = rhs.begin();
         std::shared_ptr<AstNode> node = it->data;
         ++it;
@@ -100,7 +98,7 @@ int main(int argc, char *argv[])
         return node;
     });
     unsigned int lparen = reader.grammar().terminalIndex("(");
-    session.addReducer("F", [&](auto rhs) {
+    parser.addReducer("F", [&](auto rhs) {
         auto it = rhs.begin();
         if(it->index == lparen) {
             ++it;
@@ -119,7 +117,7 @@ int main(int argc, char *argv[])
         std::stringstream ss(input);
         Parser::Tokenizer::Stream stream(reader.tokenizer(), ss);
 
-        std::vector<std::shared_ptr<AstNode>> ast = session.parse(stream);
+        std::vector<std::shared_ptr<AstNode>> ast = parser.parse(stream);
         if(ast.size() > 0) {
             for(const auto &tree : ast) {
                 int result = evaluate(*tree);
