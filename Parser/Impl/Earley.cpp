@@ -1,6 +1,7 @@
 #include "Parser/Impl/Earley.hpp"
 
 #include <iostream>
+#include <format>
 
 namespace Parser::Impl
 {
@@ -186,7 +187,7 @@ namespace Parser::Impl
 
     void EarleyBase::printItem(const Item &item) const
     {
-        std::cout << "<" << mGrammar.rules()[item.rule].lhs << ">: ";
+        std::cout << std::format("<{}>: ", mGrammar.rules()[item.rule].lhs);
         const Grammar::RHS &rhs = mGrammar.rules()[item.rule].rhs[item.rhs];
         for(unsigned int i=0; i<=rhs.size(); i++) {
             if(i == item.pos) {
@@ -197,7 +198,7 @@ namespace Parser::Impl
             }
             switch(rhs[i].type) {
                 case Grammar::Symbol::Type::Nonterminal:
-                    std::cout << "<" << mGrammar.rules()[rhs[i].index].lhs << ">";
+                    std::cout << std::format("<{}>", mGrammar.rules()[rhs[i].index].lhs);
                     break;
                 case Grammar::Symbol::Type::Terminal:
                     std::cout << mGrammar.terminals()[rhs[i].index];
@@ -208,13 +209,13 @@ namespace Parser::Impl
             }
             std::cout << " ";
         }
-        std::cout << "@" << item.start;
+        std::cout << std::format("@{}", item.start);
     }
 
     void EarleyBase::printSets(const std::vector<std::set<Item>> &active, const std::vector<std::set<Item>> &completed) const
     {
         for(unsigned int i=0; i<active.size(); i++) {
-            std::cout << "Set " << i << ":" << std::endl;
+            std::cout << std::format("Set {}:", i) << std::endl;
             std::cout << "  Active:" << std::endl;
             for(const auto &item : active[i]) {
                 std::cout << "    ";
@@ -234,7 +235,7 @@ namespace Parser::Impl
     void EarleyBase::printSets(const std::vector<std::set<Item>> &completed) const
     {
         for(unsigned int i=0; i<completed.size(); i++) {
-            std::cout << "Set " << i << ":" << std::endl;
+            std::cout << std::format("Set {}:", i) << std::endl;
             for(const auto &item : completed[i]) {
                 std::cout << "    ";
                 printItem(item);

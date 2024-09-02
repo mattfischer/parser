@@ -1,5 +1,6 @@
 #include <iostream>
 #include <sstream>
+#include <format>
 
 #include "Parser/DefReader.hpp"
 #include "Parser/Impl/LALR.hpp"
@@ -52,7 +53,7 @@ int main(int argc, char *argv[])
 {
     Parser::DefReader reader("grammar.def");
     if(!reader.valid()) {
-        std::cout << "Error in def file, line " << reader.parseError().line << ": " << reader.parseError().message << std::endl;
+        std::cout << std::format("Error in def file, line {}: {}", reader.parseError().line, reader.parseError().message) << std::endl;
         return 1;
     }
 
@@ -122,7 +123,7 @@ int main(int argc, char *argv[])
             int result = evaluate(*ast);
             std::cout << result << std::endl;
         } else {
-            std::cout << "Error: Unexpected symbol " << stream.nextToken().text << std::endl;
+            std::cout << std::format("Error: Unexpected symbol {}", stream.nextToken().text) << std::endl;
         }
     }
 

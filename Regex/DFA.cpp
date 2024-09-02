@@ -3,6 +3,7 @@
 #include <iostream>
 #include <algorithm>
 #include <climits>
+#include <format>
 
 namespace Regex {
     DFA::DFA(const NFA &nfa, const Encoding &encoding)
@@ -98,21 +99,21 @@ namespace Regex {
 
     void DFA::print() const
     {
-        std::cout << "Start state: " << mStartState << std::endl;
+        std::cout << std::format("Start state: {}", mStartState) << std::endl;
         std::cout << "Accept states: ";
         for(unsigned int i = 0; i < mAcceptStates.size(); i++) {
             if(mAcceptStates[i]) {
-                std::cout << i << " ";
+                std::cout << std::format("{} ", i);
             }
         }
         std::cout << std::endl;
 
         for(unsigned int i=0; i<mNumStates; i++) {
-            std::cout << "State " << i << ":" << std::endl;
+            std::cout << std::format("State {}:", i) << std::endl;
             for(unsigned int j = 0; j < mNumCodePoints; j++) {
                 unsigned int nextState = transition(i, j);
                 if(nextState != mRejectState) {
-                    std::cout << "  " << i << " -> " << j << std::endl;
+                    std::cout << std::format("  {} -> {}", j, nextState) << std::endl;
                 }
             }
             std::cout << std::endl;

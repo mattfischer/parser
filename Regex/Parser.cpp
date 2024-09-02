@@ -1,8 +1,8 @@
 #include "Parser.hpp"
 
-#include <sstream>
 #include <iostream>
 #include <algorithm>
+#include <format>
 
 namespace Regex {
 
@@ -13,9 +13,7 @@ namespace Regex {
         }
 
         if(regex[pos] == ')' || regex[pos] == '|' || regex[pos] == '*' || regex[pos] == '+' || regex[pos] == '?') {
-            std::stringstream ss;
-            ss << "Unexpected character '" << regex[pos] << "'";
-            throw ParseException(ss.str(), pos);
+            throw ParseException(std::format("Unexpected character '{}'", regex[pos]), pos);
         }
 
         if(regex[pos] == '[') {
@@ -218,9 +216,7 @@ namespace Regex {
         int pos = 0;
         std::unique_ptr<Node> node = parseSequence(regex, pos);
         if(pos != regex.size()) {
-            std::stringstream ss;
-            ss << "Unexpected character '" << regex[pos] << "'";
-            throw ParseException(ss.str(), pos);
+            throw ParseException(std::format("Unexpected character '{}'", regex[pos]), pos);
         }
 
         return node;
@@ -232,7 +228,7 @@ namespace Regex {
 
         switch(type) {
             case Node::Type::Symbol:
-                std::cout << "Symbol: " << static_cast<const SymbolNode*>(this)->symbol << std::endl;
+                std::cout << std::format("Symbol: {}", static_cast<const SymbolNode*>(this)->symbol) << std::endl;
                 break;
 
             case Node::Type::CharacterClass:
@@ -242,9 +238,9 @@ namespace Regex {
                     Symbol start = r.first;
                     Symbol end = r.second;
                     if(start == end) {
-                        std::cout << start << " ";
+                        std::cout << std::format("{} ", start);
                     } else {
-                        std::cout << start << "-" << end << " ";
+                        std::cout << std::format("{}-{} ", start, end);
                     }
                 }
                 std::cout << std::endl;

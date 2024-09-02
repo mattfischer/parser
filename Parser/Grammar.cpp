@@ -1,6 +1,7 @@
 #include "Grammar.hpp"
 
 #include <iostream>
+#include <format>
 
 namespace Parser {
 
@@ -139,7 +140,7 @@ namespace Parser {
     void Grammar::print() const
     {
         for(const auto &rule : mRules) {
-            std::cout << "<" << rule.lhs << ">: ";
+            std::cout << std::format("<{}>: ", rule.lhs);
             for(unsigned int i=0; i<rule.rhs.size(); i++) {
                 for(const auto &symbol : rule.rhs[i]) {
                     switch(symbol.type) {
@@ -147,7 +148,7 @@ namespace Parser {
                             std::cout << mTerminals[symbol.index];
                             break;
                         case Symbol::Type::Nonterminal:
-                            std::cout << "<" << mRules[symbol.index].lhs << ">";
+                            std::cout << std::format("<{}>", mRules[symbol.index].lhs);
                             break;
                         case Symbol::Type::Epsilon:
                             std::cout << "0";

@@ -1,6 +1,6 @@
 #include "Parser/Impl/LRTable/LALR.hpp"
 
-#include <sstream>
+#include <format>
 
 namespace Parser::Impl::LRTable {
     LALR::LALR(const Grammar &grammar)
@@ -21,9 +21,9 @@ namespace Parser::Impl::LRTable {
             for(const auto &item : states[i].items) {
                 if(item.pos == 0 && findNonterminal(i, item.rule) == UINT_MAX) {
                     newNonterminals.push_back(std::make_pair(i, item.rule));
-                    std::stringstream ss;
-                    ss << grammar.rules()[item.rule].lhs << "@" << i;
-                    newRules.push_back(Grammar::Rule{ss.str()});        
+
+                    std::string name = std::format("{}@{}", grammar.rules()[item.rule].lhs, i);
+                    newRules.push_back(Grammar::Rule{name});        
                 }
             }
         }

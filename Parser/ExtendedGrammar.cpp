@@ -1,7 +1,7 @@
 #include "ExtendedGrammar.hpp"
 
-#include <sstream>
 #include <iostream>
+#include <format>
 
 namespace Parser {
 
@@ -31,7 +31,7 @@ namespace Parser {
                 const RhsNodeSymbol &rhsNodeSymbol = static_cast<const RhsNodeSymbol&>(node);
                 switch(rhsNodeSymbol.symbolType) {
                     case RhsNodeSymbol::SymbolType::Nonterminal:
-                        std::cout << "<" << mRules[rhsNodeSymbol.index].lhs << ">";
+                        std::cout << std::format("<{}>", mRules[rhsNodeSymbol.index].lhs);
                         break;
                     case RhsNodeSymbol::SymbolType::Terminal:
                         std::cout << mTerminals[rhsNodeSymbol.index];
@@ -111,7 +111,7 @@ namespace Parser {
     void ExtendedGrammar::print() const
     {
         for(const auto &rule : mRules) {
-            std::cout << "<" << rule.lhs << ">: ";
+            std::cout << std::format("<{}>: ", rule.lhs);
             printRhsNode(*rule.rhs);
             std::cout << std::endl;
         }
@@ -128,7 +128,8 @@ namespace Parser {
             }
         } else {
             Grammar::RHS grammarRhs;
-            populateRhs(grammarRhs, rhsNode, grammarRules, grammarRules[index].lhs);
+            std::string ruleName = grammarRules[index].lhs;
+            populateRhs(grammarRhs, rhsNode, grammarRules, ruleName);
             grammarRules[index].rhs.push_back(std::move(grammarRhs));
         }
     }
@@ -153,9 +154,7 @@ namespace Parser {
     {
         unsigned int n = 1;
         while(true) {
-            std::stringstream ss;
-            ss << ruleName << "." << n;
-            std::string subRuleName = ss.str();
+            std::string subRuleName = std::format("{}.{}", ruleName, n);
             
             bool found = false;
             for(const auto &rule : grammarRules) {

@@ -1,7 +1,7 @@
 #include "Parser/Impl/LRTable/Base.hpp"
 
 #include <iostream>
-#include <sstream>
+#include <format>
 
 namespace Parser::Impl::LRTable {
     Base::Base(const Grammar &grammar)
@@ -145,9 +145,9 @@ namespace Parser::Impl::LRTable {
     void Base::printStates(const std::vector<State> &states) const
     {
         for(unsigned int i=0; i<states.size(); i++) {
-            std::cout << "State " << i << ":" << std::endl;
+            std::cout << std::format("State {}:", i) << std::endl;
             for(const auto &item : states[i].items) {
-                std::cout << "  <" << mGrammar.rules()[item.rule].lhs << ">: ";
+                std::cout << std::format("  <{}>: ", mGrammar.rules()[item.rule].lhs);
                 const Grammar::RHS &rhs = mGrammar.rules()[item.rule].rhs[item.rhs];
                 for(unsigned int j=0; j<=rhs.size(); j++) {
                     if(j == item.pos) {
@@ -163,7 +163,7 @@ namespace Parser::Impl::LRTable {
                             break;
                         
                         case Grammar::Symbol::Type::Nonterminal:
-                            std::cout << "<" << mGrammar.rules()[rhs[j].index].lhs << ">";
+                            std::cout << std::format("<{}>", mGrammar.rules()[rhs[j].index].lhs);
                             break;
                         
                         case Grammar::Symbol::Type::Epsilon:
@@ -187,9 +187,9 @@ namespace Parser::Impl::LRTable {
                 if(transition.first < mGrammar.terminals().size()) {
                     std::cout << mGrammar.terminals()[transition.first];
                 } else {
-                    std::cout << "<" << mGrammar.rules()[transition.first - mGrammar.terminals().size()].lhs << ">";
+                    std::cout << std::format("<{}>", mGrammar.rules()[transition.first - mGrammar.terminals().size()].lhs);
                 }
-                std::cout << " -> " << transition.second << std::endl;
+                std::cout << std::format(" -> {}", transition.second) << std::endl;
             }
             std::cout << std::endl;
         }

@@ -1,6 +1,7 @@
 #include "NFA.hpp"
 
 #include <iostream>
+#include <format>
 
 namespace Regex {
 
@@ -145,21 +146,21 @@ namespace Regex {
 
     void NFA::print() const
     {
-        std::cout << "Start: " << mStartState << std::endl;
+        std::cout << std::format("Start: {}", mStartState) << std::endl;
         std::cout << "Accept: ";
         for(unsigned int s : mAcceptStates) {
-            std::cout << s << " ";
+            std::cout << std::format("{} ", s);
         }
         std::cout << std::endl;
 
         for(unsigned int i=0; i<mStates.size(); i++) {
             const State &state = mStates[i];
-            std::cout << "State " << i << ":" << std::endl;
+            std::cout << std::format("State {}:", i) << std::endl;
             for(unsigned int s : state.epsilonTransitions) {
-                std::cout << "  -> " << s << std::endl;
+                std::cout << std::format("  -> {}", s) << std::endl;
             }
             for(const auto &t : state.transitions) {
-                std::cout << "  " << t.first << " -> " << t.second << std::endl;
+                std::cout << std::format("  {} -> {}", t.first, t.second) << std::endl;
             }
             std::cout << std::endl;
         }
