@@ -3,7 +3,7 @@
 #include <format>
 
 #include "Parser/DefReader.hpp"
-#include "Parser/Impl/LALR.hpp"
+#include "Parser/Impl/GLR.hpp"
 
 struct AstNode
 {
@@ -57,19 +57,19 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    Parser::Impl::LALR<AstNode> parser(reader.grammar());
+    Parser::Impl::GLR<AstNode> parser(reader.grammar());
 
     parser.addTerminalDecorator("NUMBER", [](const Parser::Tokenizer::Token &token) {
         return std::make_unique<AstNodeNumber>(std::atoi(token.text.c_str()));
     });
 
     parser.addReducer("root", [](auto rhs) {
-        return std::move(rhs.begin()->data);
+        return rhs.begin()->data;
     });
     unsigned int minus = reader.grammar().terminalIndex("-");
     parser.addReducer("E", [&](auto rhs) {
         auto it = rhs.begin();
-        std::unique_ptr<AstNode> node = std::move(it->data);
+        std::shared_ptr<AstNode> node = it->data;
         ++it;
         while(it != rhs.end()) {
             AstNode::Type type = AstNode::Type::Add;
@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
                 type = AstNode::Type::Subtract;
             }
             ++it;
-            node = std::make_unique<AstNode>(type, std::move(node), std::move(it->data));
+            node = std::make_shared<AstNode>(type, node, it->data);
             ++it;
         }
         return node;
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
     unsigned int divide = reader.grammar().terminalIndex("/");
     parser.addReducer("T", [&](auto rhs) {
         auto it = rhs.begin();
-        std::unique_ptr<AstNode> node = std::move(it->data);
+        std::shared_ptr<AstNode> node = it->data;
         ++it;
         while(it != rhs.end()) {
             AstNode::Type type = AstNode::Type::Multiply;
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
                 type = AstNode::Type::Divide;
             }
             ++it;
-            node = std::make_unique<AstNode>(type, std::move(node), std::move(it->data));
+            node = std::make_shared<AstNode>(type, node, it->data);
             ++it;
         }
         return node;
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
         if(it->index == lparen) {
             ++it;
         }
-        return std::move(it->data);
+        return it->data;
     });
 
     while(true) {
@@ -118,10 +118,12 @@ int main(int argc, char *argv[])
         std::stringstream ss(input);
         Parser::Tokenizer::Stream stream(reader.tokenizer(), ss);
 
-        std::unique_ptr<AstNode> ast = parser.parse(stream);
-        if(ast) {
-            int result = evaluate(*ast);
-            std::cout << result << std::endl;
+        std::vector<std::shared_ptr<AstNode>> ast = parser.parse(stream);
+        if(ast.size() > 0) {
+            for(const auto &tree : ast) {
+                int result = evaluate(*tree);
+                std::cout << result << std::endl;
+            }
         } else {
             std::cout << std::format("Error: Unexpected symbol {}", stream.nextToken().text) << std::endl;
         }

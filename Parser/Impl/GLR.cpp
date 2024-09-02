@@ -13,16 +13,10 @@ namespace Parser::Impl
         stacks.pushState(0, 0);
 
         while(true) {
-            bool repeat = false;
-            for(size_t i=0; i<stacks.size() || repeat; i++) {
-                if(repeat) {
-                    i--;
-                    repeat = false;
-                    if(i >= stacks.size()) {
-                        break;
-                    }
-                }
-
+            bool repeat;
+            for(size_t i=0; i<stacks.size(); repeat || i++) {
+                repeat = false;
+            
                 unsigned int state = stacks.backState(i);
                 if(mParseTable.isAccept(state)) {
                     continue;
@@ -52,15 +46,9 @@ namespace Parser::Impl
 
             if(stacks.size() > 1) {
                 std::map<unsigned int, size_t> stackMap;
-                repeat = false;
-                for(size_t i=0; i<stacks.size() || repeat; i++) {
-                    if(repeat) {
-                        i--;
-                        repeat = false;
-                        if(i >= stacks.size()) {
-                            break;
-                        }
-                    }
+                bool repeat;
+                for(size_t i=0; i<stacks.size(); repeat || i++) {
+                    repeat = false;
 
                     unsigned int state = stacks.backState(i);
                     auto it = stackMap.find(state);
