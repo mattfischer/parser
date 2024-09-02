@@ -9,11 +9,13 @@
 
 namespace Parser::Impl
 {
-    class SLR : public LR
+    template<typename ParseData> class SLR : public LR<ParseData>
     {
     public:
-        SLR(const Grammar &grammar);
-
+        SLR(const Grammar &grammar)
+        : LR<ParseData>(grammar, std::make_unique<LRTable::SLR>(grammar))
+        {
+        }
     };
 }
 #endif

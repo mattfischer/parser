@@ -16,9 +16,7 @@ set(SOURCES
     Parser/Tokenizer.cpp
     Parser/Impl/Earley.cpp
     Parser/Impl/LL.cpp
-    Parser/Impl/SLR.cpp
     Parser/Impl/LR.cpp
-    Parser/Impl/LALR.cpp
     Parser/Impl/LRTable.cpp
     Parser/Impl/GLR.cpp
     Main.cpp
