@@ -78,22 +78,23 @@ namespace Parser::Impl::LRTable {
         std::set<unsigned int> nullableTerminals;
         newGrammar.computeSets(firstSets, followSets, nullableTerminals);
 
-        std::map<std::pair<unsigned int, unsigned int>, std::set<unsigned int>> followPerStateSets;
         for(const auto &it : reductionStarts) {
             unsigned int reduceState = it.first.first;
             unsigned int rule = it.first.second;
             for(unsigned int startState : it.second) {
                 unsigned int r = findNonterminal(startState, rule);
-                followPerStateSets[std::make_pair(reduceState, rule)].insert(followSets[r].begin(), followSets[r].end());
+                mFollowPerStateSets[std::make_pair(reduceState, rule)].insert(followSets[r].begin(), followSets[r].end());
             }
         }
 
-        auto getReduceLookahead = [&](unsigned int state, unsigned int rule) {
-            return followPerStateSets[std::make_pair(state, rule)];
-        };
-
-        if(computeParseTable(states, getReduceLookahead)) {
+        if(computeParseTable(states)) {
             mValid = true;
         }
     }
+
+    const std::set<unsigned int> &LALR::getReduceLookahead(unsigned int state, unsigned int rule) const
+    {
+        return mFollowPerStateSets.at(std::make_pair(state, rule));
+    }
+
 }

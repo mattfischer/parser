@@ -7,15 +7,10 @@ namespace Parser::Impl::LRTable {
         std::vector<State> states = computeStates();
 
         std::vector<std::set<unsigned int>> firstSets;
-        std::vector<std::set<unsigned int>> followSets;
         std::set<unsigned int> nullableNonterminals;
-        Base::grammar().computeSets(firstSets, followSets, nullableNonterminals);
+        Base::grammar().computeSets(firstSets, mFollowSets, nullableNonterminals);
 
-        auto getReduceSet = [&](unsigned int state, unsigned int rule) {
-            return followSets[rule];
-        };
-
-        computeParseTable(states, getReduceSet);
+        computeParseTable(states);
     }
 
     bool Multi::isAccept(unsigned int state) const
@@ -26,6 +21,11 @@ namespace Parser::Impl::LRTable {
     unsigned int Multi::nextStateForRule(unsigned int state, unsigned int rule) const
     {
         return mParseTable.at(state, ruleIndex(rule)).index;
+    }
+
+    const std::set<unsigned int> &Multi::getReduceLookahead(unsigned int state, unsigned int rule) const
+    {
+        return mFollowSets[rule];
     }
 
     void Multi::addParseTableEntry(unsigned int state, unsigned int symbol, const ParseTableEntry &entry)
@@ -45,7 +45,7 @@ namespace Parser::Impl::LRTable {
         }
     }
 
-    void Multi::computeParseTable(const std::vector<State> &states, GetReduceLookahead getReduceLookahead)
+    void Multi::computeParseTable(const std::vector<State> &states)
     {
         mParseTable.resize(states.size(), grammar().terminals().size() + grammar().rules().size(), ParseTableEntry{ParseTableEntry::Type::Error, 0});
         for(unsigned int i=0; i<states.size(); i++) {

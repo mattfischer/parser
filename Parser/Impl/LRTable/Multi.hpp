@@ -63,6 +63,9 @@ namespace Parser::Impl::LRTable {
             }
         }
 
+    protected:
+        virtual const std::set<unsigned int> &getReduceLookahead(unsigned int state, unsigned int rule) const;
+
     private:
         struct ParseTableEntry {
             enum class Type {
@@ -85,13 +88,13 @@ namespace Parser::Impl::LRTable {
         };
 
         void addParseTableEntry(unsigned int state, unsigned int symbol, const ParseTableEntry &entry);
-        void computeParseTable(const std::vector<State> &states, GetReduceLookahead getReduceLookahead);
+        void computeParseTable(const std::vector<State> &states);
 
         Util::Table<ParseTableEntry> mParseTable;
         std::vector<std::vector<ParseTableEntry>> mMultiEntries;
         std::vector<Reduction> mReductions;
         std::set<unsigned int> mAcceptStates;
-
+        std::vector<std::set<unsigned int>> mFollowSets;
     };
 }
 #endif

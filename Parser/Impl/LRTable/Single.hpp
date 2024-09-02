@@ -52,7 +52,7 @@ namespace Parser::Impl::LRTable {
         }
 
     protected:
-        bool computeParseTable(const std::vector<State> &states, GetReduceLookahead getReduceLookahead);
+        bool computeParseTable(const std::vector<State> &states);
 
         struct ParseTableEntry {
             enum class Type {

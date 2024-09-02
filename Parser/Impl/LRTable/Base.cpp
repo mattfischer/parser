@@ -142,7 +142,7 @@ namespace Parser::Impl::LRTable {
         return states;
     }
 
-    void Base::printStates(const std::vector<State> &states, GetReduceLookahead getReduceLookahead) const
+    void Base::printStates(const std::vector<State> &states) const
     {
         for(unsigned int i=0; i<states.size(); i++) {
             std::cout << "State " << i << ":" << std::endl;

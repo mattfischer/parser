@@ -7,7 +7,6 @@
 #include <set>
 #include <map>
 #include <vector>
-#include <functional>
 
 namespace Parser::Impl::LRTable {
     class Base {
@@ -34,9 +33,9 @@ namespace Parser::Impl::LRTable {
         void computeClosure(std::set<Item> &items) const;
         std::vector<State> computeStates() const;
 
-        typedef std::function<std::set<unsigned int>(unsigned int, unsigned int)> GetReduceLookahead;
+        virtual const std::set<unsigned int> &getReduceLookahead(unsigned int, unsigned int) const = 0;
 
-        void printStates(const std::vector<State> &states, GetReduceLookahead getReduceLookahead) const;
+        void printStates(const std::vector<State> &states) const;
     
         unsigned int symbolIndex(const Grammar::Symbol &symbol) const;
         unsigned int terminalIndex(unsigned int terminal) const;

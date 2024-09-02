@@ -16,7 +16,7 @@ namespace Parser::Impl::LRTable {
         return mParseTable.at(state, ruleIndex(rule)).index;
     }
 
-    bool Single::computeParseTable(const std::vector<State> &states, GetReduceLookahead getReduceLookahead)
+    bool Single::computeParseTable(const std::vector<State> &states)
     {
         mParseTable.resize(states.size(), grammar().terminals().size() + grammar().rules().size(), ParseTableEntry{ParseTableEntry::Type::Error, 0});
         for(unsigned int i=0; i<states.size(); i++) {

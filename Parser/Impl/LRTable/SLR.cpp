@@ -7,16 +7,16 @@ namespace Parser::Impl::LRTable {
         std::vector<State> states = computeStates();
 
         std::vector<std::set<unsigned int>> firstSets;
-        std::vector<std::set<unsigned int>> followSets;
         std::set<unsigned int> nullableNonterminals;
-        Base::grammar().computeSets(firstSets, followSets, nullableNonterminals);
+        Base::grammar().computeSets(firstSets, mFollowSets, nullableNonterminals);
 
-        auto getReduceSet = [&](unsigned int state, unsigned int rule) {
-            return followSets[rule];
-        };
-
-        if(computeParseTable(states, getReduceSet)) {
+        if(computeParseTable(states)) {
             mValid = true;
         }
+    }
+
+    const std::set<unsigned int> &SLR::getReduceLookahead(unsigned int state, unsigned int rule) const
+    {
+        return mFollowSets[rule];
     }
 }
