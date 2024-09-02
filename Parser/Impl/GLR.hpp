@@ -1,7 +1,7 @@
 #ifndef PARSER_IMPL_GLR_HPP
 #define PARSER_IMPL_GLR_HPP
 
-#include "Parser/Base.hpp"
+#include "Parser/Impl/Base.hpp"
 #include "Parser/Tokenizer.hpp"
 #include "Parser/Impl/LRTable/Multi.hpp"
 #include "Util/MultiStack.hpp"

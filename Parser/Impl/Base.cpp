@@ -1,6 +1,6 @@
-#include "Parser/Base.hpp"
+#include "Parser/Impl/Base.hpp"
 
-namespace Parser
+namespace Parser::Impl
 {
     Base::Base(const Grammar &grammar)
     : mGrammar(grammar)

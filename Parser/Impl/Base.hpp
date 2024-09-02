@@ -1,9 +1,9 @@
-#ifndef PARSER_BASE_HPP
-#define PARSER_BASE_HPP
+#ifndef PARSER_IMPL_BASE_HPP
+#define PARSER_IMPL_BASE_HPP
 
 #include "Parser/Grammar.hpp"
 
-namespace Parser
+namespace Parser::Impl
 {
     class Base
     {

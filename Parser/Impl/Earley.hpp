@@ -1,7 +1,7 @@
 #ifndef PARSER_IMPL_EARLEY_HPP
 #define PARSER_IMPL_EARLEY_HPP
 
-#include "Parser/Base.hpp"
+#include "Parser/Impl/Base.hpp"
 #include "Parser/Tokenizer.hpp"
 
 #include "Util/MultiStack.hpp"

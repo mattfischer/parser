@@ -1,7 +1,7 @@
 #ifndef PARSER_IMPL_LR_HPP
 #define PARSER_IMPL_LR_HPP
 
-#include "Parser/Base.hpp"
+#include "Parser/Impl/Base.hpp"
 #include "Parser/Impl/LRTable/Single.hpp"
 #include "Parser/Tokenizer.hpp"
 
