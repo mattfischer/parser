@@ -1,6 +1,7 @@
 #include "Parser/Impl/LRTable.hpp"
 
 #include <iostream>
+#include <sstream>
 
 namespace Parser::Impl::LRTable {
     Base::Base(const Grammar &grammar)
@@ -191,6 +192,184 @@ namespace Parser::Impl::LRTable {
                 std::cout << " -> " << transition.second << std::endl;
             }
             std::cout << std::endl;
+        }
+    }
+
+    Single::Single(const Grammar &grammar)
+    : Base(grammar)
+    {
+    }
+
+    bool Single::isAccept(unsigned int state) const
+    {
+        return mAcceptStates.contains(state);
+    }
+
+    unsigned int Single::nextStateForRule(unsigned int state, unsigned int rule) const
+    {
+        return mParseTable.at(state, ruleIndex(rule)).index;
+    }
+
+    bool Single::computeParseTable(const std::vector<State> &states, GetReduceLookahead getReduceLookahead)
+    {
+        mParseTable.resize(states.size(), grammar().terminals().size() + grammar().rules().size(), ParseTableEntry{ParseTableEntry::Type::Error, 0});
+        for(unsigned int i=0; i<states.size(); i++) {
+            for(const auto &item : states[i].items) {
+                const Grammar::RHS &rhs = grammar().rules()[item.rule].rhs[item.rhs];
+                if(item.pos == rhs.size()) {
+                    for(unsigned int terminal : getReduceLookahead(i, item.rule)) {
+                        if(mParseTable.at(i, terminal).type != ParseTableEntry::Type::Error) {
+                            mConflict.type = Conflict::Type::ReduceReduce;
+                            mConflict.symbol = terminal;
+                            mConflict.item1 = mParseTable.at(i, terminal).index;
+                            mConflict.item2 = item.rule;
+                            return false;
+                        }
+
+                        Reduction reduction{item.rule, item.rhs};
+                        unsigned int index = (unsigned int)mReductions.size();
+                        for(unsigned int j=0; j<mReductions.size(); j++) {
+                            if(mReductions[j] == reduction) {
+                                index = j;
+                                break;
+                            }
+                        }
+                        if(index == mReductions.size()) {
+                            mReductions.push_back(reduction);
+                        }
+                        mParseTable.at(i, terminal) = ParseTableEntry{ParseTableEntry::Type::Reduce, index};
+                    }
+
+                    if(item.rule == grammar().startRule()) {
+                        mAcceptStates.insert(i);
+                    }
+                }
+            }
+
+            for(const auto &transition : states[i].transitions) {
+                if(mParseTable.at(i, transition.first).type != ParseTableEntry::Type::Error) {
+                    mConflict.type = Conflict::Type::ShiftReduce;
+                    mConflict.symbol = transition.first;
+                    mConflict.item1 = mParseTable.at(i, transition.first).index;
+                    return false;
+                }
+                mParseTable.at(i, transition.first) = ParseTableEntry{ParseTableEntry::Type::Shift, transition.second};
+            }
+        }
+
+        return true;
+    }
+
+    SLR::SLR(const Grammar &grammar)
+    : Single(grammar)
+    {
+        std::vector<State> states = computeStates();
+
+        std::vector<std::set<unsigned int>> firstSets;
+        std::vector<std::set<unsigned int>> followSets;
+        std::set<unsigned int> nullableNonterminals;
+        Base::grammar().computeSets(firstSets, followSets, nullableNonterminals);
+
+        auto getReduceSet = [&](unsigned int state, unsigned int rule) {
+            return followSets[rule];
+        };
+
+        if(computeParseTable(states, getReduceSet)) {
+            mValid = true;
+        }
+    }
+
+    LALR::LALR(const Grammar &grammar)
+    : Single(grammar)
+    {
+        std::vector<State> states = computeStates();
+
+        std::vector<std::pair<unsigned int, unsigned int>> newNonterminals;
+        auto findNonterminal = [&](unsigned int state, unsigned int rule) {
+            for(unsigned int i=0; i<newNonterminals.size(); i++) {
+                if(newNonterminals[i] == std::make_pair(state, rule)) { return i;}
+            }
+            return UINT_MAX;
+        };
+
+        std::vector<Grammar::Rule> newRules;
+        for(unsigned int i=0; i<states.size(); i++) {
+            for(const auto &item : states[i].items) {
+                if(item.pos == 0 && findNonterminal(i, item.rule) == UINT_MAX) {
+                    newNonterminals.push_back(std::make_pair(i, item.rule));
+                    std::stringstream ss;
+                    ss << grammar.rules()[item.rule].lhs << "@" << i;
+                    newRules.push_back(Grammar::Rule{ss.str()});        
+                }
+            }
+        }
+
+        std::map<std::pair<unsigned int, unsigned int>, std::set<unsigned int>> reductionStarts;
+        for(unsigned int i=0; i<states.size(); i++) {
+            const State &state = states[i];
+
+            for(const auto &item : state.items) {
+                if(item.pos == 0) {
+                    const Grammar::RHS &rhs = grammar.rules()[item.rule].rhs[item.rhs];
+                    
+                    Grammar::RHS newRhs;
+                    unsigned int stateNum = i;
+                    for(unsigned int j=0; j<rhs.size(); j++) {
+                        switch(rhs[j].type) {
+                            case Grammar::Symbol::Type::Nonterminal:
+                            {
+                                unsigned int s = findNonterminal(stateNum, rhs[j].index);
+                                newRhs.push_back(Grammar::Symbol{Grammar::Symbol::Type::Nonterminal, s});
+                                auto it = states[stateNum].transitions.find(symbolIndex(rhs[j]));
+                                stateNum = it->second;
+                                break;
+                            }
+                            case Grammar::Symbol::Type::Terminal:
+                            {
+                                newRhs.push_back(rhs[j]);
+                                auto it = states[stateNum].transitions.find(symbolIndex(rhs[j]));
+                                stateNum = it->second;
+                                break;
+                            }
+                            case Grammar::Symbol::Type::Epsilon:
+                            {
+                                newRhs.push_back(rhs[j]);
+                                break;
+                            }
+                        }
+                    }
+
+                    unsigned int r = findNonterminal(i, item.rule);
+                    newRules[r].rhs.push_back(std::move(newRhs));
+    
+                    reductionStarts[std::make_pair(stateNum, item.rule)].insert(i);
+                }    
+            }
+        }
+
+        Grammar newGrammar(grammar.terminals(), std::move(newRules), grammar.startRule());
+
+        std::vector<std::set<unsigned int>> firstSets;
+        std::vector<std::set<unsigned int>> followSets;
+        std::set<unsigned int> nullableTerminals;
+        newGrammar.computeSets(firstSets, followSets, nullableTerminals);
+
+        std::map<std::pair<unsigned int, unsigned int>, std::set<unsigned int>> followPerStateSets;
+        for(const auto &it : reductionStarts) {
+            unsigned int reduceState = it.first.first;
+            unsigned int rule = it.first.second;
+            for(unsigned int startState : it.second) {
+                unsigned int r = findNonterminal(startState, rule);
+                followPerStateSets[std::make_pair(reduceState, rule)].insert(followSets[r].begin(), followSets[r].end());
+            }
+        }
+
+        auto getReduceLookahead = [&](unsigned int state, unsigned int rule) {
+            return followPerStateSets[std::make_pair(state, rule)];
+        };
+
+        if(computeParseTable(states, getReduceLookahead)) {
+            mValid = true;
         }
     }
 

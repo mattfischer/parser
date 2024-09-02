@@ -1,7 +1,7 @@
 #ifndef PARSER_IMPL_SLR_HPP
 #define PARSER_IMPL_SLR_HPP
 
-#include "Parser/Impl/LRSingle.hpp"
+#include "Parser/Impl/LR.hpp"
 
 #include <set>
 #include <map>
@@ -9,12 +9,11 @@
 
 namespace Parser::Impl
 {
-    class SLR : public LRSingle
+    class SLR : public LR
     {
     public:
         SLR(const Grammar &grammar);
 
-    private:
     };
 }
 #endif

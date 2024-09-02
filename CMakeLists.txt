@@ -19,7 +19,6 @@ set(SOURCES
     Parser/Impl/SLR.cpp
     Parser/Impl/LR.cpp
     Parser/Impl/LALR.cpp
-    Parser/Impl/LRSingle.cpp
     Parser/Impl/LRTable.cpp
     Parser/Impl/GLR.cpp
     Main.cpp

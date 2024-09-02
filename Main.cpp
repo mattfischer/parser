@@ -2,7 +2,7 @@
 #include <sstream>
 
 #include "Parser/DefReader.hpp"
-#include "Parser/Impl/GLR.hpp"
+#include "Parser/Impl/LALR.hpp"
 
 struct AstNode
 {
@@ -56,19 +56,20 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    Parser::Impl::GLR<AstNode> parser(reader.grammar());
-    
-    parser.addTerminalDecorator("NUMBER", [](const Parser::Tokenizer::Token &token) {
+    Parser::Impl::LALR parser(reader.grammar());
+    Parser::Impl::LALR::ParseSession<AstNode> session(parser);
+
+    session.addTerminalDecorator("NUMBER", [](const Parser::Tokenizer::Token &token) {
         return std::make_unique<AstNodeNumber>(std::atoi(token.text.c_str()));
     });
 
-    parser.addReducer("root", [](auto rhs) {
+    session.addReducer("root", [](auto rhs) {
         return std::move(rhs.begin()->data);
     });
     unsigned int minus = reader.grammar().terminalIndex("-");
-    parser.addReducer("E", [&](auto rhs) {
+    session.addReducer("E", [&](auto rhs) {
         auto it = rhs.begin();
-        std::shared_ptr<AstNode> node = it->data;
+        std::unique_ptr<AstNode> node = std::move(it->data);
         ++it;
         while(it != rhs.end()) {
             AstNode::Type type = AstNode::Type::Add;
@@ -76,15 +77,15 @@ int main(int argc, char *argv[])
                 type = AstNode::Type::Subtract;
             }
             ++it;
-            node = std::make_unique<AstNode>(type, node, it->data);
+            node = std::make_unique<AstNode>(type, std::move(node), std::move(it->data));
             ++it;
         }
         return node;
     });
     unsigned int divide = reader.grammar().terminalIndex("/");
-    parser.addReducer("T", [&](auto rhs) {
+    session.addReducer("T", [&](auto rhs) {
         auto it = rhs.begin();
-        std::shared_ptr<AstNode> node = it->data;
+        std::unique_ptr<AstNode> node = std::move(it->data);
         ++it;
         while(it != rhs.end()) {
             AstNode::Type type = AstNode::Type::Multiply;
@@ -92,18 +93,18 @@ int main(int argc, char *argv[])
                 type = AstNode::Type::Divide;
             }
             ++it;
-            node = std::make_unique<AstNode>(type, node, it->data);
+            node = std::make_unique<AstNode>(type, std::move(node), std::move(it->data));
             ++it;
         }
         return node;
     });
     unsigned int lparen = reader.grammar().terminalIndex("(");
-    parser.addReducer("F", [&](auto rhs) {
+    session.addReducer("F", [&](auto rhs) {
         auto it = rhs.begin();
         if(it->index == lparen) {
             ++it;
         }
-        return it->data;
+        return std::move(it->data);
     });
 
     while(true) {
@@ -117,12 +118,10 @@ int main(int argc, char *argv[])
         std::stringstream ss(input);
         Parser::Tokenizer::Stream stream(reader.tokenizer(), ss);
 
-        std::vector<std::shared_ptr<AstNode>> ast = parser.parse(stream);
-        if(ast.size() > 0) {
-            for(const auto &tree : ast) {
-                int result = evaluate(*tree);
-                std::cout << result << std::endl;
-            }
+        std::unique_ptr<AstNode> ast = session.parse(stream);
+        if(ast) {
+            int result = evaluate(*ast);
+            std::cout << result << std::endl;
         } else {
             std::cout << "Error: Unexpected symbol " << stream.nextToken().text << std::endl;
         }
