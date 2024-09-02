@@ -28,7 +28,7 @@ namespace Parser::Impl
         std::unique_ptr<LRTable::Single> mParseTable;        
     };
 
-    template<typename ParseData> class LR : public LRBase
+    template<typename ParseData, typename ParseTable> class LR : public LRBase
     {
     public:
         struct ParseItem {
@@ -55,8 +55,8 @@ namespace Parser::Impl
         };
 
     public:
-        LR(const Grammar &grammar, std::unique_ptr<LRTable::Single> parseTable)
-        : LRBase(grammar, std::move(parseTable))
+        LR(const Grammar &grammar)
+        : LRBase(grammar, std::make_unique<ParseTable>(grammar))
         {
         }
     

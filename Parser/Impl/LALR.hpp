@@ -5,13 +5,6 @@
 
 namespace Parser::Impl
 {
-    template<typename ParseData> class LALR : public LR<ParseData>
-    {
-    public:
-        LALR(const Grammar &grammar)
-        : LR<ParseData>(grammar, std::make_unique<LRTable::LALR>(grammar))
-        {
-        }
-    };
+    template<typename ParseData> using LALR = LR<ParseData, LRTable::LALR>;
 }
 #endif
