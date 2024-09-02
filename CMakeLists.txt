@@ -15,10 +15,14 @@ set(SOURCES
     Parser/DefReader.cpp
     Parser/Tokenizer.cpp
     Parser/Impl/Earley.cpp
+    Parser/Impl/GLR.cpp
     Parser/Impl/LL.cpp
     Parser/Impl/LR.cpp
-    Parser/Impl/LRTable.cpp
-    Parser/Impl/GLR.cpp
+    Parser/Impl/LRTable/Base.cpp
+    Parser/Impl/LRTable/LALR.cpp
+    Parser/Impl/LRTable/Multi.cpp
+    Parser/Impl/LRTable/Single.cpp
+    Parser/Impl/LRTable/SLR.cpp
     Main.cpp
 )
 

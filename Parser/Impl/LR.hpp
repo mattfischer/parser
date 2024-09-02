@@ -2,7 +2,7 @@
 #define PARSER_IMPL_LR_HPP
 
 #include "Parser/Base.hpp"
-#include "Parser/Impl/LRTable.hpp"
+#include "Parser/Impl/LRTable/Single.hpp"
 #include "Parser/Tokenizer.hpp"
 
 #include <span>

@@ -3,7 +3,7 @@
 
 #include "Parser/Base.hpp"
 #include "Parser/Tokenizer.hpp"
-#include "Parser/Impl/LRTable.hpp"
+#include "Parser/Impl/LRTable/Multi.hpp"
 #include "Util/MultiStack.hpp"
 
 #include <span>
