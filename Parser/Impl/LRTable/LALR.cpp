@@ -87,9 +87,7 @@ namespace Parser::Impl::LRTable {
             }
         }
 
-        if(computeParseTable(states)) {
-            mValid = true;
-        }
+        computeParseTable(states);
     }
 
     const std::set<unsigned int> &LALR::getReduceLookahead(unsigned int state, unsigned int rule) const

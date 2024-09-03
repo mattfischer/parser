@@ -6,6 +6,16 @@ namespace Parser::Impl::LRTable {
     {
     }
 
+    bool Single::valid() const
+    {
+        return mValid;
+    }
+
+    const Single::Conflict &Single::conflict() const
+    {
+        return mConflict;
+    }
+
     bool Single::isAccept(unsigned int state) const
     {
         return mAcceptStates.contains(state);
@@ -16,7 +26,7 @@ namespace Parser::Impl::LRTable {
         return mParseTable.at(state, ruleIndex(rule)).index;
     }
 
-    bool Single::computeParseTable(const std::vector<State> &states)
+    void Single::computeParseTable(const std::vector<State> &states)
     {
         mParseTable.resize(states.size(), grammar().terminals().size() + grammar().rules().size(), ParseTableEntry{ParseTableEntry::Type::Error, 0});
         for(unsigned int i=0; i<states.size(); i++) {
@@ -29,7 +39,8 @@ namespace Parser::Impl::LRTable {
                             mConflict.symbol = terminal;
                             mConflict.item1 = mParseTable.at(i, terminal).index;
                             mConflict.item2 = item.rule;
-                            return false;
+                            mValid = false;
+                            return;
                         }
 
                         Reduction reduction{item.rule, item.rhs};
@@ -57,12 +68,13 @@ namespace Parser::Impl::LRTable {
                     mConflict.type = Conflict::Type::ShiftReduce;
                     mConflict.symbol = transition.first;
                     mConflict.item1 = mParseTable.at(i, transition.first).index;
-                    return false;
+                    mValid = false;
+                    return;
                 }
                 mParseTable.at(i, transition.first) = ParseTableEntry{ParseTableEntry::Type::Shift, transition.second};
             }
         }
 
-        return true;
+        mValid = true;
     }
 }

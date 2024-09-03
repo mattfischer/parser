@@ -15,6 +15,11 @@ namespace Parser::Impl
     public:
         LRBase(const Grammar &grammar, std::unique_ptr<LRTable::Single> parseTable);
 
+        bool valid() const;
+
+        using Conflict = LRTable::Single::Conflict;
+        const Conflict &conflict() const;
+
     protected:
         struct ParseStackBase {
             virtual size_t size() = 0;

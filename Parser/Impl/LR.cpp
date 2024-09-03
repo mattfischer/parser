@@ -8,6 +8,16 @@ namespace Parser::Impl
     {
     }
 
+    bool LRBase::valid() const
+    {
+        return mParseTable->valid();
+    }
+
+    const LRBase::Conflict &LRBase::conflict() const
+    {
+        return mParseTable->conflict();
+    }
+
     bool LRBase::runParse(Tokenizer::Stream &stream, ParseStackBase &parseStack) const
     {
         struct StateItem {

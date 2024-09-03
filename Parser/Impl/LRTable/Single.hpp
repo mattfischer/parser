@@ -52,8 +52,9 @@ namespace Parser::Impl::LRTable {
         }
 
     protected:
-        bool computeParseTable(const std::vector<State> &states);
+        void computeParseTable(const std::vector<State> &states);
 
+    private:
         struct ParseTableEntry {
             enum class Type {
                 Shift,

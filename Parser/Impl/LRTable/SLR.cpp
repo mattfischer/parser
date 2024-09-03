@@ -10,9 +10,7 @@ namespace Parser::Impl::LRTable {
         std::set<unsigned int> nullableNonterminals;
         Base::grammar().computeSets(firstSets, mFollowSets, nullableNonterminals);
 
-        if(computeParseTable(states)) {
-            mValid = true;
-        }
+        computeParseTable(states);
     }
 
     const std::set<unsigned int> &SLR::getReduceLookahead(unsigned int state, unsigned int rule) const
