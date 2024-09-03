@@ -91,6 +91,7 @@ namespace Parser::Impl
             }
         }
 
+    protected:
         virtual void shift(const Tokenizer::Token &token, ParseStackBase &stackBase) const
         {
             ParseStack &stack = static_cast<ParseStack&>(stackBase);
