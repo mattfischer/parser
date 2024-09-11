@@ -24,6 +24,8 @@ set(SOURCES
     Parser/Impl/LRTable/Single.cpp
     Parser/Impl/LRTable/SLR.cpp
     Main.cpp
+    MathParser.cpp
+    MultiParser.cpp
 )
 
 include_directories(${CMAKE_SOURCE_DIR})

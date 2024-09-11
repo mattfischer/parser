@@ -1,111 +1,33 @@
 #include <iostream>
-#include <sstream>
 #include <format>
 
-#include "Parser/DefReader.hpp"
-#include "Parser/Impl/GLR.hpp"
+#include "MathParser.hpp"
+#include "MultiParser.hpp"
 
-struct AstNode
+void parseMath(const MathParser &parser, const std::string &input)
 {
-    enum class Type {
-        Number,
-        Add,
-        Subtract,
-        Multiply,
-        Divide
-    };
+    std::unique_ptr<MathParser::AstNode> ast = parser.parse(input);
 
-    template<typename ...Children> AstNode(Type t, Children... c) : type(t)
-    {
-        children.reserve(sizeof...(c));
-        (children.push_back(std::move(c)), ...);
+    if(ast) {
+        int result = parser.evaluate(*ast);
+        std::cout << result << std::endl;
     }
+}
 
-    Type type;
-    std::vector<std::shared_ptr<AstNode>> children;
-};
-
-struct AstNodeNumber : public AstNode
+void parseMulti(const MultiParser &parser, const std::string &input)
 {
-    AstNodeNumber(int n) : AstNode(Type::Number), number(n) {}
+    std::vector<std::shared_ptr<MultiParser::AstNode>> trees = parser.parse(input);
 
-    int number;
-};
-
-int evaluate(const AstNode &node)
-{
-    switch(node.type) {
-        case AstNode::Type::Number:
-            return static_cast<const AstNodeNumber&>(node).number;
-        case AstNode::Type::Add:
-            return evaluate(*node.children[0]) + evaluate(*node.children[1]);
-        case AstNode::Type::Subtract:
-            return evaluate(*node.children[0]) - evaluate(*node.children[1]);
-        case AstNode::Type::Multiply:
-            return evaluate(*node.children[0]) * evaluate(*node.children[1]);
-        case AstNode::Type::Divide:
-            return evaluate(*node.children[0]) / evaluate(*node.children[1]);
+    for(const auto &ast : trees) {
+        int result = parser.evaluate(*ast);
+        std::cout << result << std::endl;
     }
-    return 0;
 }
 
 int main(int argc, char *argv[])
 {
-    Parser::DefReader reader("grammar.def");
-    if(!reader.valid()) {
-        std::cout << std::format("Error in def file, line {}: {}", reader.parseError().line, reader.parseError().message) << std::endl;
-        return 1;
-    }
-
-    Parser::Impl::GLR<AstNode> parser(reader.grammar());
-
-    parser.addTerminalDecorator("NUMBER", [](const Parser::Tokenizer::Token &token) {
-        return std::make_unique<AstNodeNumber>(std::atoi(token.text.c_str()));
-    });
-
-    parser.addReducer("root", [](auto rhs) {
-        return rhs.begin()->data;
-    });
-    unsigned int minus = reader.grammar().terminalIndex("-");
-    parser.addReducer("E", [&](auto rhs) {
-        auto it = rhs.begin();
-        std::shared_ptr<AstNode> node = it->data;
-        ++it;
-        while(it != rhs.end()) {
-            AstNode::Type type = AstNode::Type::Add;
-            if(it->index == minus) {
-                type = AstNode::Type::Subtract;
-            }
-            ++it;
-            node = std::make_shared<AstNode>(type, node, it->data);
-            ++it;
-        }
-        return node;
-    });
-    unsigned int divide = reader.grammar().terminalIndex("/");
-    parser.addReducer("T", [&](auto rhs) {
-        auto it = rhs.begin();
-        std::shared_ptr<AstNode> node = it->data;
-        ++it;
-        while(it != rhs.end()) {
-            AstNode::Type type = AstNode::Type::Multiply;
-            if(it->index == divide) {
-                type = AstNode::Type::Divide;
-            }
-            ++it;
-            node = std::make_shared<AstNode>(type, node, it->data);
-            ++it;
-        }
-        return node;
-    });
-    unsigned int lparen = reader.grammar().terminalIndex("(");
-    parser.addReducer("F", [&](auto rhs) {
-        auto it = rhs.begin();
-        if(it->index == lparen) {
-            ++it;
-        }
-        return it->data;
-    });
+    MathParser mathParser;
+    MultiParser multiParser;
 
     while(true) {
         std::string input;
@@ -115,18 +37,8 @@ int main(int argc, char *argv[])
             break;
         }
 
-        std::stringstream ss(input);
-        Parser::Tokenizer::Stream stream(reader.tokenizer(), ss);
-
-        std::vector<std::shared_ptr<AstNode>> ast = parser.parse(stream);
-        if(ast.size() > 0) {
-            for(const auto &tree : ast) {
-                int result = evaluate(*tree);
-                std::cout << result << std::endl;
-            }
-        } else {
-            std::cout << std::format("Error: Unexpected symbol {}", stream.nextToken().text) << std::endl;
-        }
+        parseMath(mathParser, input);
+        //parseMulti(multiParser, input);
     }
 
     return 0;

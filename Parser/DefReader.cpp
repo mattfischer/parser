@@ -8,9 +8,9 @@
 
 namespace Parser
 {
-    DefReader::DefReader(const std::string &filename)
+    DefReader::DefReader(std::istream &input)
     {
-        std::unique_ptr<DefNode> node = parseFile(filename);
+        std::unique_ptr<DefNode> node = parseInput(input);
         if(!node) {
             return;
         }
@@ -241,13 +241,12 @@ namespace Parser
         mDefGrammar = extendedGrammar.makeGrammar();
     }
 
-    std::unique_ptr<DefReader::DefNode> DefReader::parseFile(const std::string &filename)
+    std::unique_ptr<DefReader::DefNode> DefReader::parseInput(std::istream &input)
     {
         createDefGrammar();
         Parser::Impl::LL<DefNode> parser(*mDefGrammar);
         
-        std::ifstream file(filename);
-        Tokenizer::Stream stream(*mDefTokenizer, file);
+        Tokenizer::Stream stream(*mDefTokenizer, input);
 
         parser.addMatchListener("pattern", [&](unsigned int symbol) {
             if(symbol == 1) stream.setConfiguration(1);

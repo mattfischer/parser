@@ -1,5 +1,0 @@
-NUMBER: [0-9]+
-IGNORE: \s
-
-<root> : <E>
-<E>: NUMBER | <E> '+' <E>

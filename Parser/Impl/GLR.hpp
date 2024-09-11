@@ -211,6 +211,7 @@ namespace Parser::Impl
 
         ParseStackIterator &operator++()
         {
+            checkResetItem();
             ++mItemIterator;
             if(mItemIterator == mPathIterator->parseItems.end()) {
                 ++mPathIterator;

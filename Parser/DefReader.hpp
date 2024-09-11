@@ -15,7 +15,7 @@ namespace Parser
 {
     class DefReader {
     public:
-        DefReader(const std::string &filename);
+        DefReader(std::istream &input);
 
         bool valid() const;
 
@@ -59,7 +59,7 @@ namespace Parser
             unsigned int line;
         };
 
-        std::unique_ptr<DefNode> parseFile(const std::string &filename);
+        std::unique_ptr<DefNode> parseInput(std::istream &input);
         void createDefGrammar();
         std::unique_ptr<Parser::ExtendedGrammar::RhsNode> createRhsNode(const DefNode &defNode);
 
