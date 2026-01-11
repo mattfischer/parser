@@ -1,0 +1,3 @@
+[package]
+name = "parser"
+edition = "2024"
