@@ -1,10 +1,10 @@
 use crate::regex;
 use regex::parser::Node;
 
-type InputSymbol = char;
-type InputSymbolRange = (InputSymbol, InputSymbol);
-type CodePoint = usize;
-const INVALID_CODE_POINT: usize = usize::MAX;
+pub type InputSymbol = char;
+pub type InputSymbolRange = (InputSymbol, InputSymbol);
+pub type CodePoint = usize;
+pub const INVALID_CODE_POINT: usize = usize::MAX;
 
 use std::collections::VecDeque;
 
@@ -15,10 +15,10 @@ pub struct Encoding {
 }
 
 impl Encoding {
-    pub fn new(nodes: Vec<Node>) -> Encoding {
+    pub fn new(nodes: &Vec<Node>) -> Encoding {
         let mut node_symbol_ranges = VecDeque::new();
         
-        for node in &nodes {
+        for node in nodes {
             Self::visit_node(node, &mut node_symbol_ranges);
         }
         node_symbol_ranges.make_contiguous().sort_by_key(|a| a.0);
