@@ -1,4 +1,5 @@
 mod regex;
+mod util;
 
 #[inline(never)]
 pub fn f(node : &regex::parser::Node) {
@@ -9,5 +10,6 @@ fn main() {
         let nodes = vec![node];
         let encoding = regex::Encoding::new(&nodes);
         let nfa = regex::NFA::new(&nodes, &encoding);
+        let dfa = regex::DFA::new(&nfa, &encoding);
     }
 }

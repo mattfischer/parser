@@ -1,3 +1,6 @@
+pub mod dfa;
+pub use dfa::DFA;
+
 pub mod encoding;
 pub use encoding::Encoding;
 

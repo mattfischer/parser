@@ -62,6 +62,10 @@ impl Encoding {
         return Encoding { input_symbol_ranges, total_range, symbol_map };
     }
 
+    pub fn num_code_points(&self) -> usize {
+        return self.input_symbol_ranges.len();
+    }
+
     fn visit_node(node: &Node, input_symbol_ranges: &mut VecDeque<InputSymbolRange>) {
         match node {
             Node::Symbol(symbol) => input_symbol_ranges.push_back((*symbol, *symbol)),

@@ -6,15 +6,15 @@ type Symbol = regex::encoding::CodePoint;
 type Transition = (Symbol, usize);
 
 #[derive(Default)]
-struct State {
-    transitions: Vec<Transition>,
-    epsilon_transitions: Vec<usize>
+pub struct State {
+    pub transitions: Vec<Transition>,
+    pub epsilon_transitions: Vec<usize>
 }
 
 pub struct NFA {
-    states: Vec<State>,
-    start_state: usize,
-    accept_states: Vec<usize>
+    pub states: Vec<State>,
+    pub start_state: usize,
+    pub accept_states: Vec<usize>
 }
 
 impl NFA {
