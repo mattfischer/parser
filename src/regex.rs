@@ -4,6 +4,9 @@ pub use dfa::DFA;
 pub mod encoding;
 pub use encoding::Encoding;
 
+mod matcher;
+pub use matcher::Matcher;
+
 mod nfa;
 pub use nfa::NFA;
 

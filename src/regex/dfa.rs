@@ -24,8 +24,8 @@ struct StateSet {
 pub struct DFA {
     num_code_points: usize,
     num_states: usize,
-    start_state: usize,
-    reject_state: usize,
+    pub start_state: usize,
+    pub reject_state: usize,
     transitions: Table<usize>,
     accept_states: Vec<usize>
 }
@@ -88,6 +88,19 @@ impl DFA {
         return DFA { num_code_points, num_states, start_state, reject_state, transitions, accept_states };
     }
 
+    pub fn transition(&self, state: usize, symbol: Symbol) -> usize {
+        return *self.transitions.at(state, symbol);
+    }
+
+    pub fn accept(&self, state: usize) -> Option<usize> {
+        let accept_state = self.accept_states[state];
+        if accept_state == usize::MAX {
+            return None;
+        } else {
+            return Some(accept_state);
+        }
+    }
+    
     fn find_or_add_state(state_sets: &mut Vec<StateSet>, nfa: &NFA, nfa_states: &HashSet<usize>) -> usize {
         let mut epsilon_closure = HashSet::new();
         let mut queue = VecDeque::new();

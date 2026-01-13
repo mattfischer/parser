@@ -1,15 +1,8 @@
 mod regex;
 mod util;
 
-#[inline(never)]
-pub fn f(node : &regex::parser::Node) {
-}
-
 fn main() {
-    if let Ok(node) = regex::Parser::parse("[a-x]*bc") {
-        let nodes = vec![node];
-        let encoding = regex::Encoding::new(&nodes);
-        let nfa = regex::NFA::new(&nodes, &encoding);
-        let dfa = regex::DFA::new(&nfa, &encoding);
+    if let Ok(matcher) = regex::Matcher::new(vec!["(a|b|c)*".to_string()]) {
+        let (num_matched, matched_pattern) = matcher.match_string("abcd", 0);
     }
 }

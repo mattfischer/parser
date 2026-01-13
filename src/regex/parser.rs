@@ -14,8 +14,8 @@ pub enum Node {
 }
 
 pub struct ParseError {
-    message: String,
-    pos: usize
+    pub message: String,
+    pub pos: usize
 }
 
 impl ParseError {
