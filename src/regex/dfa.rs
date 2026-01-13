@@ -37,7 +37,7 @@ impl DFA {
 
         let mut state_sets = Vec::new();
         let mut states = Vec::new();
-        let start_state = Self::find_or_add_state(&mut state_sets, nfa, &nfa_states);
+        let mut start_state = Self::find_or_add_state(&mut state_sets, nfa, &nfa_states);
 
         let mut accept_sets: Vec<HashSet<usize>> = vec![HashSet::<usize>::default(); nfa.accept_states.len()];
         
@@ -67,7 +67,7 @@ impl DFA {
             }
         }
 
-        // TODO: minimize
+        //Self::minimize(&mut states, &mut start_state, &mut accept_states);
 
         states.push(State::default());
         let num_states = states.len();
@@ -132,5 +132,106 @@ impl DFA {
         }
 
         return idx;
+    }
+
+    fn minimize(states: &mut Vec<State>, start_state: &mut usize, accept_states: &mut Vec<usize>) {
+        let mut alphabet = HashSet::new();
+        for state in states.iter() {
+            for transition in &state.transitions {
+                alphabet.insert(*transition.0);
+            }
+        }
+
+        let mut accept_sets: HashMap<usize, HashSet<usize>> = HashMap::new();
+        for (i, accept_state) in accept_states.iter().enumerate() {
+            if !accept_sets.contains_key(accept_state) {
+                accept_sets.insert(*accept_state, HashSet::new());
+            }
+            accept_sets.get_mut(accept_state).unwrap().insert(i);
+        }
+
+        let mut partition = Vec::new();
+        for set in accept_sets.into_values() {
+            partition.push(set);
+        }
+        
+        let mut queue = VecDeque::new();
+        for (i, _) in accept_states.iter().enumerate() {
+            queue.push_back(i);
+        }
+
+        while queue.len() > 0 {
+            let s = queue.pop_front().unwrap();
+
+            for c in &alphabet {
+                let mut inbound = HashSet::new();
+                for (i, state) in states.iter().enumerate() {
+                    let distinguisher = &partition[s];
+                    if state.transitions.contains_key(c) && distinguisher.contains(&state.transitions[c]) {
+                        inbound.insert(i);
+                    }
+                }
+
+                if inbound.is_empty() {
+                    continue;
+                }
+
+                for i in 0..partition.len() {
+                    let mut in_set = HashSet::new();
+                    let mut out_set = HashSet::new();
+
+                    for s in &partition[i] {
+                        if inbound.contains(s) {
+                            in_set.insert(*s);
+                        } else {
+                            out_set.insert(*s);
+                        }
+                    }
+
+                    if in_set.len() > 0 && out_set.len() > 0 {
+                        *partition.get_mut(i).unwrap() = in_set.clone();
+                        partition.push(out_set.clone());
+                        let o = partition.len() - 1;
+
+                        if queue.contains(&i) {
+                            queue.push_back(o);
+                        } else {
+                            if in_set.len() > out_set.len() {
+                                queue.push_back(o);
+                            } else {
+                                queue.push_back(i);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut state_map = HashMap::new();
+        for (i, part) in partition.iter().enumerate() {
+            for j in part {
+                state_map.insert(j, i);
+            }
+        }
+
+        let mut new_states = Vec::new();
+        for (i, part) in partition.iter().enumerate() {
+            let mut new_state = State::default();
+            let s = part.iter().next().unwrap();
+            for transition in &states[*s].transitions {
+                new_state.transitions.insert(*transition.0, state_map[transition.1]);
+            }
+            new_states.push(new_state);
+        }
+
+        let new_start_state = state_map[start_state];
+        let mut new_accept_states = vec![usize::MAX; new_states.len()];
+        for (i, _) in states.iter().enumerate() {
+            new_accept_states[state_map[&i]] = accept_states[i];
+        }
+
+        *states = new_states;
+        *start_state = new_start_state;
+        *accept_states = new_accept_states;
     }
 }
