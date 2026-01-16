@@ -35,7 +35,27 @@ impl NFA {
         return nfa;
     }
 
-    pub fn add_state(&mut self) -> usize {
+    pub fn print(&self) {
+        println!("Start: {}", self.start_state);
+        println!("Accept:");
+        for state in &self.accept_states {
+            println!("{state}");
+        }
+        println!();
+
+        for (i, state) in self.states.iter().enumerate() {
+            println!("State {i}:");
+            for s in &state.epsilon_transitions {
+                println!("  -> {s}");
+            }
+            for (symbol, to) in &state.transitions {
+                println!("  {symbol} -> {to}");
+            }
+            println!();
+        }
+    }
+
+    fn add_state(&mut self) -> usize {
         let result = self.states.len();
         self.states.push(State::default());
 

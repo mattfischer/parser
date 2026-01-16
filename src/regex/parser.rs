@@ -13,6 +13,53 @@ pub enum Node {
     OneOf(Vec<Node>)
 }
 
+impl Node {
+    pub fn print(&self, depth: usize) {
+        for _ in 0..depth {
+            print!(" ");
+        }
+
+        match self {
+            Node::Symbol(symbol) => {
+                println!("Symbol: {symbol}")
+            },
+            Node::CharacterClass(ranges) => {
+                for (first, last) in ranges {
+                    if first == last {
+                        println!("{first}");
+                    } else {
+                        println!("{first}-{last}");
+                    }
+                }
+            },
+            Node::Sequence(nodes) => {
+                println!("Sequence:");
+                for node in nodes {
+                    node.print(depth + 1);
+                }
+            },
+            Node::ZeroOrOne(node) => {
+                println!("ZeroOrOne:");
+                node.print(depth + 1);
+            },
+            Node::ZeroOrMore(node) => {
+                println!("ZeroOrMore:");
+                node.print(depth + 1)
+            },
+            Node::OneOrMore(node) => {
+                println!("OneOrMore:");
+                node.print(depth + 1);
+            },
+            Node::OneOf(nodes) => {
+                println!("OneOf:");
+                for node in nodes {
+                    node.print(depth + 1);
+                }
+            }
+        }
+    }
+}
+
 pub struct ParseError {
     pub message: String,
     pub pos: usize

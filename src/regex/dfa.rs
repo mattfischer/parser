@@ -101,6 +101,31 @@ impl DFA {
         }
     }
 
+    pub fn print(&self) {
+        println!("Start state: {}", self.start_state);
+        println!("Accept states:");
+        for (i, accept) in self.accept_states.iter().enumerate() {
+            if *accept != usize::MAX {
+                println!("  {i}");
+            }
+        }
+        println!();
+
+        for i in 0..self.num_states {
+            if i == self.reject_state {
+                continue;
+            }
+
+            println!("State {i}:");
+            for j in 0..self.num_code_points {
+                let next_state = self.transition(i, j);
+                if next_state != self.reject_state {
+                    println!("  {j} -> {next_state}");
+                }
+            }
+        }
+    }
+
     fn find_or_add_state(state_sets: &mut Vec<StateSet>, nfa: &NFA, nfa_states: &HashSet<usize>) -> usize {
         let mut epsilon_closure = HashSet::new();
         let mut queue = VecDeque::new();

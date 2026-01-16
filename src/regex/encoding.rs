@@ -99,4 +99,14 @@ impl Encoding {
 
         return self.symbol_map[symbol as usize - self.total_range.0 as usize];
     }
+
+    pub fn print(&self) {
+        for (i, (first, last)) in self.input_symbol_ranges.iter().enumerate() {
+            if first == last {
+                println!("{i}: {first}");
+            } else {
+                println!("{i}: {first}-{last}");
+            }
+        }
+    }
 }
