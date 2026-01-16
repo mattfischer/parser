@@ -67,7 +67,7 @@ impl DFA {
             }
         }
 
-        //Self::minimize(&mut states, &mut start_state, &mut accept_states);
+        Self::minimize(&mut states, &mut start_state, &mut accept_states);
 
         states.push(State::default());
         let num_states = states.len();
@@ -100,7 +100,7 @@ impl DFA {
             return Some(accept_state);
         }
     }
-    
+
     fn find_or_add_state(state_sets: &mut Vec<StateSet>, nfa: &NFA, nfa_states: &HashSet<usize>) -> usize {
         let mut epsilon_closure = HashSet::new();
         let mut queue = VecDeque::new();
@@ -169,17 +169,17 @@ impl DFA {
         }
         
         let mut queue = VecDeque::new();
-        for (i, _) in accept_states.iter().enumerate() {
+        for i in 0..partition.len() {
             queue.push_back(i);
         }
 
         while queue.len() > 0 {
             let s = queue.pop_front().unwrap();
-
+            let distinguisher = partition[s].clone();
+                    
             for c in &alphabet {
                 let mut inbound = HashSet::new();
                 for (i, state) in states.iter().enumerate() {
-                    let distinguisher = &partition[s];
                     if state.transitions.contains_key(c) && distinguisher.contains(&state.transitions[c]) {
                         inbound.insert(i);
                     }
@@ -202,7 +202,7 @@ impl DFA {
                     }
 
                     if in_set.len() > 0 && out_set.len() > 0 {
-                        *partition.get_mut(i).unwrap() = in_set.clone();
+                        partition[i] = in_set.clone();
                         partition.push(out_set.clone());
                         let o = partition.len() - 1;
 
@@ -223,12 +223,12 @@ impl DFA {
         let mut state_map = HashMap::new();
         for (i, part) in partition.iter().enumerate() {
             for j in part {
-                state_map.insert(j, i);
+                state_map.insert(*j, i);
             }
         }
 
         let mut new_states = Vec::new();
-        for (i, part) in partition.iter().enumerate() {
+        for part in &partition {
             let mut new_state = State::default();
             let s = part.iter().next().unwrap();
             for transition in &states[*s].transitions {
@@ -239,7 +239,7 @@ impl DFA {
 
         let new_start_state = state_map[start_state];
         let mut new_accept_states = vec![usize::MAX; new_states.len()];
-        for (i, _) in states.iter().enumerate() {
+        for i in 0..states.len() {
             new_accept_states[state_map[&i]] = accept_states[i];
         }
 
