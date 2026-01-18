@@ -44,6 +44,15 @@ impl Tokenizer {
 
         return Tokenizer { configurations, matchers, end_value, newline_value };
     }
+
+    pub fn pattern_value(&self, name: &str, configuration: usize) -> Value {
+        let configuration = &self.configurations[configuration];
+        if let Some(index) = configuration.iter().position(|x| x.name == name) {
+            return configuration[index].value;
+        } else {
+            return INVALID_TOKEN_VALUE;
+        }
+    }
 }
 
 pub struct Token {
@@ -59,8 +68,8 @@ pub struct Stream {
     current_line: String,
     consumed: usize,
     next_token: Token,
-    line: usize,
-    configuration: usize
+    pub line: usize,
+    pub configuration: usize
 }
 
 impl Stream {
@@ -74,6 +83,18 @@ impl Stream {
         if configuration < self.tokenizer.configurations.len() {
             self.configuration = configuration;
         }
+    }
+
+    pub fn is_end(&mut self) -> bool {
+        return self.next_token().value == self.tokenizer.end_value;
+    }
+
+    pub fn pattern_value(&self, name: &str) -> Value {
+        return self.tokenizer.pattern_value(name, self.configuration);
+    }
+
+    pub fn newline_value(&self) -> Value {
+        return self.tokenizer.newline_value;
     }
 
     pub fn next_token(&mut self) -> &Token {
@@ -92,7 +113,7 @@ impl Stream {
         let mut repeat = true;
         while repeat {
             while self.consumed >= self.current_line.len() {
-                if self.configuration == self.current_line.len() && self.tokenizer.newline_value != INVALID_TOKEN_VALUE && self.line > 0 {
+                if self.consumed == self.current_line.len() && self.tokenizer.newline_value != INVALID_TOKEN_VALUE && self.line > 0 {
                     self.next_token = Token { value: self.tokenizer.newline_value, start: self.consumed, line: self.line, text: "<newline>".to_string() };
                     self.consumed += 1;
                     return;

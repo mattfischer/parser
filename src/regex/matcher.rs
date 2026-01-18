@@ -30,26 +30,9 @@ impl Matcher {
             } 
         }
 
-        println!("*** Parse nodes ***");
-        for node in &nodes {
-            node.print(0);
-        }
-        println!();
-
         let encoding = Encoding::new(&nodes);
-        println!("*** Encoding ***");
-        encoding.print();
-        println!();
-
         let nfa = NFA::new(&nodes, &encoding);
-        println!("*** NFA ***");
-        nfa.print();
-        println!();
-
         let dfa = DFA::new(&nfa, &encoding);
-        println!("*** DFA ***");
-        dfa.print();
-        println!();
 
         return Ok(Matcher { dfa, encoding });
     }

@@ -2,22 +2,24 @@ mod parser;
 mod regex;
 mod util;
 
-use parser::Tokenizer;
+use parser::DefReader;
 
-use std::fs::File;
 use std::io::BufReader;
 
+const GRAMMAR: &str = r#"
+NUMBER: [0-9]+
+IGNORE: \s
+
+<root> : <E>
+<E>: <T> ( ( '+' | '-' ) <T> )*
+<T>: <F> ( ( '*' | '/' ) <F> )*
+<F>: NUMBER | '(' <E> ')'
+"#;
+
 fn main() {
-    let configurations = vec![
-        vec![parser::tokenizer::Pattern::new("foo", "x*", 0)]
-    ];
-
-    let tokenizer = Tokenizer::new(configurations, 1, 2);
-    
-    if let Ok(file) = File::open("") {
-        let reader = BufReader::new(file);
-        let mut stream = parser::tokenizer::Stream::new(tokenizer, Box::new(reader));
-
-        stream.next_token();
+    let reader = BufReader::new(GRAMMAR.as_bytes());
+    if let Ok((tokenizer, extended_grammar)) = DefReader::parse(Box::new(reader)) {
+        let grammar = extended_grammar.to_grammar();
+        grammar.print();
     }
 }

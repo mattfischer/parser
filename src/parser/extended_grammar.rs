@@ -16,8 +16,8 @@ pub enum RHSNode {
 }
 
 pub struct Rule {
-    lhs: String,
-    rhs: RHSNode
+    pub lhs: String,
+    pub rhs: RHSNode
 }
 
 pub struct ExtendedGrammar {
@@ -44,7 +44,7 @@ impl ExtendedGrammar {
             RHSNode::Symbol(symbol) => {
                 match symbol {
                     Symbol::Nonterminal(index) => print!("<{}>", self.rules[*index].lhs),
-                    Symbol::Terminal(index) => print!("<{}>", self.terminals[*index])
+                    Symbol::Terminal(index) => print!("{}", self.terminals[*index])
                 }
             },
             RHSNode::Sequence(nodes) => {
