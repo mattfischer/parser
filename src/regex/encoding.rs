@@ -15,7 +15,7 @@ pub struct Encoding {
 }
 
 impl Encoding {
-    pub fn new(nodes: &Vec<Node>) -> Encoding {
+    pub fn new(nodes: &[Node]) -> Encoding {
         let mut node_symbol_ranges = VecDeque::new();
         
         for node in nodes {

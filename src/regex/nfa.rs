@@ -18,7 +18,7 @@ pub struct NFA {
 }
 
 impl NFA {
-    pub fn new(nodes: &Vec<Node>, encoding: &Encoding) -> NFA {
+    pub fn new(nodes: &[Node], encoding: &Encoding) -> NFA {
         let mut nfa = NFA { states: Vec::new(), start_state: 0, accept_states: Vec::new() };
         nfa.start_state = nfa.add_state();
 

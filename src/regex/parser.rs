@@ -79,7 +79,7 @@ impl Parser {
             return Ok(node);
         } else {
             let c = regex.chars().nth(pos).unwrap();
-            return Err(ParseError::new(format!("Unexpected character {c}").as_str(), pos));
+            return Err(ParseError::new(&format!("Unexpected character {c}"), pos));
         }
     }
 
@@ -145,7 +145,7 @@ impl Parser {
         
         let c = regex.chars().nth(*pos).unwrap();
         match c {
-            ')' | '|' | '*' | '+' | '?' => return Err(ParseError::new(format!("Unexpected character {c}").as_str(), *pos)),
+            ')' | '|' | '*' | '+' | '?' => return Err(ParseError::new(&format!("Unexpected character {c}"), *pos)),
             '[' => return Self::parse_character_class(regex, pos),
             '\\' => return Self::parse_escape(regex, pos),
             _ => {

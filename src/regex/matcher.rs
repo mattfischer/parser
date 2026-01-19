@@ -11,8 +11,8 @@ pub struct ParseError {
 }
 
 impl ParseError {
-    pub fn new(pattern: usize, pos: usize, message: String) -> ParseError {
-        ParseError { pattern, pos, message }
+    pub fn new(pattern: usize, pos: usize, message: &str) -> ParseError {
+        ParseError { pattern, pos, message: message.to_string() }
     }
 }
 pub struct Matcher {
@@ -24,9 +24,9 @@ impl Matcher {
     pub fn new(patterns: Vec<String>) -> Result<Matcher, ParseError> {
         let mut nodes = Vec::new();
         for (i, pattern) in patterns.iter().enumerate() {
-            match Parser::parse(pattern.as_str()) {
+            match Parser::parse(&pattern) {
                 Ok(node) => nodes.push(node),
-                Err(error) => return Err(ParseError::new(i, error.pos, error.message))
+                Err(error) => return Err(ParseError::new(i, error.pos, &error.message))
             } 
         }
 

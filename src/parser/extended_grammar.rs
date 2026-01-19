@@ -109,12 +109,12 @@ impl ExtendedGrammar {
         match rhs_node {
             RHSNode::OneOf(nodes) => {
                 for node in nodes {
-                    let grammar_rhs = self.create_rhs(node, grammar_rules, rule_name.as_str());
+                    let grammar_rhs = self.create_rhs(node, grammar_rules, &rule_name);
                     grammar_rules[index].rhs.push(grammar_rhs);
                 }
             },
             _ => {
-                let grammar_rhs = self.create_rhs(rhs_node, grammar_rules, rule_name.as_str());
+                let grammar_rhs = self.create_rhs(rhs_node, grammar_rules, &rule_name);
                 grammar_rules[index].rhs.push(grammar_rhs);
             }
         }
@@ -214,7 +214,7 @@ impl ExtendedGrammar {
         return grammar_symbol;
     }
 
-    fn create_subrule_name(&self, rule_name: &str, grammar_rules: &mut Vec<parser::grammar::Rule>) -> String {
+    fn create_subrule_name(&self, rule_name: &str, grammar_rules: &[parser::grammar::Rule]) -> String {
         let mut n = 1;
         loop {
             let subrule_name = format!("{rule_name}.{n}");

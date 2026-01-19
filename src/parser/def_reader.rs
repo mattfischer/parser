@@ -18,8 +18,8 @@ pub struct ParseError {
 }
 
 impl ParseError {
-    pub fn new(message: String, line: usize) -> ParseError {
-        ParseError { message, line }
+    pub fn new(message: &str, line: usize) -> ParseError {
+        ParseError { message: message.to_string(), line }
     }
 }
 
@@ -43,13 +43,13 @@ impl DefReader {
             terminals.push(pattern.name.clone());
         }
         let end_value = terminals.len();
-        terminals.push("END".to_string());
+        terminals.push(String::from("END"));
 
         let start_rule;
         if let Some(rule) = def_reader.rules.iter().position(|x| x.lhs == "root") {
             start_rule = rule;
         } else {
-            return Err(ParseError::new("No <root> nonterminal defined".to_string(), 0));
+            return Err(ParseError::new("No <root> nonterminal defined", 0));
         }
 
         let configurations = vec![def_reader.patterns];
@@ -59,7 +59,7 @@ impl DefReader {
     }
 
     fn error_expected(&mut self, expected: &str) -> ParseError {
-        return ParseError::new(format!("Expected: {expected}"), self.stream.line);
+        return ParseError::new(&format!("Expected: {expected}"), self.stream.line);
     }
 
     fn match_token_with_configuration(&mut self, name: &str, new_configuration: usize) -> Option<String> {
@@ -120,7 +120,7 @@ impl DefReader {
             self.expect_token_with_configuration("colon", 1)?;
             let regex = self.expect_token("regex")?;
             self.expect_token_with_configuration("newline", 0)?;
-            return Ok(Some(parser::tokenizer::Pattern::new(text.as_str(), regex.as_str(), 0)));
+            return Ok(Some(parser::tokenizer::Pattern::new(&text, &regex, 0)));
         } else {
             return Ok(None);
         }
@@ -201,13 +201,13 @@ impl DefReader {
                 index = i;
             } else {
                 index = self.patterns.len();
-                let dummy_pattern = parser::tokenizer::Pattern::new(pattern_name.as_str(), "", 0);
+                let dummy_pattern = parser::tokenizer::Pattern::new(&pattern_name, "", 0);
                 self.patterns.push(dummy_pattern);
             }
             let symbol = parser::extended_grammar::Symbol::Terminal(index);
             return Ok(Some(parser::extended_grammar::RHSNode::Symbol(symbol)));
         } else if let Some(text) = self.match_token("nonterminal") {
-            let rule_lhs = text[1..text.len() - 1].to_string();
+            let rule_lhs = &text[1..text.len() - 1];
             let index;
             if let Some(i) = self.rules.iter().position(|x| x.lhs == rule_lhs) {
                 index = i;
@@ -220,18 +220,18 @@ impl DefReader {
             let symbol = parser::extended_grammar::Symbol::Nonterminal(index);
             return Ok(Some(parser::extended_grammar::RHSNode::Symbol(symbol)));
         } else if let Some(text) = self.match_token("literal") {
-            let literal_text = text[1..text.len() - 1].to_string();
+            let literal_text = &text[1..text.len() - 1];
 
             let index;
-            if self.anonymous_terminals.contains_key(&literal_text) {
-                index = self.anonymous_terminals[&literal_text];
+            if self.anonymous_terminals.contains_key(literal_text) {
+                index = self.anonymous_terminals[literal_text];
             } else {
                 index = self.patterns.len();
                 let pattern_name = format!("'{literal_text}'");
-                let escaped_text = self.escape(literal_text.as_str());
-                let pattern = parser::tokenizer::Pattern::new(pattern_name.as_str(), escaped_text.as_str(), 0);
+                let escaped_text = self.escape(&literal_text);
+                let pattern = parser::tokenizer::Pattern::new(&pattern_name, &escaped_text, 0);
                 self.patterns.push(pattern);
-                self.anonymous_terminals.insert(literal_text, index);
+                self.anonymous_terminals.insert(literal_text.to_string(), index);
             }
 
             let symbol = parser::extended_grammar::Symbol::Terminal(index);

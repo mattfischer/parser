@@ -67,7 +67,7 @@ impl DFA {
             }
         }
 
-        Self::minimize(&mut states, &mut start_state, &mut accept_states);
+        (states, start_state, accept_states) = Self::minimize(&states, start_state, &accept_states);
 
         states.push(State::default());
         let num_states = states.len();
@@ -172,7 +172,7 @@ impl DFA {
         return idx;
     }
 
-    fn minimize(states: &mut Vec<State>, start_state: &mut usize, accept_states: &mut Vec<usize>) {
+    fn minimize(states: &[State], start_state: usize, accept_states: &[usize]) -> (Vec<State>, usize, Vec<usize>) {
         let mut alphabet = HashSet::new();
         for state in states.iter() {
             for transition in &state.transitions {
@@ -262,14 +262,12 @@ impl DFA {
             new_states.push(new_state);
         }
 
-        let new_start_state = state_map[start_state];
+        let new_start_state = state_map[&start_state];
         let mut new_accept_states = vec![usize::MAX; new_states.len()];
         for i in 0..states.len() {
             new_accept_states[state_map[&i]] = accept_states[i];
         }
 
-        *states = new_states;
-        *start_state = new_start_state;
-        *accept_states = new_accept_states;
+        return (new_states, new_start_state, new_accept_states);
     }
 }
