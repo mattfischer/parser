@@ -23,6 +23,24 @@ impl ParseError {
     }
 }
 
+#[derive(Copy, Clone)]
+enum Token {
+    Epsilon,
+    Terminal,
+    Nonterminal,
+    Colon,
+    Pipe,
+    LParen,
+    RParen,
+    Star,
+    Plus,
+    Question,
+    Literal,
+    Regex,
+    Newline,
+    End
+}
+
 impl DefReader {
     pub fn parse(input: Box<dyn BufRead>) -> Result<(Tokenizer, ExtendedGrammar), ParseError> {
         let def_tokenizer = Self::make_def_tokenizer();
@@ -58,14 +76,22 @@ impl DefReader {
         return Ok((tokenizer, extended_grammar));
     }
 
-    fn error_expected(&mut self, expected: &str) -> ParseError {
-        return ParseError::new(&format!("Expected: {expected}"), self.stream.line);
+    fn error_expected(&self, name: &str) -> ParseError {
+        return ParseError::new(&format!("Expected: {name}"), self.stream.line);
     }
 
-    fn match_token_with_configuration(&mut self, name: &str, new_configuration: usize) -> Option<String> {
+    fn error_expected_token(&self, token: Token) -> ParseError {
+        let name  = match token {
+            Token::Newline => "<newline>",
+            _ => self.stream.pattern_name(token as usize)
+        };
+
+        return self.error_expected(name);
+    }
+
+    fn match_token_with_configuration(&mut self, token: Token, new_configuration: usize) -> Option<String> {
         let result;
-        let value = if name == "newline" { self.stream.newline_value() } else { self.stream.pattern_value(name) };
-        if self.stream.next_token().value == value {
+        if self.stream.next_token().value == token as usize {
             result = Some(self.stream.next_token().text.clone());
             self.stream.set_configuration(new_configuration);
             self.stream.consume_token();
@@ -75,20 +101,20 @@ impl DefReader {
         return result;
     }
 
-    fn match_token(&mut self, name: &str) -> Option<String> {
-        return self.match_token_with_configuration(name, self.stream.configuration);
+    fn match_token(&mut self, token: Token) -> Option<String> {
+        return self.match_token_with_configuration(token, self.stream.configuration);
     }
 
-    fn expect_token_with_configuration(&mut self, name: &str, new_configuration: usize) -> Result<String, ParseError> {
-        if let Some(text) = self.match_token_with_configuration(name, new_configuration) {
+    fn expect_token_with_configuration(&mut self, token: Token, new_configuration: usize) -> Result<String, ParseError> {
+        if let Some(text) = self.match_token_with_configuration(token, new_configuration) {
             return Ok(text)
         } else {
-            return Err(self.error_expected(name));
+            return Err(self.error_expected_token(token));
         }
     }
 
-    fn expect_token(&mut self, name: &str) -> Result<String, ParseError> {
-        return self.expect_token_with_configuration(name, self.stream.configuration);
+    fn expect_token(&mut self, token: Token) -> Result<String, ParseError> {
+        return self.expect_token_with_configuration(token, self.stream.configuration);
     }
 
     fn parse_grammar(&mut self) -> Result<(), ParseError> {
@@ -105,7 +131,7 @@ impl DefReader {
                 } else {
                     self.rules.push(rule);
                 }
-            } else if let Some(_) = self.match_token("newline") {
+            } else if let Some(_) = self.match_token(Token::Newline) {
                 continue;
             } else {
                 return Err(self.error_expected("item"));
@@ -116,10 +142,10 @@ impl DefReader {
     }
 
     fn try_parse_pattern(&mut self) -> Result<Option<parser::tokenizer::Pattern>, ParseError> {
-        if let Some(text) = self.match_token("terminal") {
-            self.expect_token_with_configuration("colon", 1)?;
-            let regex = self.expect_token("regex")?;
-            self.expect_token_with_configuration("newline", 0)?;
+        if let Some(text) = self.match_token(Token::Terminal) {
+            self.expect_token_with_configuration(Token::Colon, 1)?;
+            let regex = self.expect_token(Token::Regex)?;
+            self.expect_token_with_configuration(Token::Newline, 0)?;
             return Ok(Some(parser::tokenizer::Pattern::new(&text, &regex, 0)));
         } else {
             return Ok(None);
@@ -127,10 +153,10 @@ impl DefReader {
     }
 
     fn try_parse_rule(&mut self) -> Result<Option<parser::extended_grammar::Rule>, ParseError> {
-        if let Some(text) = self.match_token("nonterminal") {
-            self.expect_token("colon")?;
+        if let Some(text) = self.match_token(Token::Nonterminal) {
+            self.expect_token(Token::Colon)?;
             let rhs = self.parse_rhs_options()?;
-            self.expect_token("newline")?;
+            self.expect_token(Token::Newline)?;
             let lhs = text[1..text.len() - 1].to_string();
             let rule = parser::extended_grammar::Rule { lhs, rhs };
             return Ok(Some(rule));
@@ -143,7 +169,7 @@ impl DefReader {
         let mut options = Vec::new();
         loop { 
             options.push(self.parse_rhs_sequence()?);
-            if let Some(_) = self.match_token("pipe") {
+            if let Some(_) = self.match_token(Token::Pipe) {
                 continue;
             } else {
                 break;
@@ -177,11 +203,11 @@ impl DefReader {
         if let Some(symbol) = self.try_parse_rhs_symbol()? {
             let mut rhs_item = symbol;
             loop {
-                if let Some(_) = self.match_token("star") {
+                if let Some(_) = self.match_token(Token::Star) {
                     rhs_item = parser::extended_grammar::RHSNode::ZeroOrMore(Box::new(rhs_item));
-                } else if let Some(_) = self.match_token("plus") {
+                } else if let Some(_) = self.match_token(Token::Plus) {
                     rhs_item = parser::extended_grammar::RHSNode::OneOrMore(Box::new(rhs_item));
-                } else if let Some(_) = self.match_token("question") {
+                } else if let Some(_) = self.match_token(Token::Question) {
                     rhs_item = parser::extended_grammar::RHSNode::ZeroOrOne(Box::new(rhs_item));
                 } else {
                     break;
@@ -194,7 +220,7 @@ impl DefReader {
     }
 
     fn try_parse_rhs_symbol(&mut self) -> Result<Option<parser::extended_grammar::RHSNode>, ParseError> {
-        if let Some(text) = self.match_token("terminal") {
+        if let Some(text) = self.match_token(Token::Terminal) {
             let pattern_name = text;
             let index;
             if let Some(i) = self.patterns.iter().position(|x| x.name == pattern_name) {
@@ -206,7 +232,7 @@ impl DefReader {
             }
             let symbol = parser::extended_grammar::Symbol::Terminal(index);
             return Ok(Some(parser::extended_grammar::RHSNode::Symbol(symbol)));
-        } else if let Some(text) = self.match_token("nonterminal") {
+        } else if let Some(text) = self.match_token(Token::Nonterminal) {
             let rule_lhs = &text[1..text.len() - 1];
             let index;
             if let Some(i) = self.rules.iter().position(|x| x.lhs == rule_lhs) {
@@ -219,7 +245,7 @@ impl DefReader {
             }
             let symbol = parser::extended_grammar::Symbol::Nonterminal(index);
             return Ok(Some(parser::extended_grammar::RHSNode::Symbol(symbol)));
-        } else if let Some(text) = self.match_token("literal") {
+        } else if let Some(text) = self.match_token(Token::Literal) {
             let literal_text = &text[1..text.len() - 1];
 
             let index;
@@ -236,9 +262,9 @@ impl DefReader {
 
             let symbol = parser::extended_grammar::Symbol::Terminal(index);
             return Ok(Some(parser::extended_grammar::RHSNode::Symbol(symbol)));
-        } else if let Some(_) = self.match_token("lparen") {
+        } else if let Some(_) = self.match_token(Token::LParen) {
             let rhs_list = self.parse_rhs_options()?;
-            self.expect_token("rparen")?;
+            self.expect_token(Token::RParen)?;
             return Ok(Some(rhs_list));
         } else {
             return Ok(None);
@@ -246,57 +272,36 @@ impl DefReader {
     }
 
     fn make_def_tokenizer() -> Tokenizer {
-        let terminals = vec![
-            "epsilon",
-            "terminal",
-            "nonterminal",
-            "colon",
-            "pipe",
-            "lparen",
-            "rparen",
-            "star",
-            "plus",
-            "question",
-            "literal",
-            "regex",
-            "newline",
-            "end"
-        ];
-
-        let token_index = |name: &str| {
-            if let Some(index) = terminals.iter().position(|x| *x == name) {
-                return index;
-            } else {
-                return parser::tokenizer::INVALID_TOKEN_VALUE;
-            }
+        let pattern = |regex: &str, name: &str, value: Token| {
+            parser::tokenizer::Pattern { regex: regex.to_string(), name: name.to_string(), value: value as usize}
         };
-    
-        let pattern = |regex: &str, name: &str| {
-            parser::tokenizer::Pattern { name: name.to_string(), regex: regex.to_string(), value: token_index(name) }
+
+        let pattern_ignore = |regex: &str, name: &str| {
+            parser::tokenizer::Pattern { regex: regex.to_string(), name: name.to_string(), value: parser::tokenizer::INVALID_TOKEN_VALUE}
         };
 
         let configurations = vec![
             vec![
-                pattern("0", "epsilon"),
-                pattern("\\w+", "terminal"),
-                pattern("<\\w+>", "nonterminal"),
-                pattern(":", "colon"),
-                pattern("\\|", "pipe"),
-                pattern("\\(", "lparen"),
-                pattern("\\)", "rparen"),
-                pattern("\\+", "plus"),
-                pattern("\\*", "star"),
-                pattern("\\?", "question"),
-                pattern("'[^']+'", "literal"),
-                pattern("\\s", "whitespace")  
+                pattern("0", "<epsilon>", Token::Epsilon),
+                pattern("\\w+", "<terminal>", Token::Terminal),
+                pattern("<\\w+>", "<nonterminal>", Token::Nonterminal),
+                pattern(":", ":", Token::Colon),
+                pattern("\\|", "|", Token::Pipe),
+                pattern("\\(", "(", Token::LParen),
+                pattern("\\)", ")", Token::RParen),
+                pattern("\\+", "+", Token::Plus),
+                pattern("\\*", "*", Token::Star),
+                pattern("\\?", "?", Token::Question),
+                pattern("'[^']+'", "<literal>", Token::Literal),
+                pattern_ignore("\\s", "<whitespace>")  
             ],
             vec![
-                pattern("\\S+", "regex"),
-                pattern("\\s", "whitespace")
+                pattern("\\S+", "<regex>", Token::Regex),
+                pattern_ignore("\\s", "<whitespace>")
             ]
         ];
 
-        return Tokenizer::new(configurations, token_index("end"), token_index("newline"));
+        return Tokenizer::new(configurations, Token::End as usize, Token::Newline as usize);
     }
 
     fn escape(&self, input: &str) -> String {

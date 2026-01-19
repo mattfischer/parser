@@ -95,12 +95,8 @@ impl Stream {
         return self.next_token().value == self.tokenizer.end_value;
     }
 
-    pub fn pattern_value(&self, name: &str) -> Value {
-        return self.tokenizer.pattern_value(name, self.configuration);
-    }
-
-    pub fn newline_value(&self) -> Value {
-        return self.tokenizer.newline_value;
+    pub fn pattern_name(&self, pattern: usize) -> &str {
+        return &self.tokenizer.configurations[self.configuration][pattern].name;
     }
 
     pub fn next_token(&mut self) -> &Token {
