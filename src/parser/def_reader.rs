@@ -89,11 +89,10 @@ impl DefReader {
         return self.error_expected(name);
     }
 
-    fn match_token_with_configuration(&mut self, token: Token, new_configuration: usize) -> Option<String> {
+    fn match_token(&mut self, token: Token) -> Option<String> {
         let result;
         if self.stream.next_token().value == token as usize {
             result = Some(self.stream.next_token().text.clone());
-            self.stream.set_configuration(new_configuration);
             self.stream.consume_token();
         } else {
             result = None;
@@ -101,20 +100,12 @@ impl DefReader {
         return result;
     }
 
-    fn match_token(&mut self, token: Token) -> Option<String> {
-        return self.match_token_with_configuration(token, self.stream.configuration);
-    }
-
-    fn expect_token_with_configuration(&mut self, token: Token, new_configuration: usize) -> Result<String, ParseError> {
-        if let Some(text) = self.match_token_with_configuration(token, new_configuration) {
+    fn expect_token(&mut self, token: Token) -> Result<String, ParseError> {
+        if let Some(text) = self.match_token(token) {
             return Ok(text)
         } else {
             return Err(self.error_expected_token(token));
         }
-    }
-
-    fn expect_token(&mut self, token: Token) -> Result<String, ParseError> {
-        return self.expect_token_with_configuration(token, self.stream.configuration);
     }
 
     fn parse_grammar(&mut self) -> Result<(), ParseError> {
@@ -143,9 +134,11 @@ impl DefReader {
 
     fn try_parse_pattern(&mut self) -> Result<Option<parser::tokenizer::Pattern>, ParseError> {
         if let Some(text) = self.match_token(Token::Terminal) {
-            self.expect_token_with_configuration(Token::Colon, 1)?;
+            self.stream.set_next_configuration(1);
+            self.expect_token(Token::Colon)?;
+            self.stream.set_next_configuration(0);
             let regex = self.expect_token(Token::Regex)?;
-            self.expect_token_with_configuration(Token::Newline, 0)?;
+            self.expect_token(Token::Newline)?;
             return Ok(Some(parser::tokenizer::Pattern::new(&text, &regex, 0)));
         } else {
             return Ok(None);

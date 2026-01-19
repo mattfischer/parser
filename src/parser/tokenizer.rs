@@ -75,19 +75,20 @@ pub struct Stream {
     consumed: usize,
     next_token: Token,
     pub line: usize,
-    pub configuration: usize
+    pub configuration: usize,
+    next_configuration: usize
 }
 
 impl Stream {
     pub fn new(tokenizer: Tokenizer, input: Box<dyn BufRead>) -> Stream {
         let next_token = Token { value: INVALID_TOKEN_VALUE, start: 0, line: 0, text: String::from("") };
 
-        return Stream { tokenizer, input, current_line: String::from(""), consumed: 0, next_token, line: 0, configuration: 0 };
+        return Stream { tokenizer, input, current_line: String::from(""), consumed: 0, next_token, line: 0, configuration: 0, next_configuration: 0 };
     }
 
-    pub fn set_configuration(&mut self, configuration: usize) {
+    pub fn set_next_configuration(&mut self, configuration: usize) {
         if configuration < self.tokenizer.configurations.len() {
-            self.configuration = configuration;
+            self.next_configuration = configuration;
         }
     }
 
@@ -112,6 +113,7 @@ impl Stream {
             return;
         }
 
+        self.configuration = self.next_configuration;
         let mut repeat = true;
         while repeat {
             while self.consumed >= self.current_line.len() {
