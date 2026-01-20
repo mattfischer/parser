@@ -21,5 +21,9 @@ fn main() {
     if let Ok((tokenizer, extended_grammar)) = DefReader::parse(Box::new(reader)) {
         let grammar = extended_grammar.to_grammar();
         grammar.print();
+        println!();
+
+        let sets = parser::grammar::Sets::new(&grammar);
+        sets.print(&grammar);
     }
 }
