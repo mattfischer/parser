@@ -15,9 +15,9 @@ pub struct Rule {
 }
 
 pub struct Grammar {
-    terminals: Vec<String>,
-    rules: Vec<Rule>,
-    start_rule: usize
+    pub terminals: Vec<String>,
+    pub rules: Vec<Rule>,
+    pub start_rule: usize
 }
 
 impl Grammar {

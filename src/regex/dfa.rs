@@ -73,7 +73,7 @@ impl DFA {
         let num_states = states.len();
         let num_code_points = encoding.num_code_points();
         let reject_state = states.len() - 1;
-        let mut transitions = Table::new(num_states, num_code_points);
+        let mut transitions = Table::new(num_states, num_code_points, 0);
 
         for (i, state) in states.iter().enumerate() {
             for j in 0..num_code_points {

@@ -3,6 +3,7 @@ mod regex;
 mod util;
 
 use parser::DefReader;
+use parser::algorithm::LL;
 
 use std::io::BufReader;
 
@@ -17,13 +18,71 @@ IGNORE: \s
 "#;
 
 fn main() {
-    let reader = BufReader::new(GRAMMAR.as_bytes());
-    if let Ok((tokenizer, extended_grammar)) = DefReader::parse(Box::new(reader)) {
-        let grammar = extended_grammar.to_grammar();
-        grammar.print();
-        println!();
+    if let Some((tokenizer, mut ll)) = make_parser() {
+        ll.add_terminal_decorator("NUMBER", |token| token.text.parse::<f32>().unwrap_or_default());
 
-        let sets = parser::grammar::Sets::new(&grammar);
-        sets.print(&grammar);
+        ll.add_reducer("root", |items| items[0].1.unwrap());
+
+        let minus = ll.grammar.terminal_index("-").unwrap();
+        ll.add_reducer("E", move |items| {                
+            let mut it = items.iter();
+            let (_, first_value) = it.next().unwrap();
+            let mut result = first_value.unwrap();
+            while let Some((index, _)) = it.next() {
+                if let Some((_, Some(value))) = it.next() {
+                    result = if *index == minus { result - value } else { result + value };
+                }
+            }
+            return result;
+        });
+
+        let divide = ll.grammar.terminal_index("/").unwrap();
+        ll.add_reducer("T", move |items| {                
+            let mut it = items.iter();
+            let (_, first_value) = it.next().unwrap();
+            let mut result = first_value.unwrap();
+            while let Some((index, _)) = it.next() {
+                if let Some((_, Some(value))) = it.next() {
+                    result = if *index == divide { result / value } else { result * value };
+                }
+            }
+            return result;
+        });
+
+        let lparen = ll.grammar.terminal_index("(").unwrap();
+        ll.add_reducer("F", move |items| {
+            let idx = if items[0].0 == lparen { 1 } else { 0 };
+            return items[idx].1.unwrap_or_default();
+        });
+
+        let text = "2 * (2 + 3)";
+        let reader = BufReader::new(text.as_bytes());
+        let stream = parser::tokenizer::Stream::new(tokenizer, Box::new(reader));
+
+        if let Some(result) = ll.parse(stream) {
+            println!("Result: {result}");
+        }
+    }
+}
+
+fn make_parser<ParseData>() -> Option<(parser::Tokenizer, parser::algorithm::LL<ParseData>)> {
+    let reader = BufReader::new(GRAMMAR.as_bytes());
+    match DefReader::parse(Box::new(reader)) {
+        Ok((tokenizer, extended_grammar)) => {
+            let grammar = extended_grammar.to_grammar();
+            match LL::new(grammar) {
+                Ok(ll) => {
+                    return Some((tokenizer, ll));
+                },
+                Err(conflict) => {
+                    println!("Conflict: rule {} symbol {} rhs {}/{}", conflict.rule, conflict.symbol, conflict.rhs1, conflict.rhs2);
+                    return None;
+                }
+            }
+        },
+        Err(err) => {
+            println!("Parse error, line {}: {}", err.line, err.message);
+            return None;
+        }
     }
 }

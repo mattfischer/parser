@@ -64,8 +64,20 @@ impl DefReader {
         terminals.push(String::from("END"));
 
         let start_rule;
-        if let Some(rule) = def_reader.rules.iter().position(|x| x.lhs == "root") {
-            start_rule = rule;
+        if let Some(i) = def_reader.rules.iter().position(|x| x.lhs == "root") {
+            start_rule = i;
+            let rule = &mut def_reader.rules[i];
+            let end_symbol = parser::extended_grammar::Symbol::Terminal(end_value);
+            let end_node = parser::extended_grammar::RHSNode::Symbol(end_symbol);
+            match &mut rule.rhs {
+                parser::extended_grammar::RHSNode::Sequence(nodes) => nodes.push(end_node),
+                _ => {
+                    let mut node = parser::extended_grammar::RHSNode::OneOf(Vec::new());
+                    std::mem::swap(&mut node, &mut rule.rhs);
+                    let new_rhs = parser::extended_grammar::RHSNode::Sequence(vec![node, end_node]);
+                    rule.rhs = new_rhs;               
+                } 
+            }
         } else {
             return Err(ParseError::new("No <root> nonterminal defined", 0));
         }
@@ -246,7 +258,7 @@ impl DefReader {
                 index = self.anonymous_terminals[literal_text];
             } else {
                 index = self.patterns.len();
-                let pattern_name = format!("'{literal_text}'");
+                let pattern_name = literal_text;
                 let escaped_text = self.escape(&literal_text);
                 let pattern = parser::tokenizer::Pattern::new(&pattern_name, &escaped_text, 0);
                 self.patterns.push(pattern);

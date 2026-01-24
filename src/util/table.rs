@@ -4,9 +4,9 @@ pub struct Table<T> {
     data: Vec<T>
 }
 
-impl<T: Default + Clone> Table<T> {
-    pub fn new(width: usize, height: usize) -> Table<T> {
-        let data = vec![T::default(); width * height];
+impl<T: Clone> Table<T> {
+    pub fn new(width: usize, height: usize, default_value: T) -> Table<T> {
+        let data = vec![default_value; width * height];
         return Table { width, height, data };
     }
 

@@ -129,7 +129,9 @@ impl Stream {
                     self.next_token = Token::new(self.tokenizer.end_value, self.consumed, self.line, "<end>");
                     return;
                 } else {
-                    self.current_line.pop();
+                    if self.current_line.ends_with('\n') {
+                        self.current_line.pop();
+                    }
                     self.consumed = 0;
                     self.line += 1;
                 }
