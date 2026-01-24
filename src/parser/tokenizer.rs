@@ -44,17 +44,9 @@ impl Tokenizer {
 
         return Tokenizer { configurations, matchers, end_value, newline_value };
     }
-
-    pub fn pattern_value(&self, name: &str, configuration: usize) -> Value {
-        let configuration = &self.configurations[configuration];
-        if let Some(index) = configuration.iter().position(|x| x.name == name) {
-            return configuration[index].value;
-        } else {
-            return INVALID_TOKEN_VALUE;
-        }
-    }
 }
 
+#[allow(dead_code)]
 pub struct Token {
     pub value: Value,
     pub start: usize,

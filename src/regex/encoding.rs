@@ -100,6 +100,7 @@ impl Encoding {
         return self.symbol_map[symbol as usize - self.total_range.0 as usize];
     }
 
+    #[allow(dead_code)]
     pub fn print(&self) {
         for (i, (first, last)) in self.input_symbol_ranges.iter().enumerate() {
             if first == last {

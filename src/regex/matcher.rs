@@ -4,6 +4,7 @@ use regex::Encoding;
 use regex::NFA;
 use regex::Parser;
 
+#[allow(dead_code)]
 pub struct ParseError {
     pub pattern: usize,
     pub pos: usize,

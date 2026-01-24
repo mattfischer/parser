@@ -31,6 +31,7 @@ impl ExtendedGrammar {
         ExtendedGrammar { terminals, rules, start_rule }
     }
 
+    #[allow(dead_code)]
     pub fn print(&self) {
         for rule in &self.rules {
             print!("<{}>: ", rule.lhs);

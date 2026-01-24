@@ -33,6 +33,7 @@ impl Grammar {
         return self.rules.iter().position(|x| x.lhs == name);
     }
 
+    #[allow(dead_code)]
     pub fn print(&self) {
         for rule in &self.rules {
             print!("<{}>: ", rule.lhs);
@@ -80,6 +81,7 @@ impl Sets {
         return sets;
     }
 
+    #[allow(dead_code)]
     pub fn print(&self, grammar: &Grammar) {
         println!("First sets:");
         for (i, rule) in grammar.rules.iter().enumerate() {

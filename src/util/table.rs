@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub struct Table<T> {
     width: usize,
     height: usize,

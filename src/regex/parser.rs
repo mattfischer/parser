@@ -14,6 +14,7 @@ pub enum Node {
 }
 
 impl Node {
+    #[allow(dead_code)]
     pub fn print(&self, depth: usize) {
         for _ in 0..depth {
             print!(" ");

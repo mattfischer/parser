@@ -35,6 +35,7 @@ impl NFA {
         return nfa;
     }
 
+    #[allow(dead_code)]
     pub fn print(&self) {
         println!("Start: {}", self.start_state);
         println!("Accept:");

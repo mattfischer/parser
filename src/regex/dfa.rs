@@ -101,6 +101,7 @@ impl DFA {
         }
     }
 
+    #[allow(dead_code)]
     pub fn print(&self) {
         println!("Start state: {}", self.start_state);
         println!("Accept states:");
