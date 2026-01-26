@@ -18,7 +18,7 @@ impl Lookahead for LookaheadSLR {
         return LookaheadSLR { sets };
     }
 
-    fn get_reduce_lookahead(&self, _state: usize, rule: usize) -> HashSet<usize> {
-        return self.sets.follow_sets[rule].clone();
+    fn get_reduce_lookahead(&self, _state: usize, rule: usize) -> &HashSet<usize> {
+        return &self.sets.follow_sets[rule];
     }
 }

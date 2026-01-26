@@ -1,3 +1,4 @@
+mod lalr;
 mod slr;
 
 use crate::parser;
@@ -6,6 +7,7 @@ use parser::grammar::Symbol;
 use parser::tokenizer::Stream;
 
 use slr::LookaheadSLR;
+use lalr::LookaheadLALR;
 
 use crate::util;
 use util::Table;
@@ -41,7 +43,7 @@ type Reduction = (usize, usize);
 
 trait Lookahead {
     fn new(grammar: &Grammar, states: &Vec<State>) -> Self;
-    fn get_reduce_lookahead(&self, state: usize, rule: usize) -> HashSet<usize>;    
+    fn get_reduce_lookahead(&self, state: usize, rule: usize) -> &HashSet<usize>;    
 }
 
 struct ParseTable {
@@ -60,8 +62,9 @@ impl ParseTable {
 
     fn compute_parse_table<L: Lookahead>(grammar: &Grammar) -> Result<(Table<ParseTableEntry>, Vec<Reduction>, HashSet<usize>), Conflict> {
         let states = Self::compute_states(grammar);
-
         let lookahead = L::new(grammar, &states);
+
+        Self::print_states(&states, grammar, &lookahead);
 
         let mut table = Table::new(states.len(), grammar.rules.len() + grammar.terminals.len(), ParseTableEntry::Error);
         let mut reductions = Vec::new();
@@ -72,9 +75,9 @@ impl ParseTable {
                 let rhs = &grammar.rules[item.rule].rhs[item.rhs];
                 if item.pos == rhs.len() {
                     for terminal in lookahead.get_reduce_lookahead(i, item.rule) {
-                        match table.at(i, terminal) {
+                        match table.at(i, *terminal) {
                             ParseTableEntry::Reduce(index) => {
-                                let conflict = Conflict::ReduceReduce(terminal, *index, item.rule);
+                                let conflict = Conflict::ReduceReduce(*terminal, *index, item.rule);
                                 return Err(conflict);
                             },
                             _ => ()
@@ -89,7 +92,7 @@ impl ParseTable {
                             reductions.push(reduction);
                         }
 
-                        *table.at_mut(i, terminal) = ParseTableEntry::Reduce(index);
+                        *table.at_mut(i, *terminal) = ParseTableEntry::Reduce(index);
                     }
 
                     if item.rule == grammar.start_rule {
@@ -195,9 +198,7 @@ impl ParseTable {
     }
 
     #[allow(dead_code)]
-    fn print_states<L: Lookahead>(states: &Vec<State>, grammar: &Grammar) {
-        let lookahead = L::new(grammar, states);
-
+    fn print_states(states: &Vec<State>, grammar: &Grammar, lookahead: &impl Lookahead) {
         for (i, state) in states.iter().enumerate() {
             println!("State {i}:");
             for item in &state.items {
@@ -223,7 +224,7 @@ impl ParseTable {
                 if item.pos == rhs.len() {
                     print!("[ ");
                     for terminal in lookahead.get_reduce_lookahead(i, item.rule) {
-                        print!("{} ", grammar.terminals[terminal]);
+                        print!("{} ", grammar.terminals[*terminal]);
                     }
                     print!("]");
                 }
@@ -261,6 +262,13 @@ pub struct LR<ParseData> {
 impl<ParseData> LR<ParseData> {
     pub fn new_slr(grammar: Grammar) -> Result<LR<ParseData>, Conflict> {
         let parse_table = ParseTable::new::<LookaheadSLR>(&grammar)?;
+        let lr = LR { grammar, parse_table, terminal_decorators: HashMap::new(), reducers: HashMap::new() };
+
+        return Ok(lr);
+    }
+
+    pub fn new_lalr(grammar: Grammar) -> Result<LR<ParseData>, Conflict> {
+        let parse_table = ParseTable::new::<LookaheadLALR>(&grammar)?;
         let lr = LR { grammar, parse_table, terminal_decorators: HashMap::new(), reducers: HashMap::new() };
 
         return Ok(lr);

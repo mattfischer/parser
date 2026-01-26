@@ -71,7 +71,7 @@ fn make_parser<ParseData>() -> Option<(parser::Tokenizer, parser::algorithm::LR<
     match DefReader::parse(Box::new(reader)) {
         Ok((tokenizer, extended_grammar)) => {            
             let grammar = extended_grammar.to_grammar();
-            match LR::new_slr(grammar) {
+            match LR::new_lalr(grammar) {
                 Ok(lr) => {
                     return Some((tokenizer, lr));
                 },
