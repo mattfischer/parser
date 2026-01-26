@@ -61,8 +61,7 @@ impl<ParseData> LL<ParseData> {
 
         predict_stack.push(PredictItem::Nonterminal(self.grammar.start_rule));
 
-        while !predict_stack.is_empty() {
-            let predict_item = predict_stack.pop().unwrap();
+        while let Some(predict_item) = predict_stack.pop() {
             match predict_item {
                 PredictItem::Terminal(terminal) => {
                     if stream.next_token().value == terminal {
