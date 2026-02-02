@@ -4,7 +4,7 @@ use parser::grammar::Sets;
 use parser::grammar::Symbol;
 
 use parser::algorithm::lr::Lookahead;
-use parser::algorithm::lr::State;
+use parser::algorithm::lr::parse_table::State;
 
 use std::collections::{HashMap, HashSet};
 

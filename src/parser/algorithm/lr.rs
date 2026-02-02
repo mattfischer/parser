@@ -12,19 +12,7 @@ use parse_table::{Conflict, Lookahead, ParseTable, ParseTableEntry};
 use slr::LookaheadSLR;
 use lalr::LookaheadLALR;
 
-use std::collections::{HashSet, HashMap};
-
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
-struct Item {
-    rule: usize,
-    rhs: usize,
-    pos: usize
-}
-
-struct State {
-    items: HashSet<Item>,
-    transitions: HashMap<usize, usize>
-}
+use std::collections::HashMap;
 
 type ParseItem<ParseData> = (usize, Option<ParseData>);
 type TerminalDecorator<ParseData> = dyn Fn(&parser::tokenizer::Token) -> ParseData;
@@ -74,30 +62,29 @@ impl<ParseData> LR<ParseData> {
         let mut state_stack = Vec::new();
         let mut state = 0;
 
-        while !self.parse_table.accept_states.contains(&state) {
+        while !self.parse_table.is_accept(state) {
             state_stack.push((state, parse_stack.len()));
-            match self.parse_table.table.at(state, stream.next_token().value) {
+            match self.parse_table.action_for_terminal(state, stream.next_token().value) {
                 ParseTableEntry::Shift(next_state) => {
                     self.shift(stream.next_token(), &mut parse_stack);
                     stream.consume_token();
                     state = *next_state;
                 },
-                ParseTableEntry::Reduce(reduction) => {
-                    let (rule, rhs) = self.parse_table.reductions[*reduction];
-                    let rule_rhs = &self.grammar.rules[rule].rhs[rhs];
+                ParseTableEntry::Reduce((rule, rhs)) => {
+                    let rule_rhs = &self.grammar.rules[*rule].rhs[*rhs];
                     for symbol in rule_rhs {
                         match symbol {
-                            Symbol::Terminal(_) | Symbol::Nonterminal(_) => {
+                            Symbol::Epsilon => (),
+                            _ => {
                                 state_stack.pop();
-                            },
-                            _ => ()
+                            }
                         }
                     }
 
                     let (back_state, parse_stack_start) = state_stack[state_stack.len() - 1];
-                    self.reduce(rule, parse_stack_start, &mut parse_stack);
+                    self.reduce(*rule, parse_stack_start, &mut parse_stack);
 
-                    if let ParseTableEntry::Shift(next_state) = self.parse_table.table.at(back_state, rule + self.grammar.terminals.len()) {
+                    if let ParseTableEntry::Shift(next_state) = self.parse_table.action_for_rule(back_state, *rule) {
                         state = *next_state;
                     } else {
                         return None;

@@ -3,7 +3,7 @@ use parser::Grammar;
 use parser::grammar::Sets;
 
 use parser::algorithm::lr::Lookahead;
-use parser::algorithm::lr::State;
+use parser::algorithm::lr::parse_table::State;
 
 use std::collections::HashSet;
 
