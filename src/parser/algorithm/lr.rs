@@ -7,7 +7,7 @@ use parser::Grammar;
 use parser::grammar::Symbol;
 use parser::tokenizer::Stream;
 
-use parse_table::{Conflict, Lookahead, ParseTable, ParseTableEntry};
+use parse_table::{Conflict, Lookahead, ParseTable, TableEntry};
 
 use slr::LookaheadSLR;
 use lalr::LookaheadLALR;
@@ -66,12 +66,12 @@ impl<T> LR<T> {
         while !self.parse_table.is_accept(state) {
             state_stack.push((state, parse_stack.len()));
             match self.parse_table.action_for_terminal(state, stream.next_token().value) {
-                ParseTableEntry::Shift(next_state) => {
+                TableEntry::Shift(next_state) => {
                     self.shift(stream.next_token(), &mut parse_stack);
                     stream.consume_token();
                     state = *next_state;
                 },
-                ParseTableEntry::Reduce((rule, rhs)) => {
+                TableEntry::Reduce((rule, rhs)) => {
                     let rule_rhs = &self.grammar.rules[*rule].rhs[*rhs];
                     for symbol in rule_rhs {
                         match symbol {
@@ -85,13 +85,13 @@ impl<T> LR<T> {
                     let (back_state, parse_stack_start) = state_stack[state_stack.len() - 1];
                     self.reduce(*rule, parse_stack_start, &mut parse_stack);
 
-                    if let ParseTableEntry::Shift(next_state) = self.parse_table.action_for_rule(back_state, *rule) {
+                    if let TableEntry::Shift(next_state) = self.parse_table.action_for_rule(back_state, *rule) {
                         state = *next_state;
                     } else {
                         return None;
                     }
                 },
-                ParseTableEntry::Error => {
+                TableEntry::Error => {
                     return None;
                 }
             }

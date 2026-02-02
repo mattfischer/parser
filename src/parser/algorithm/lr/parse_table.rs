@@ -20,7 +20,7 @@ pub struct State {
 }
 
 #[derive(Copy, Clone)]
-pub enum ParseTableEntry {
+pub enum TableEntry {
     Shift(usize),
     Reduce((usize, usize)),
     Error
@@ -38,7 +38,7 @@ pub trait Lookahead {
 }
 
 pub struct ParseTable {
-    table: Table<ParseTableEntry>,
+    table: Table<TableEntry>,
     accept_states: HashSet<usize>,
     num_terminals: usize
 }
@@ -55,22 +55,22 @@ impl ParseTable {
         return self.accept_states.contains(&state);
     }
 
-    pub fn action_for_terminal(&self, state: usize, terminal: usize) -> &ParseTableEntry {
+    pub fn action_for_terminal(&self, state: usize, terminal: usize) -> &TableEntry {
         return self.table.at(state, terminal);
     }            
 
-    pub fn action_for_rule(&self, state: usize, rule: usize) -> &ParseTableEntry {
+    pub fn action_for_rule(&self, state: usize, rule: usize) -> &TableEntry {
         return self.table.at(state, rule + self.num_terminals);
     }            
 }
 
-fn compute_parse_table<L: Lookahead>(grammar: &Grammar) -> Result<(Table<ParseTableEntry>, HashSet<usize>), Conflict> {
+fn compute_parse_table<L: Lookahead>(grammar: &Grammar) -> Result<(Table<TableEntry>, HashSet<usize>), Conflict> {
     let states = compute_states(grammar);
     let lookahead = L::new(grammar, &states);
 
     print_states(&states, grammar, &lookahead);
 
-    let mut table = Table::new(states.len(), grammar.rules.len() + grammar.terminals.len(), ParseTableEntry::Error);
+    let mut table = Table::new(states.len(), grammar.rules.len() + grammar.terminals.len(), TableEntry::Error);
     let mut accept_states = HashSet::new();
 
     for (i, state) in states.iter().enumerate() {
@@ -79,14 +79,14 @@ fn compute_parse_table<L: Lookahead>(grammar: &Grammar) -> Result<(Table<ParseTa
             if item.pos == rhs.len() {
                 for terminal in lookahead.get_reduce_lookahead(i, item.rule) {
                     match table.at(i, *terminal) {
-                        ParseTableEntry::Reduce((rule, _rhs)) => {
+                        TableEntry::Reduce((rule, _rhs)) => {
                             let conflict = Conflict::ReduceReduce(*terminal, *rule, item.rule);
                             return Err(conflict);
                         },
                         _ => ()
                     }
 
-                    *table.at_mut(i, *terminal) = ParseTableEntry::Reduce((item.rule, item.rhs));
+                    *table.at_mut(i, *terminal) = TableEntry::Reduce((item.rule, item.rhs));
                 }
 
                 if item.rule == grammar.start_rule {
@@ -97,13 +97,13 @@ fn compute_parse_table<L: Lookahead>(grammar: &Grammar) -> Result<(Table<ParseTa
 
         for transition in &state.transitions {
             match table.at(i, *transition.0) {
-                ParseTableEntry::Reduce((rule, _rhs)) => {
+                TableEntry::Reduce((rule, _rhs)) => {
                     let conflict = Conflict::ShiftReduce(*transition.0, *rule);
                     return Err(conflict);
                 },
                 _ => ()
             }
-            *table.at_mut(i, *transition.0) = ParseTableEntry::Shift(*transition.1);
+            *table.at_mut(i, *transition.0) = TableEntry::Shift(*transition.1);
         }
     }
     return Ok((table, accept_states));

@@ -65,14 +65,14 @@ fn main() {
     }
 }
 
-fn make_parser<ParseData>() -> Option<(parser::Tokenizer, parser::algorithm::LR<ParseData>)> {
+fn make_parser<T>() -> Option<(parser::Tokenizer, parser::algorithm::LR<T>)> {
     let reader = BufReader::new(GRAMMAR.as_bytes());
     match DefReader::parse(Box::new(reader)) {
         Ok((tokenizer, extended_grammar)) => {            
             let grammar = extended_grammar.to_grammar();
             match LR::new_lalr(grammar) {
-                Ok(lr) => {
-                    return Some((tokenizer, lr));
+                Ok(parser) => {
+                    return Some((tokenizer, parser));
                 },
                 Err(_) => {
                     //println!("Conflict: rule {} symbol {} rhs {}/{}", conflict.rule, conflict.symbol, conflict.rhs1, conflict.rhs2);
