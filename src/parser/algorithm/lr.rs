@@ -14,28 +14,29 @@ use lalr::LookaheadLALR;
 
 use std::collections::HashMap;
 
-type ParseItem<ParseData> = (usize, Option<ParseData>);
-type TerminalDecorator<ParseData> = dyn Fn(&parser::tokenizer::Token) -> ParseData;
-type Reducer<ParseData> = dyn Fn(&[ParseItem<ParseData>]) -> ParseData;
+type ParseItem<T> = (usize, Option<T>);
+type TerminalDecorator<T> = dyn Fn(&parser::tokenizer::Token) -> T;
+type Reducer<T> = dyn Fn(&[ParseItem<T>]) -> T;
 
-type ParseStack<ParseData> = Vec<ParseItem<ParseData>>;
+type ParseStack<T> = Vec<ParseItem<T>>;
 
-pub struct LR<ParseData> {
+pub struct LR<T> {
     pub grammar: Grammar,
     parse_table: ParseTable,
-    terminal_decorators: HashMap<usize, Box<TerminalDecorator<ParseData>>>,
-    reducers: HashMap<usize, Box<Reducer<ParseData>>>
+    terminal_decorators: HashMap<usize, Box<TerminalDecorator<T>>>,
+    reducers: HashMap<usize, Box<Reducer<T>>>
 }
 
-impl<ParseData> LR<ParseData> {
-    pub fn new_slr(grammar: Grammar) -> Result<LR<ParseData>, Conflict> {
+#[allow(dead_code)]
+impl<T> LR<T> {
+    pub fn new_slr(grammar: Grammar) -> Result<LR<T>, Conflict> {
         let parse_table = ParseTable::new::<LookaheadSLR>(&grammar)?;
         let lr = LR { grammar, parse_table, terminal_decorators: HashMap::new(), reducers: HashMap::new() };
 
         return Ok(lr);
     }
 
-    pub fn new_lalr(grammar: Grammar) -> Result<LR<ParseData>, Conflict> {
+    pub fn new_lalr(grammar: Grammar) -> Result<LR<T>, Conflict> {
         let parse_table = ParseTable::new::<LookaheadLALR>(&grammar)?;
         let lr = LR { grammar, parse_table, terminal_decorators: HashMap::new(), reducers: HashMap::new() };
 
@@ -43,21 +44,21 @@ impl<ParseData> LR<ParseData> {
     }
 
     pub fn add_terminal_decorator<F>(&mut self, terminal: &str, terminal_decorator: F)
-    where F: 'static + Fn(&parser::tokenizer::Token) -> ParseData {
+    where F: 'static + Fn(&parser::tokenizer::Token) -> T {
         if let Some(idx) = self.grammar.terminal_index(terminal) {
             self.terminal_decorators.insert(idx, Box::new(terminal_decorator));
         }
     }
 
     pub fn add_reducer<F>(&mut self, rule: &str, reducer: F) 
-    where F: 'static + Fn(&[ParseItem<ParseData>]) -> ParseData {
+    where F: 'static + Fn(&[ParseItem<T>]) -> T {
         if let Some(idx) = self.grammar.rule_index(rule) {        
             self.reducers.insert(idx, Box::new(reducer));
         }
     }
 
-    pub fn parse(&self, mut stream: Stream) -> Option<ParseData> {
-        let mut parse_stack: ParseStack<ParseData> = ParseStack::new();
+    pub fn parse(&self, mut stream: Stream) -> Option<T> {
+        let mut parse_stack: ParseStack<T> = ParseStack::new();
 
         let mut state_stack = Vec::new();
         let mut state = 0;
@@ -105,7 +106,7 @@ impl<ParseData> LR<ParseData> {
         }
     }
 
-    fn shift(&self, token: &parser::tokenizer::Token, parse_stack: &mut ParseStack<ParseData>) {
+    fn shift(&self, token: &parser::tokenizer::Token, parse_stack: &mut ParseStack<T>) {
         let data;
         if let Some(terminal_decorator) = self.terminal_decorators.get(&token.value) {
             data = Some(terminal_decorator(token));
@@ -117,7 +118,7 @@ impl<ParseData> LR<ParseData> {
         parse_stack.push(parse_item);
     }
 
-    fn reduce(&self, rule: usize, stack_start: usize, parse_stack: &mut ParseStack<ParseData>) {
+    fn reduce(&self, rule: usize, stack_start: usize, parse_stack: &mut ParseStack<T>) {
         if let Some(reducer) = self.reducers.get(&rule) {
             let data = reducer(&parse_stack[stack_start..]);
             parse_stack.drain(stack_start..);

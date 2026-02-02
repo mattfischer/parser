@@ -3,7 +3,6 @@ mod regex;
 mod util;
 
 use parser::DefReader;
-use parser::algorithm::LL;
 use parser::algorithm::LR;
 
 use std::io::BufReader;
@@ -75,7 +74,7 @@ fn make_parser<ParseData>() -> Option<(parser::Tokenizer, parser::algorithm::LR<
                 Ok(lr) => {
                     return Some((tokenizer, lr));
                 },
-                Err(conflict) => {
+                Err(_) => {
                     //println!("Conflict: rule {} symbol {} rhs {}/{}", conflict.rule, conflict.symbol, conflict.rhs1, conflict.rhs2);
                     return None;
                 }
