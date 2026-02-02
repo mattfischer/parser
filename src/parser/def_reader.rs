@@ -43,7 +43,7 @@ enum Token {
 
 impl DefReader {
     pub fn parse(input: Box<dyn BufRead>) -> Result<(Tokenizer, ExtendedGrammar), ParseError> {
-        let def_tokenizer = Self::make_def_tokenizer();
+        let def_tokenizer = make_def_tokenizer();
 
         let stream = parser::tokenizer::Stream::new(def_tokenizer, input);
         let mut def_reader = DefReader { stream, patterns: Vec::new(), rules: Vec::new(), anonymous_terminals: HashMap::new() };
@@ -276,39 +276,6 @@ impl DefReader {
         }
     }
 
-    fn make_def_tokenizer() -> Tokenizer {
-        let pattern = |regex: &str, name: &str, value: Token| {
-            parser::tokenizer::Pattern { regex: regex.to_string(), name: name.to_string(), value: value as usize}
-        };
-
-        let pattern_ignore = |regex: &str, name: &str| {
-            parser::tokenizer::Pattern { regex: regex.to_string(), name: name.to_string(), value: parser::tokenizer::INVALID_TOKEN_VALUE}
-        };
-
-        let configurations = vec![
-            vec![
-                pattern("0", "<epsilon>", Token::Epsilon),
-                pattern("\\w+", "<terminal>", Token::Terminal),
-                pattern("<\\w+>", "<nonterminal>", Token::Nonterminal),
-                pattern(":", ":", Token::Colon),
-                pattern("\\|", "|", Token::Pipe),
-                pattern("\\(", "(", Token::LParen),
-                pattern("\\)", ")", Token::RParen),
-                pattern("\\+", "+", Token::Plus),
-                pattern("\\*", "*", Token::Star),
-                pattern("\\?", "?", Token::Question),
-                pattern("'[^']+'", "<literal>", Token::Literal),
-                pattern_ignore("\\s", "<whitespace>")  
-            ],
-            vec![
-                pattern("\\S+", "<regex>", Token::Regex),
-                pattern_ignore("\\s", "<whitespace>")
-            ]
-        ];
-
-        return Tokenizer::new(configurations, Token::End as usize, Token::Newline as usize);
-    }
-
     fn escape(&self, input: &str) -> String {
         let mut result = String::new();
         for c in input.chars() {
@@ -321,4 +288,37 @@ impl DefReader {
 
         return result;
     }
+}
+
+fn make_def_tokenizer() -> Tokenizer {
+    let pattern = |regex: &str, name: &str, value: Token| {
+        parser::tokenizer::Pattern { regex: regex.to_string(), name: name.to_string(), value: value as usize}
+    };
+
+    let pattern_ignore = |regex: &str, name: &str| {
+        parser::tokenizer::Pattern { regex: regex.to_string(), name: name.to_string(), value: parser::tokenizer::INVALID_TOKEN_VALUE}
+    };
+
+    let configurations = vec![
+        vec![
+            pattern("0", "<epsilon>", Token::Epsilon),
+            pattern("\\w+", "<terminal>", Token::Terminal),
+            pattern("<\\w+>", "<nonterminal>", Token::Nonterminal),
+            pattern(":", ":", Token::Colon),
+            pattern("\\|", "|", Token::Pipe),
+            pattern("\\(", "(", Token::LParen),
+            pattern("\\)", ")", Token::RParen),
+            pattern("\\+", "+", Token::Plus),
+            pattern("\\*", "*", Token::Star),
+            pattern("\\?", "?", Token::Question),
+            pattern("'[^']+'", "<literal>", Token::Literal),
+            pattern_ignore("\\s", "<whitespace>")  
+        ],
+        vec![
+            pattern("\\S+", "<regex>", Token::Regex),
+            pattern_ignore("\\s", "<whitespace>")
+        ]
+    ];
+
+    return Tokenizer::new(configurations, Token::End as usize, Token::Newline as usize);
 }

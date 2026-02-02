@@ -19,7 +19,7 @@ impl Encoding {
         let mut node_symbol_ranges = VecDeque::new();
         
         for node in nodes {
-            Self::visit_node(node, &mut node_symbol_ranges);
+            visit_node(node, &mut node_symbol_ranges);
         }
         node_symbol_ranges.make_contiguous().sort_by_key(|a| a.0);
 
@@ -66,18 +66,6 @@ impl Encoding {
         return self.input_symbol_ranges.len();
     }
 
-    fn visit_node(node: &Node, input_symbol_ranges: &mut VecDeque<InputSymbolRange>) {
-        match node {
-            Node::Symbol(symbol) => input_symbol_ranges.push_back((*symbol, *symbol)),
-            Node::CharacterClass(ranges) => for (start, end) in ranges { input_symbol_ranges.push_back((*start, *end)); }
-            Node::OneOf(nodes) => for node in nodes { Self::visit_node(node, input_symbol_ranges); },
-            Node::ZeroOrOne(node) => Self::visit_node(node, input_symbol_ranges),
-            Node::ZeroOrMore(node) => Self::visit_node(node, input_symbol_ranges),
-            Node::OneOrMore(node) => Self::visit_node(node, input_symbol_ranges),
-            Node::Sequence(nodes) => for node in nodes { Self::visit_node(node, input_symbol_ranges); }
-        }
-    }
-
     pub fn code_point_ranges(&self, mut input_symbol_range: InputSymbolRange) -> Vec<CodePoint> {
         let mut code_points = Vec::new();
         while input_symbol_range.0 >= 0 as char && input_symbol_range.0 <= input_symbol_range.1 {
@@ -109,5 +97,17 @@ impl Encoding {
                 println!("{i}: {first}-{last}");
             }
         }
+    }
+}
+
+fn visit_node(node: &Node, input_symbol_ranges: &mut VecDeque<InputSymbolRange>) {
+    match node {
+        Node::Symbol(symbol) => input_symbol_ranges.push_back((*symbol, *symbol)),
+        Node::CharacterClass(ranges) => for (start, end) in ranges { input_symbol_ranges.push_back((*start, *end)); }
+        Node::OneOf(nodes) => for node in nodes { visit_node(node, input_symbol_ranges); },
+        Node::ZeroOrOne(node) => visit_node(node, input_symbol_ranges),
+        Node::ZeroOrMore(node) => visit_node(node, input_symbol_ranges),
+        Node::OneOrMore(node) => visit_node(node, input_symbol_ranges),
+        Node::Sequence(nodes) => for node in nodes { visit_node(node, input_symbol_ranges); }
     }
 }

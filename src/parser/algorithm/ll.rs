@@ -38,7 +38,7 @@ pub struct Conflict {
 #[allow(dead_code)]
 impl<T> LL<T> {
     pub fn new(grammar: Grammar) -> Result<LL<T>, Conflict> {
-        let parse_table = Self::compute_parse_table(&grammar)?;
+        let parse_table = compute_parse_table(&grammar)?;
         let ll = Self { grammar, parse_table, terminal_decorators: HashMap::new(), reducers: HashMap::new() };
         return Ok(ll);
     }
@@ -143,50 +143,50 @@ impl<T> LL<T> {
             parse_stack.push(parse_item);
         }
     }
+}
 
-    fn compute_parse_table(grammar: &Grammar) -> Result<Table<usize>, Conflict> {
-        let mut parse_table = Table::new(grammar.rules.len(), grammar.terminals.len(), usize::MAX);
-        let sets = parser::grammar::Sets::new(&grammar);
+fn compute_parse_table(grammar: &Grammar) -> Result<Table<usize>, Conflict> {
+    let mut parse_table = Table::new(grammar.rules.len(), grammar.terminals.len(), usize::MAX);
+    let sets = parser::grammar::Sets::new(&grammar);
 
-        for (i, rule) in grammar.rules.iter().enumerate() {
-            for (j, rhs) in rule.rhs.iter().enumerate() {
-                let symbol = rhs[0];
-                match symbol {
-                    parser::grammar::Symbol::Terminal(symbol_index) => {
-                        Self::add_parse_table_entry(&mut parse_table, i, symbol_index, j)?;
-                    },
-                    parser::grammar::Symbol::Nonterminal(symbol_index) => {
-                        Self::add_parse_table_entries(&mut parse_table, i, &sets.first_sets[symbol_index], j)?;
+    for (i, rule) in grammar.rules.iter().enumerate() {
+        for (j, rhs) in rule.rhs.iter().enumerate() {
+            let symbol = rhs[0];
+            match symbol {
+                parser::grammar::Symbol::Terminal(symbol_index) => {
+                    add_parse_table_entry(&mut parse_table, i, symbol_index, j)?;
+                },
+                parser::grammar::Symbol::Nonterminal(symbol_index) => {
+                    add_parse_table_entries(&mut parse_table, i, &sets.first_sets[symbol_index], j)?;
 
-                        if sets.nullable_nonterminals.contains(&symbol_index) {
-                            Self::add_parse_table_entries(&mut parse_table, i, &sets.follow_sets[symbol_index], j)?;
-                        }
-                    },
-                    parser::grammar::Symbol::Epsilon => {
-                        Self::add_parse_table_entries(&mut parse_table, i, &sets.follow_sets[i], j)?;
+                    if sets.nullable_nonterminals.contains(&symbol_index) {
+                        add_parse_table_entries(&mut parse_table, i, &sets.follow_sets[symbol_index], j)?;
                     }
+                },
+                parser::grammar::Symbol::Epsilon => {
+                    add_parse_table_entries(&mut parse_table, i, &sets.follow_sets[i], j)?;
                 }
             }
         }
-
-        return Ok(parse_table);
     }
 
-    fn add_parse_table_entries(parse_table: &mut Table<usize>, rule: usize, symbols: &HashSet<usize>, rhs: usize) -> Result<(), Conflict> {
-        for symbol in symbols {
-            Self::add_parse_table_entry(parse_table, rule, *symbol, rhs)?;
-        }
+    return Ok(parse_table);
+}
 
+fn add_parse_table_entries(parse_table: &mut Table<usize>, rule: usize, symbols: &HashSet<usize>, rhs: usize) -> Result<(), Conflict> {
+    for symbol in symbols {
+        add_parse_table_entry(parse_table, rule, *symbol, rhs)?;
+    }
+
+    return Ok(());
+}
+
+fn add_parse_table_entry(parse_table: &mut Table<usize>, rule: usize, symbol: usize, rhs: usize) -> Result<(), Conflict> {
+    if *parse_table.at(rule, symbol) == usize::MAX {
+        *parse_table.at_mut(rule, symbol) = rhs;
         return Ok(());
-    }
-
-    fn add_parse_table_entry(parse_table: &mut Table<usize>, rule: usize, symbol: usize, rhs: usize) -> Result<(), Conflict> {
-        if *parse_table.at(rule, symbol) == usize::MAX {
-            *parse_table.at_mut(rule, symbol) = rhs;
-            return Ok(());
-        } else {
-            let conflict = Conflict { rule, symbol, rhs1: *parse_table.at(rule, symbol), rhs2: rhs };
-            return Err(conflict);
-        }
+    } else {
+        let conflict = Conflict { rule, symbol, rhs1: *parse_table.at(rule, symbol), rhs2: rhs };
+        return Err(conflict);
     }
 }
